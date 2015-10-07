@@ -24,7 +24,9 @@ import oracle.jdbc.OracleConnection;
 import java.util.Properties;
 
 /**
- *  Oracle RDBMS implementation of {@link oracle.soda.OracleClient}
+ *  Oracle RDBMS implementation of {@link oracle.soda.OracleClient}.
+ *  <br>
+ *  <br>
  *  Entry point to the SODA API. Provides a way to get an 
  *  {@link oracle.soda.OracleDatabase} object, from which document
  *  collections can be created and opened.
