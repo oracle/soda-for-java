@@ -42,8 +42,7 @@ The following short code snippet illustrates working with SODA. It shows how to 
         // Find all documents in the collection matching a query-by-example (QBE).
         // The following lines find all JSON documents in the collection that have 
         // a field "name" that starts with "A".
-        String qbe = "{\"name\" : { \"$startsWith\" : \"A\" }}";
-        OracleDocument f = db.createDocumentFromString(qbe);
+        OracleDocument f = db.createDocumentFromString("{\"name\" : { \"$startsWith\" : \"A\" }}");
                                
         OracleCursor c = col.find().filter(f).getCursor();
  
