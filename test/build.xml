@@ -1,0 +1,201 @@
+<?xml version="1.0"?>
+
+<!-- 
+ Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+
+   DESCRIPTION
+     Tests for xdk/src/java/json
+
+   MODIFIED   (MM/DD/YY)
+    Josh Spiegel              06/05/14 - initial version
+    Prakashkumar Thiagarajan 
+    Vincent Liu
+    Max Orgiyan
+-->
+<project name="txjjson" default="all" basedir=".">
+<description>
+
+  Runs SODA regression tests.
+      
+    -Ddatasource=db.properties                 (required) - database properties
+    -Dtest.match=regex                         (optional) - only run tests where the regex matches "ClassName#testMethodName"
+    -Ddebug=true                               (optional) - enable remote debugging
+  
+  The database properties file has the following format:
+  
+    UserName=...
+    Password=...
+    Server=...
+    Port=...
+    DBName=...
+  
+  Example: Run tests locally
+  
+    ant -Ddatasource=db.properties 
+  
+  Example: Run tests locally with a debugger attached
+  
+    ant -Ddatasource=db.properties -Ddebug=true
+  
+    (by default attach debugger to port 8497)
+  
+  Example: Run only test_Sanity.java 
+     
+    ant -Ddatasource=db.properties -Dtest.match=test_Sanity
+  
+</description>
+
+    <property name="test.match" value=""/>
+    <property name="patch.version" value=""/>
+    <property name="install.plsql" value="false"/>
+ 
+    <import file="../json.xml"/>
+    <import file="ant/sql.xml"/>
+
+    <property name="junit.jar" value="${env.SODA_JUNIT_JAR}"/>
+    <property name="sqlplus.dir" value="${env.SODA_SQLPLUS}"/>
+
+    <target name="compile" description="Compiles the test source" depends="-init">
+        <!-- compile the test source ./src -->
+        <antcall target="-compile" inheritrefs="false">
+            <param name="-compile.classes.dir" value="${classes.dir}" />
+            <param name="-compile.source.dirs" value="${src.dir}" />
+            <param name="-compile.depend.cache.dir" value="${depend.cache.dir}" />
+            <param name="javac.includeAntRuntime" value="true"/>
+            <reference torefid="-compile.import.classpath" refid="orasoda-classpath" />
+        </antcall>
+    </target>
+  
+    <target name="all" depends="run-local"/>
+
+    <target name="run-local" 
+       description="Compiles and runs the tests locally"
+       depends="-init-db,-do-run,-error-if-failed"/>
+
+    <target name="-error-if-failed">
+        <fail message="Tests failed!" if="test.failed"/>
+        <echo message="All tests passed."/>
+    </target>
+
+    <target name="-do-run" depends="compile">
+        <property name="debug.curl" value="false"/>
+
+        <!-- run the tests -->
+        <dojunit cp="orasoda-classpath" includes="oracle/json/tests/soda/**"/>
+       
+        <!-- generate the test report -->
+        <junitreport todir="${test.html.dir}">
+            <fileset dir="${test.out.dir}">
+                <include name="*.xml"/>
+            </fileset>
+            <report format="frames" todir="${test.html.dir}"/>
+        </junitreport>
+
+        <echo message="&#xA;&#xA;Report: ${test.html.dir}/index.html"/>
+
+    </target>
+    
+    <target name="clean" description="Deletes test source artifiacts (./build)">
+        <delete dir="${build.dir}"/>
+    </target>
+    
+    <macrodef name="dojunit">
+        <attribute name="cp"/>
+        <attribute name="includes"/>
+        <sequential>
+        <!-- run the tests -->
+        <junit failureproperty="test.failed" fork="true" forkmode="once" printsummary="true">
+             <classpath>
+                  <path refid="@{cp}"/>
+                  <pathelement path="${classes.dir}"/>
+             </classpath>
+             <jvmarg line="${jvmdebug}"/> 
+             <sysproperty key="UserName" value="${UserName}"/>
+             <sysproperty key="Password" value="${Password}"/>
+             <sysproperty key="Port" value="${Port}"/>
+             <sysproperty key="Server" value="${Server}"/>
+             <sysproperty key="DBName" value="${DBName}"/>
+             <sysproperty key="debug.curl" value="${debug.curl}"/>
+             <sysproperty key="test.match" value="${test.match}"/>
+             <sysproperty key="test.dir" value="${test.dir}"/>
+             <sysproperty key="patch.version" value="${patch.version}"/>
+             <batchtest todir="${test.dir}/out">
+                 <fileset dir="${classes.dir}" 
+                   includes="@{includes}*" 
+                   excludes="**/*$*.class"/>
+             </batchtest>
+             <formatter type="xml"/>
+             <formatter type="brief"/>
+        </junit>
+        </sequential>
+    </macrodef>
+
+    <target name="-init-db" depends="-check-db, -init">
+        <sqlplus
+            infile="${basedir}/ant/sodatestsetup.sql" 
+            outfile="${test.dir}/sodatestsetup.sql.out"
+            user="${UserName}"
+            pass="${Password}"
+            sqlplus.dir="${sqlplus.dir}"
+        />
+    </target>
+
+    <target name="-init" depends="-check-debug"> 
+        <path id="common-classpath">
+            <path refid="xdk.json.lib.import"/>
+            <pathelement location="${junit.jar}"/>
+        </path>
+      
+        <path id="orasoda-classpath">
+            <path refid="common-classpath"/>
+            <pathelement location="${jar.orajsoda}"/>
+        </path>      
+
+        <tstamp>
+            <format property="test.run" pattern="yyyy-MM-dd-HH.mm.ss"/>
+        </tstamp>
+        <property name="test.dir" value="testoutput/${test.run}"/>
+        <property name="test.out.dir" value="${test.dir}/out"/>
+        <property name="test.html.dir" value="${test.dir}/html"/>
+      
+        <mkdir dir="${test.out.dir}"/>
+        <mkdir dir="${test.html.dir}"/>      
+
+    </target>
+
+    <!-- Fail fast if datasource properties are missing -->
+  
+    <target name="-check-db">
+        <!-- if datasource is not set and build/db.properties exists, use it -->
+        <available file="build/db.properties" type="file" value="build/db.properties" property="datasource"/>
+
+        <fail unless="datasource" message="A datasource properties file must be specified using -Ddatasource=file.properties "/>
+        <property file="${datasource}"/>
+        
+        <fail unless="UserName" message="The property UserName must be specified"/>
+        <fail unless="Password" message="The property Password must be specified"/>
+        <fail unless="Server" message="The property Server must be specified"/>
+        <fail unless="Port" message="The property Port must be specified"/>
+        <fail unless="DBName" message="The property DBName must be specified"/>  
+    </target>    
+  
+    <!-- Debug targets -->
+  
+    <target name="-check-debug" depends="-enable-debug, -disable-debug"/>
+  
+    <target name="-disable-debug" unless="debug">
+        <property name="jvmdebug" value=""/>
+    </target>  
+
+    <target name="-enable-debug" if="debug">
+        <!-- Default values; may override on command line -->
+        <property name="debug.port" value="8497"/>
+        <property name="debug.server" value="y"/>
+        <property name="debug.suspend" value="y"/>
+        <property name="jvmdebug"
+                  value="-Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,address=${debug.port},server=${debug.server},suspend=${debug.suspend}"/>
+        <echo message="${jvmdebug}"/>
+    </target>
+
+</project>
+

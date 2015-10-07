@@ -1,0 +1,15 @@
+{
+  "name"   : "jUnitIndex",
+  "fields": 
+  [
+    { "path"      : "name.surname",
+      "datatype"  : "string",
+      "maxLength" : 100,
+      "order"     : "asc"
+    },
+    { "path"      : "city.zip",
+      "datatype"  : "number",
+      "order"     : "desc"
+    }
+  ]
+}

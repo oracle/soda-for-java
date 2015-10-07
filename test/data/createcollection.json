@@ -1,0 +1,22 @@
+{
+  "tableName"     : "JUNIT",
+  "contentColumn" :
+  {
+    "name"           : "JUNIT_DOC",
+    "sqlType"       : "varchar2"
+  },
+  "keyColumn"     :
+  {
+    "name"           : "JUNIT_ID",
+    "sqlType"       : "number",
+    "assignmentMethod" : "sequence",
+    "sequenceName" : "JUNIT_SEQ1"
+  },
+  "lastModifiedColumn" : {
+     "name" : "LAST_UPDATED"
+  },
+  "versionColumn" : {
+    "name"    : "CHECKSUM",
+    "method"  : "SHA256"
+  }
+}

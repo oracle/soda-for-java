@@ -1,0 +1,175 @@
+{
+  "DEAL": {
+    "POOL": { "PoolIdentifier": "AI8578" },
+    "COLLATERAL": {
+      "PROPERTY_ADDRESS": {
+        "PropertyAddressCityName": "Herndon",
+        "PropertyAddressLineText": "13100 Worldgate Dr",
+        "PropertyAddressPostalCode": "20171",
+        "PropertyAddressStateCode": "VA",
+        "PropertySpecialFloodHazardAreaIndicator": "N"
+      },
+      "PROPERTY_DETAIL": {
+        "PropertyAttachmentTypeCode": "Detached",
+        "PropertyConstructionMethodTypeCode": "SiteBuilt",
+        "PropertyEstateTypeCode": "FeeSimple",
+        "PropertyFinancedDwellingUnitCount": "1",
+        "PropertyFloodInsuranceIndicator": "N",
+        "PropertyStructureBuiltYearNumber": "1995",
+        "PropertyUsageTypeCode": "Investment"
+      },
+      "PROPERTY_UNITS": {
+        "PROPERTY_UNIT": {
+          "PROPERTY_UNIT_DETAIL": {
+            "PropertyDwellingUnitBedroomCount": "3",
+            "PropertyDwellingUnitEligibleRentAmount": "250",
+            "PropertyDwellingUnitNumber": "1"
+          }
+        }
+      }
+    },
+    "COMBINED_LTV": { "LoanCombinedLoanToValueRatioPercent": "120" },
+    "LOAN": {
+      "ADJUSTMENT": {
+        
+      },
+      "AMORTIZATION": {
+        "LoanAmortizationPeriodTypeCode": "Month",
+        "LoanAmortizationTerm": "360",
+        "LoanAmortizationTypeCode": "Fixed"
+      },
+      "HMDA_LOAN": {
+        "LoanHMDA_HOEPAStatusIndicator": "N",
+        "LoanHMDARateSpreadPercent": "0.00"
+      },
+      "INTEREST_CALCULATION": {
+        "LoanInterestCalculationMethodTypeCode": "Compound",
+        "LoanInterestCalculationPeriodTypeCode": "Month"
+      },
+      "INVESTOR_LOAN_INFORMATION": {
+        "CommitmentBaseGuarantyFeePercent": "0.7750",
+        "LoanAcquisitionScheduledUnpaidPrincipalBalanceAmount": "162290.82",
+        "LoanDefaultLossPartyTypeCode": "Investor",
+        "LoanFannieMaeOwnershipPercent": "100",
+        "LoanGuarantyFeeAfterAlternatePaymentMethodRate": "0.7750",
+        "LoanGuarantyFeeAfterBuyupBuydownRate": "0.3750",
+        "LoanRelatedLoanInvestorLoanIdentifier": "1696254741",
+        "LoanRelatedLoanInvestorTypeCode": "FNM",
+        "LoanRemittanceDayNumber": "---18",
+        "LoanRemittanceTypeCode": "ScheduledInterestScheduledPrincipal",
+        "PropertyREOMarketingPartyTypeCode": "Investor"
+      },
+      "LOAN_DETAIL": {
+        "BorrowerCount": "1",
+        "FannieMaeMultifamilyIndicator": "N",
+        "LoanAffordableProgramIndicator": "N",
+        "LoanApplicationReceivedDate": "2012-04-16",
+        "LoanAssumabilityIndicator": "N",
+        "LoanBalloonIndicator": "N",
+        "LoanCapitalizedIndicator": "N",
+        "LoanConstructionIndicator": "N",
+        "LoanConvertibleIndicator": "N",
+        "LoanEscrowIndicator": "Y",
+        "LoanInterestOnlyIndicator": "N",
+        "LoanInterestRateBuydownSubsidyIndicator": "N",
+        "LoanModificationIndicator": "N",
+        "LoanPrepaymentPenaltyIndicator": "N",
+        "LoanRelocationLoanIndicator": "N",
+        "LoanSharedEquityIndicator": "N"
+      },
+      "LOAN_IDENTIFIER": {
+        "InvestorContractIdentifier": "P02596",
+        "InvestorLoanIdentifier": "1717179259",
+        "SellerLoanIdentifier": "8019654162",
+        "UniqueClientDealIdentifier": "8019654162"
+      },
+      "LTV": {
+        "LoanAcquisitionLoanToValueRatioPercent": "120",
+        "LoanOriginalLoanToValueRatioPercent": "120"
+      },
+      "MATURITY": {
+        "LoanMaturityDate": "2042-08-01",
+        "LoanMaturityPeriodTypeCode": "Month",
+        "LoanMaturityTerm": "360"
+      },
+      "MI_DATA": {
+        "MI_DATA_DETAIL": { "LoanPrimaryMortgageInsuranceAbsenceReasonTypeCode": "NoMIBasedOnOriginalLTV" }
+      },
+      "PAYMENT": {
+        "PAYMENT_RULE": {
+          "LoanOriginalPrincipalAndInterestPaymentAmount": "835.48",
+          "LoanPaymentFrequencyTypeCode": "Monthly",
+          "LoanScheduledFirstPaymentDueDate": "2012-09-01"
+        },
+        "PAYMENT_SUMMARY": {
+          "LoanLastPaidInstallmentDueDate": "2012-08-01",
+          "LoanUnpaidPrincipalBalanceAmount": "162500.00"
+        }
+      },
+      "QUALIFICATION": {
+        "BorrowerGroupTotalLiabilitiesMonthlyPaymentAmount": "1852",
+        "BorrowerGroupTotalMonthlyIncomeAmount": "8383",
+        "BorrowerGroupTotalMonthlyProposedHousingExpenseAmount": "1321"
+      },
+      "REFINANCE": { "LoanRefinanceCashOutDeterminationTypeCode": "LimitedCashOut" },
+      "SELECTED_LOAN_PRODUCT": {
+        "LOAN_PRODUCT_DETAIL": { "LoanRefinanceProgramTypeCode": "RefiPlus" },
+        "PRICE_LOCK": { "LoanPriceLockDatetime": "2012-04-24" }
+      },
+      "SERVICING": {
+        "DELINQUENCY_SUMMARY": { "BorrowerDelinquentPaymentsOverPastTwelveMonthsCount": "0" }
+      },
+      "TERMS_OF_MORTGAGE": {
+        "LoanLienPriorityTypeCode": "FirstLien",
+        "LoanMortgageTypeCode": "Conventional",
+        "LoanNoteDate": "2012-07-30",
+        "LoanOriginalNoteRate": "4.6250",
+        "LoanOriginalUnpaidPrincipalBalanceAmount": "162500.00",
+        "LoanPurposeTypeCode": "Refinance"
+      }
+    },
+    "PARTIES": {
+      "APPRAISER": {
+        "APPRAISER_LICENSE": { "PropertyAppraiserStateLicenseIdentifier": "4001007639" }
+      },
+      "BORROWERS": {
+        "BORROWER": {
+          "BORROWER_ADDRESSES": {
+            "BORROWER_ADDRESS": {
+              "BorrowerAddressCityName": "Herndon",
+              "BorrowerAddressCountryCode": "US",
+              "BorrowerAddressLineText": "Worldgate Dr",
+              "BorrowerAddressPostalCode": "20171",
+              "BorrowerAddressStateCode": "OH",
+              "BorrowerAddressTypeCode": "Mailing"
+            }
+          },
+          "BORROWER_DETAIL": {
+            "BorrowerAgeAtApplicationYearsCount": "60",
+            "BorrowerBirthDate": "1960-01-01",
+            "BorrowerClassificationTypeCode": "Primary",
+            "BorrowerMailToAddressSameAsPropertyIndicator": "N",
+            "BorrowerQualifyingIncomeAmount": "8383"
+          },
+          "CREDIT_SCORES": {
+            "CREDIT_SCORE": {
+              "CREDIT_SCORE_DETAIL": {
+                "BorrowerCreditScoreNumber": "600",
+                "CreditRepositorySourceIndicator": "Y",
+                "CreditRepositorySourceTypeCode": "Equifax"
+              }
+            }
+          },
+          "BorrowerFirstName": "John",
+          "BorrowerId": "1",
+          "BorrowerLastName": "Smith",
+          "BorrowerMiddleName": "Z",
+          "BorrowerTaxpayerIdentifier": "99999999",
+          "BorrowerTaxpayerIdentifierTypeCode": "SocialSecurityNumber"
+        }
+      },
+      "LOAN_SELLER": { "SellerPartyRoleIdentifier": "172570003" },
+      "SERVICER": { "ServicerIdentifier": "172570003" }
+    }
+  }
+}

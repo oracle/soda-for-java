@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<!-- 
+ Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+
+   NAME
+     sql.xml - macros for calling sql/xml
+
+   MODIFIED           (MM/DD/YY)
+     Josh Spiegel      02/02/15 - Creation 
+
+-->
+
+<project name="sql">
+    <macrodef name="sqlplus">
+      <attribute name="infile"/>
+      <attribute name="outfile"/>
+      <attribute name="pass"/>
+      <attribute name="user"/>
+      <attribute name="sqlplus.dir" />
+      <sequential>
+          <echo message="Running @{infile}  See @{outfile}"/>        
+          <exec 
+            dir="@{sqlplus.dir}" 
+            executable="sqlplus" 
+            output="@{outfile}"
+            inputstring="exit">
+             <arg line="'@{user}/@{pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${Server})(Port=${Port}))(CONNECT_DATA=(SID=${DBName})))' @ @{infile}"/>
+          </exec>
+      </sequential>
+    </macrodef>
+</project>

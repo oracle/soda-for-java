@@ -1,0 +1,14 @@
+{ 
+  "tableName" : "col", 
+  "keyColumn" : 
+    {
+      "name" : "ID", 
+      "assignmentMethod" : "CLIENT", 
+      "sqlType": "NUMBER"
+    },
+  "versionColumn" : 
+    { 
+      "name" : "VERSION_NUM", 
+      "method" : "SEQUENTIAL"
+    }
+}

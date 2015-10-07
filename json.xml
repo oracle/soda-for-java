@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+
+<!-- 
+ Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+
+   DESCRIPTION
+     Common tasks & properties for JSON ANT scripts.
+
+   MODIFIED  
+     Josh Spiegel    05/27/14 - initial version
+     Max Orgiyan
+-->
+<project name="json-base" default="base-description">
+
+    <dirname property="xdk.json.src.dir" file="${ant.file.json-base}"/>
+
+    <property environment="env"/>
+
+    <!-- Compiles with JDK6 to be compatible with an 12.1.0.2 RDBMS deployment -->
+    <property name="javac.java.home" value="${env.JAVA6HOME}"/>
+    <property name="ojdbc6.jar" value="${env.SODA_OJDBC6_JAR}"/>
+    <property name="jsr353.jar" value="${env.SODA_JSR353_JAR}"/>
+    
+    <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
+    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda.jar"/>
+
+    <!--
+       Generic project layout
+     -->
+    <property name="src.dir" value="${basedir}/src"/>
+    <property name="lib.dir.name" value="lib"/>
+    <property name="lib.dir" value="${basedir}/${lib.dir.name}"/>
+    <property name="build.dir" value="${basedir}/build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="depend.cache.dir" value="${build.dir}/depend"/>
+    <property name="resources.dir" value="${basedir}/resources"/>  
+
+    <path id="xdk.json.lib.import">
+        <pathelement location="${ojdbc6.jar}"/>
+        <pathelement location="${jsr353.jar}"/>
+        <fileset dir="${xdk.lib.dir}" includes="*.jar"/>
+    </path>
+        
+    <target name="base-description">
+        <echo message="This is base file for all json build files"/>
+    </target>
+
+    <target name="-compile">
+
+        <property name="-compile.classes.dir" value="" />
+        <property name="-compile.depend.cache.dir" value=""/>
+        <property name="-compile.includes" value=""/>
+        <property name="-compile.excludes" value=""/>
+        <property name="-compile.message" value=""/>
+        <property name="-compile.source.dirs" value=""/>
+
+        <property name="depend.closure" value="false"/>
+        <property name="javac.deprecate" value="false"/>
+        <property name="javac.debug" value="true"/>
+        <property name="javac.debug.level" value="source,lines"/>
+        <property name="javac.includeAntRuntime" value="false"/>
+        <property name="javac.nowarn" value="true"/>
+        <property name="javac.optimize" value="false"/>
+        <property name="javac.verbose" value="false"/>
+        <property name="javac.java.home" value="${env.JAVA_HOME}"/>
+
+        <mkdir dir="${-compile.classes.dir}"/>
+
+        <echo message="Checking Source Dependencies (depend.closure=${depend.closure})"/>
+        <depend srcdir="${-compile.source.dirs}"
+                destdir="${-compile.classes.dir}"
+                cache="${-compile.depend.cache.dir}"
+                closure="${depend.closure}">
+        </depend>
+
+        <echo message="Compiling Source ${-compile.message} with ${javac.java.home}"/>
+        <javac srcdir="${-compile.source.dirs}"
+               includes="${-compile.includes}"
+               excludes="${-compile.excludes}"
+               deprecation="${javac.deprecate}"
+               destdir="${-compile.classes.dir}"
+               encoding="UTF-8"
+               classpathref="-compile.import.classpath"
+               debug="${javac.debug}"
+               debuglevel="${javac.debug.level}"
+               optimize="${javac.optimize}"
+               verbose="${javac.verbose}"
+               nowarn="${javac.nowarn}"
+               includeAntRuntime="${javac.includeAntRuntime}"
+               fork="true"
+               executable="${javac.java.home}/bin/javac">
+        </javac>
+    </target>
+
+</project>

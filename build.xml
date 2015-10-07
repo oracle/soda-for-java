@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+
+<!-- 
+ Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+
+   DESCRIPTION
+     The main ant build for json.
+
+   MODIFIED   (MM/DD/YY)D
+    Josh Spiegel    05/27/14 - initial version
+    Max Orgiyan
+-->
+<project name="JSON" default="all" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <import file="json.xml"/>
+    <import file="getivy.xml"/>
+
+    <property name="download.deps" value=""/>
+
+    <condition property="skip.ivy">
+       <equals arg1="${download.deps}" arg2="false"/>
+    </condition>
+
+    <target name="all" depends="resolve,compile,archive" description="Compiles the source and creates the jar"/>
+
+    <!-- Ivy targets (get dependencies using ivy, generate report, clean ivy cache) -->
+
+    <target name="resolve" unless="skip.ivy" depends="init-ivy" description="Retrieves dependencies">
+      <ivy:retrieve/>
+    </target>
+
+    <target name="report" depends="resolve" description="Generates a report of retrieved dependencies">
+      <ivy:report todir="${build.dir}/[artifact].[ext]"/>
+    </target>
+
+    <target name="clean-cache" description="Cleans the Ivy cache">
+      <ivy:cleancache />
+    </target>
+
+    <!-- Compilation/clean/archive targets -->
+
+    <target name="compile" description="Compiles the source">
+
+        <antcall target="-compile" inheritrefs="false">
+            <param name="-compile.classes.dir" value="${classes.dir}" />
+            <param name="-compile.source.dirs" value="${src.dir}" />
+            <param name="-compile.depend.cache.dir" value="${depend.cache.dir}" />
+            <reference torefid="-compile.import.classpath" refid="xdk.json.lib.import" />
+        </antcall>
+      
+        <javadoc 
+            packagenames="oracle.soda,oracle.soda.rdbms"
+            overview="${src.dir}/oracle/soda/overview.html"
+            sourcepath="${src.dir}"
+            destdir="${build.dir}/docs"
+            classpathref="xdk.json.lib.import"
+            public="true"
+            version="false"
+            use="true"
+            author="false"
+            failonerror="true"
+            />
+    </target>
+
+    <target name="-clean-jars">
+        <delete file="${jar.orajsoda}"/>
+    </target>
+  
+    <target name="clean" description="Deletes all build artifacts" depends="-clean-jars">
+        <delete dir="${build.dir}"/>
+    </target>
+  
+    <target name="archive" description="Creates the jar" depends="-clean-jars">
+        <echo message="Archiving"/>
+        <jar destfile="${jar.orajsoda}">
+            <fileset dir="${classes.dir}"/>
+            <fileset dir="${resources.dir}"/>
+            <manifest>
+                <attribute name="Repository-Id" value="XDK_SODA1.0.0_LINUX.X64_150928"/>
+            </manifest>
+        </jar>
+    </target>
+
+</project>
