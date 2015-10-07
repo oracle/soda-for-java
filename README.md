@@ -29,21 +29,22 @@ The following short code snippet illustrates working with SODA. It shows how to 
         OracleDocument doc =
           db.createDocumentFromString("{ \"name\" : \"Alexander\" }");
  
-        // Insert the document into a collection. Result document
-        // contains SODA-generated document components, such as the key,
-        // last-modified and creation timestamps, version, etc.
-        OracleDocument resultDoc = col.insertAndGet(doc);
+        // Insert the document into a collection, and get back its
+        // auto-generated key.
+        OracleDocument k = col.insertAndGet(doc).getKey();
  
         // Find a document by its key. The following line
         // fetches the inserted document from the collection
         // by its unique key, and prints out the document's content
         System.out.println ("Inserted content:" + 
-                            col.find().key( resultDoc.getKey() ).getOne().getContentAsString());
+                            col.find().key(k).getOne().getContentAsString());
                             
         // Find all documents in the collection matching a query-by-example (QBE).
-        // The following lines find all JSON documents in the collection that have a field
-        // "name" that starts with "A".
-        OracleDocument f = db.createDocumentFromString("{\"name\" : { \"$startsWith\" : \"A\" }}");
+        // The following lines find all JSON documents in the collection that have 
+        // a field "name" that starts with "A".
+        String qbe = "{\"name\" : { \"$startsWith\" : \"A\" }}";
+        OracleDocument f = db.createDocumentFromString(qbe);
+                               
         OracleCursor c = col.find().filter(f).getCursor();
  
         while (c.hasNext())
