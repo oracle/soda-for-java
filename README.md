@@ -49,7 +49,7 @@ The following short code snippet illustrates working with SODA. It shows how to 
         while (c.hasNext())
         {
             // Get the next document.
-            resultDoc = c.next();
+            OracleDocument resultDoc = c.next();
  
             // Print the document key and content.
             System.out.println ("Key:         " + resultDoc.getKey());
