@@ -59,13 +59,13 @@ The following short code snippet illustrates working with SODA. It shows how to 
 
 Note that there's no SQL or JDBC programming required. Under the covers, SODA for Java transparently converts operations on document collections into SQL and executes it over JDBC.
 
-See [Getting Started with SODA for Java](https://github.com/morgiyan/SODA/wiki/Getting-started-with-SODA-for-Java) for a complete introductory example.
+See [Getting Started with SODA for Java](https://github.com/oracle/SODA-FOR-JAVA/wiki/Getting-started-with-SODA-for-Java) for a complete introductory example.
 
 ### Documentation
 
 The documentation is located [here](http://docs.oracle.com/cd/E63251_01/index.htm).
 
-The Javadoc is located [here](http://morgiyan.github.io/SODA).
+The Javadoc is located [here](http://oracle.github.io/SODA-FOR-JAVA).
 
 ### Build
 
