@@ -1,4 +1,5 @@
-Before submitting a code contribution please discuss it with us (see [Getting in touch](https://github.com/oracle/SODA-FOR-JAVA#getting-in-touch)).
+Before submitting a code contribution please discuss it with us by creating a 
+new issue.
 
 Pull requests can be made under [The Oracle Contributor Agreement (OCA)](https://www.oracle.com/technetwork/community/oca-486395.html).
 
