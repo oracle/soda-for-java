@@ -9,7 +9,7 @@ With the SODA architecture, a database contains collections, and each collection
 
 SODA is built on top of native JSON support in the Oracle database.
 
-See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/application-development/oracle-document-store/index.html) page is on the Oracle Technology Network for more info.
+See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/application-development/oracle-document-store/index.html) page on the Oracle Technology Network for more info.
 
 ### Getting started
 
