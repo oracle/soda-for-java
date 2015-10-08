@@ -147,11 +147,11 @@ Copy and paste this code into a file called testSODA.java. Then modify the "url"
 
 To compile and run SODA Java applications, you need the following jars:
 
-*    ojdbc6.jar that ships with Oracle Database 12.1.0.2. It can be downloaded from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
+*    ojdbc6.jar that ships with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
 
-*    javax.json-1.0.4.jar. This is the JSR353 implementation, and it can be downloaded from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
+*    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
-*    orajsoda.jar. The SODA jar.
+*    orajsoda.jar. The SODA jar. Download it [here](https://github.com/oracle/SODA-FOR-JAVA/releases/download/v1.0.0/orajsoda.jar).
 
 Compile and run testSODA.java, making sure the necessary jars are in the classpath. For example, assuming you're in the directory where the jars are located, do:
 
