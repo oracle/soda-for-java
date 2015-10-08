@@ -31,7 +31,7 @@ OracleDocument doc =
 
 // Insert the document into a collection, and get back its
 // auto-generated key.
-OracleDocument k = col.insertAndGet(doc).getKey();
+String k = col.insertAndGet(doc).getKey();
 
 // Find a document by its key. The following line
 // fetches the inserted document from the collection
