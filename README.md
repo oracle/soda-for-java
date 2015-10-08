@@ -72,8 +72,8 @@ The Javadoc is located [here](http://oracle.github.io/SODA-FOR-JAVA).
 SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/morgiyan/SODA/wiki/Building-the-source-code) for
 details. 
 
-SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and executing tests]
-(https://github.com/morgiyan/SODA/doc/Building-and-running-the-tests.md) for details.
+SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests]
+(https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-and-running-the-tests.md) for details.
 
 ### Contributions
 
