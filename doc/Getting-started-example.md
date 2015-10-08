@@ -1,5 +1,9 @@
 #Getting started with SODA for Java
 
+To execute a SODA application, you must have a live Oracle database 12.1.0.2 instance, with patch 20885778 applied.
+
+Obtain the patch from My Oracle Support (https://support.oracle.com). Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: https://support.oracle.com/rs?type=patch&id=20885778. Make sure you follow all the installation steps specified in the README.txt file included with the patch, including the post-installation step.
+
 This simple SODA Java program performs the following operations:
 
 *     Creates a new collection
