@@ -173,7 +173,7 @@ This example illustrates two ways of retrieving documents from the collection: b
 
     {"friends" : {"$gte" : 300}}
 
-As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300. See the documentation for more info on QBEs ([Using Filter Specifications (QBEs) with SODA for Java](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA172)).
+As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300. See the documentation for more info on QBEs ([Using Filter Specifications (QBEs)](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA172)).
 
 To check out the table backing this collection, connect to the schema associated with your JDBC connection in the example above, using SQLPlus or another similar tool, and do:
 
@@ -199,7 +199,7 @@ As you can see a table has been created with the following columns:
     LAST_MODIFIED        Stores the auto-generated last-modified timestamp
     VERSION              Stores the auto-generated document version
 
-This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a New Document Collection with SODA for Java](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA115) and [SODA Collection Configuration Using Custom Metadata] (http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA192)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
+This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a New Document Collection](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA115) and [Collection Configuration Using Custom Metadata] (http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA192)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
