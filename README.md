@@ -16,45 +16,45 @@ See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/
 The following short code snippet illustrates working with SODA. It shows how to create a document collection, insert a document into it, and query the collection by using a unique document key and a QBE (query-by-example).
 
 ```java        
-        // Get an OracleRDBMSClient - starting point of SODA for Java application.
-        OracleRDBMSClient cl = new OracleRDBMSClient();
- 
-        // Get a database.
-        OracleDatabase db = cl.getDatabase(conn);
- 
-        // Create a collection with the name "MyJSONCollection".
-        OracleCollection col = db.admin().createCollection("MyJSONCollection");
- 
-        // Create a JSON document.
-        OracleDocument doc =
-          db.createDocumentFromString("{ \"name\" : \"Alexander\" }");
- 
-        // Insert the document into a collection, and get back its
-        // auto-generated key.
-        OracleDocument k = col.insertAndGet(doc).getKey();
- 
-        // Find a document by its key. The following line
-        // fetches the inserted document from the collection
-        // by its unique key, and prints out the document's content
-        System.out.println ("Inserted content:" + 
-                            col.find().key(k).getOne().getContentAsString());
-                            
-        // Find all documents in the collection matching a query-by-example (QBE).
-        // The following lines find all JSON documents in the collection that have 
-        // a field "name" that starts with "A".
-        OracleDocument f = db.createDocumentFromString("{\"name\" : { \"$startsWith\" : \"A\" }}");
-                               
-        OracleCursor c = col.find().filter(f).getCursor();
- 
-        while (c.hasNext())
-        {
-            // Get the next document.
-            OracleDocument resultDoc = c.next();
- 
-            // Print the document key and content.
-            System.out.println ("Key:         " + resultDoc.getKey());
-            System.out.println ("Content:     " + resultDoc.getContentAsString());
-        }
+// Get an OracleRDBMSClient - starting point of SODA for Java application.
+OracleRDBMSClient cl = new OracleRDBMSClient();
+
+// Get a database.
+OracleDatabase db = cl.getDatabase(conn);
+
+// Create a collection with the name "MyJSONCollection".
+OracleCollection col = db.admin().createCollection("MyJSONCollection");
+
+// Create a JSON document.
+OracleDocument doc =
+  db.createDocumentFromString("{ \"name\" : \"Alexander\" }");
+
+// Insert the document into a collection, and get back its
+// auto-generated key.
+OracleDocument k = col.insertAndGet(doc).getKey();
+
+// Find a document by its key. The following line
+// fetches the inserted document from the collection
+// by its unique key, and prints out the document's content
+System.out.println ("Inserted content:" + 
+                    col.find().key(k).getOne().getContentAsString());
+                    
+// Find all documents in the collection matching a query-by-example (QBE).
+// The following lines find all JSON documents in the collection that have 
+// a field "name" that starts with "A".
+OracleDocument f = db.createDocumentFromString("{\"name\" : { \"$startsWith\" : \"A\" }}");
+                       
+OracleCursor c = col.find().filter(f).getCursor();
+
+while (c.hasNext())
+{
+    // Get the next document.
+    OracleDocument resultDoc = c.next();
+
+    // Print the document key and content.
+    System.out.println ("Key:         " + resultDoc.getKey());
+    System.out.println ("Content:     " + resultDoc.getContentAsString());
+}
 ```
 
 Note that there's no SQL or JDBC programming required. Under the covers, SODA for Java transparently converts operations on document collections into SQL and executes it over JDBC.
