@@ -173,7 +173,7 @@ This example illustrates two ways of retrieving documents from the collection: b
 
     {"friends" : {"$gte" : 300}}
 
-As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300.
+As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300. See the documentation for more info on QBEs ([Using Filter Specifications (QBEs) with SODA for Java](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA172)).
 
 To check out the table backing this collection, connect to the schema associated with your JDBC connection in the example above, using SQLPlus or another similar tool, and do:
 
