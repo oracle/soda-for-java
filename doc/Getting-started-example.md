@@ -199,7 +199,7 @@ As you can see a table has been created with the following columns:
     LAST_MODIFIED        Stores the auto-generated last-modified timestamp
     VERSION              Stores the auto-generated document version
 
-This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation, and will be covered in future blog entries as well. Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
+This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the [documentation](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA192). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
