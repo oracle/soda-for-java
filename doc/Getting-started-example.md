@@ -1,3 +1,5 @@
+#Getting started with SODA for Java
+
 This simple SODA Java program performs the following operations:
 
 *     Creates a new collection
