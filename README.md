@@ -83,4 +83,4 @@ Oracle gratefully acknowledges the contributions to SODA made by the community.
 
 ### Getting in touch
 
-Please open an issue here, or post to the [ORDS, SODA, and JSON in the database forum] (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
+Please open an issue here, or post to the [ORDS, SODA, and JSON in the database] form (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
