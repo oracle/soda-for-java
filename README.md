@@ -10,7 +10,8 @@ SODA supports:
 * CRUD operations using QBEs (JSON query-by-example) or unique document keys
 * Bulk read/write operations
 * Transactions
-* Underlying collection data stored in tables, allowing SQL access using standard tools
+
+The underlying collection data stored in tables, allowing SQL access using standard tools.
 
 **This is an open source project maintained by Oracle Corp.**
 
