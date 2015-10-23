@@ -5,6 +5,13 @@ SODA for Java is a Java library that provides SODA. You can use it to perform cr
 
 With the SODA architecture, a database contains collections, and each collection contains documents. SODA is designed primarily for working with JSON documents, but a document can be of any Multipurpose Internet Mail Extensions (MIME) type.
 
+SODA supports:
+
+* CRUD operations using QBEs (JSON query-by-example) or unique document keys
+* Bulk read/write operations
+* Transactions
+* Underlying collection data stored in tables, allowing SQL access using standard tools
+
 **This is an open source project maintained by Oracle Corp.**
 
 SODA is built on top of native JSON support in the Oracle database.
