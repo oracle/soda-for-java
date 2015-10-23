@@ -11,7 +11,7 @@ SODA supports:
 * Bulk read/write operations
 * Transactions
 
-The underlying collection data stored in tables, allowing SQL access using standard tools.
+Collection data is stored in tables, allowing SQL access using standard tools.
 
 **This is an open source project maintained by Oracle Corp.**
 
