@@ -12,7 +12,7 @@ for this purpose, and then issue the following command (in sqlplus, for example)
 
     grant SODA_APP to schemaName;
 
-This simple SODA Java program performs the following operations:
+The following simple SODA Java program performs several common operations:
 
 *     Creates a new collection
 *     Inserts documents into the collection
