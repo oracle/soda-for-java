@@ -5,6 +5,13 @@ Please make sure you have the 12.1.0.2 release in particular (and not just any 1
 
 Obtain the patch from My Oracle Support (https://support.oracle.com). Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: https://support.oracle.com/rs?type=patch&id=20885778. Make sure you follow all the installation steps specified in the README.txt file included with the patch, including the post-installation step.
 
+SODA requires the SODA_APP role to be granted to the user (i.e. schema name) that
+will be used to work with collections. The underlying tables used to store
+document collections will be stored in this schema. Pick or create a schema
+for this purpose, and then issue the following command (in sqlplus, for example):
+
+    grant SODA_APP to schemaName;
+
 This simple SODA Java program performs the following operations:
 
 *     Creates a new collection
