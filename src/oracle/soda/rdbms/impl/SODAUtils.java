@@ -54,15 +54,32 @@ public final class SODAUtils
                                     msg.getKey(),
                                     processedCount);
   }
-
   static OracleException makeExceptionWithSQLText(Throwable cause,
                                                   String sqlText)
+  {
+    return makeExceptionWithSQLText(null, cause, sqlText);
+  }
+
+  static OracleException makeExceptionWithSQLText(SODAMessage msg,
+                                                  Throwable cause,
+                                                  String sqlText,
+                                                  Object... params)
   {
     class OracleSQLException extends OracleException implements SQLTextCarrier
     {
       String sqlText;
 
+      public OracleSQLException(String message,
+                                Throwable cause,
+                                int errorCode,
+                                String sqlText)
+      {
+        super(message, cause, errorCode);
+        this.sqlText = sqlText;
+      }
+
       public OracleSQLException(Throwable cause, String sqlText)
+
       {
          super(cause);
          this.sqlText = sqlText;
@@ -73,6 +90,9 @@ public final class SODAUtils
          return sqlText;
       }
     }
+
+    if (msg != null)
+      return new OracleSQLException(msg.get(params), cause, msg.getKey(), sqlText);
 
     return new OracleSQLException(cause, sqlText);
   };
