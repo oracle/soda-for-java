@@ -163,12 +163,12 @@ To compile and run SODA Java applications, you need the following jars:
 
 *    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
-*    orajsoda.jar. The SODA jar. Download it [here](https://github.com/oracle/SODA-FOR-JAVA/releases/download/v1.0.0/orajsoda.jar).
+*    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/SODA-FOR-JAVA/releases).
 
 Compile and run testSODA.java, making sure the necessary jars are in the classpath. For example, assuming you're in the directory where the jars are located, do:
 
     javac -classpath "orajsoda.jar" testSODA.java
-    java -classpath "orajsoda.jar:ojdbc6.jar:javax.json-1.0.4.jar:." testSODA
+    java -classpath "orajsoda-version.jar:ojdbc6.jar:javax.json-1.0.4.jar:." testSODA
 
 You should see the following output:
 
