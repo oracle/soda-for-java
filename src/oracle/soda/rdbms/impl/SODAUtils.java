@@ -54,6 +54,7 @@ public final class SODAUtils
                                     msg.getKey(),
                                     processedCount);
   }
+  
   static OracleException makeExceptionWithSQLText(Throwable cause,
                                                   String sqlText)
   {
