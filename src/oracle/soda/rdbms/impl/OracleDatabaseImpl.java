@@ -968,6 +968,20 @@ public class OracleDatabaseImpl implements OracleDatabase
     {
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
+      
+      // ### Temporary workaround for the cryptic
+      // "ORA-00054: resource busy and acquire with NOWAIT specified or timeout
+      // expired" exception. This exception occurs when a collection with
+      // uncommitted writes is attempted to be dropped. We wrap ORA-00054
+      // in an OracleException with a message telling the user to commit.
+      // DBMS_SODA_ADMIN will eventually be modified to output a custom 
+      // exception with the same message, instead of the ORA-00054. 
+      // Then this workaround can be removed.
+      if (e.getErrorCode() == 54)
+        throw SODAUtils.makeExceptionWithSQLText(SODAMessage.EX_COMMIT_MIGHT_BE_NEEDED,
+                                                 e,
+                                                 sqltext);
+
       throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
