@@ -77,6 +77,7 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_TOO_MANY_COLUMNS                   = create(2038);
   static final SODAMessage EX_UNSUPPORTED_ENCRYPTED_INDEX_CREATE = create(2039);
   static final SODAMessage EX_CANT_CALL_NEXT_ON_CLOSED_CURSOR    = create(2040);
+  static final SODAMessage EX_COMMIT_MIGHT_BE_NEEDED             = create(2041);
 
   /****************************************************************************/
   /* Note: 2500 to 2999 range is reserved for SODA internal errors. These     */
