@@ -68,7 +68,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     assertNotNull(col2_1);
     assertEquals(existingColName1, col2_1.admin().getName());
 
-    OracleDocument metaDoc2_3 = client.createMetadataBuilder().contentColumnType("RAW").build();
+    OracleDocument metaDoc2_3 = client.createMetadataBuilder().contentColumnType("VARCHAR2").build();
     try {
       dbAdmin.createCollection(existingColName1, metaDoc2_3);
       fail("No exception when mismatch on collection metadata");

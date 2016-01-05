@@ -199,10 +199,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     }
 
     //Test with unmatched contentColumnMaxLength
-    OracleDocument metaDoc10 = client.createMetadataBuilder().contentColumnType("NVARCHAR2").contentColumnMaxLength(1024).build();
+    OracleDocument metaDoc10 = client.createMetadataBuilder().contentColumnType("VARCHAR2").contentColumnMaxLength(1024).build();
     String colName10 = "testCreateCollection10";
     dbAdmin.createCollection(colName10, metaDoc10);
-    OracleDocument metaDoc10_1 = client.createMetadataBuilder().contentColumnType("NVARCHAR2").contentColumnMaxLength(256).build();
+    OracleDocument metaDoc10_1 = client.createMetadataBuilder().contentColumnType("VARCHAR2").contentColumnMaxLength(256).build();
     try {
       dbAdmin.createCollection(colName10, metaDoc10_1);
       fail("No exception when mismatch on collection metadata");
@@ -385,7 +385,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleDocument metaDoc24 = client.createMetadataBuilder().contentColumnType("CLOB").build();
     String colName24 = "testCreateCollection24";
     dbAdmin.createCollection(colName24, metaDoc24);
-    OracleDocument metaDoc24_1 = client.createMetadataBuilder().contentColumnType("RAW").build();
+    OracleDocument metaDoc24_1 = client.createMetadataBuilder().contentColumnType("BLOB").build();
     try {
       dbAdmin.createCollection(colName24, metaDoc24_1);
       fail("No exception when mismatch on collection metadata");
@@ -863,15 +863,17 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   public void testContentColumnTypes() throws Exception {
     testContColType("VARCHAR2");
     
+    testContColType("BLOB");
+
+    testContColType("CLOB");
+
+    /* ### Oracle Database does not support NVARCHAR2, NCLOB, or RAW storage for JSON
     testContColType("NVARCHAR2");
     
     testContColType("RAW");
     
-    testContColType("BLOB");
-    
-    testContColType("CLOB");
-    
     testContColType("NCLOB");
+    */
 
     // Test with invalid CONTENT_COLUMN_TYPE for collection creation
     try {
@@ -1070,9 +1072,12 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   
   public void testContentMaxLength() throws Exception {
     
-    testContentMaxLength("NVARCHAR2");
     testContentMaxLength("VARCHAR2");
+
+    /* ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
+    testContentMaxLength("NVARCHAR2");
     testContentMaxLength("RAW");
+    */
     
     // Test about specifying CONTENT_MAX_LENGTH for "BLOB" type
     try { 
@@ -1120,6 +1125,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     }
     
     // Test about specifying CONTENT_MAX_LENGTH for "NCLOB" type
+    /* ### Oracle Database does not support NCLOB storage for JSON
     try { 
       OracleDocument mDoc6 = client.createMetadataBuilder()
           .keyColumnAssignmentMethod("CLIENT").contentColumnType("NCLOB")
@@ -1130,6 +1136,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       // Expect an OracleException
       assertEquals("A maximum length cannot be set for LOB types.", e.getMessage());
     }
+    */
 
   }
 
@@ -1157,7 +1164,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     // Test with key column type=NVARCHAR2 && max key length=512 && key method=GUID
     OracleDocument mDoc2 = client.createMetadataBuilder()
-        .contentColumnType("NVARCHAR2").contentColumnMaxLength(512)
+        .keyColumnType("NVARCHAR2").keyColumnMaxLength(512)
         .keyColumnAssignmentMethod("GUID").build();
     
     OracleCollection col2 = dbAdmin.createCollection("testKeyMetadata2", mDoc2);
@@ -1167,7 +1174,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     // Test with key column type=RAW && key method=UUID
     OracleDocument mDoc3 = client.createMetadataBuilder()
-        .contentColumnType("RAW").keyColumnAssignmentMethod("UUID").build();
+        .keyColumnType("RAW").keyColumnAssignmentMethod("UUID").build();
     
     OracleCollection col3 = dbAdmin.createCollection("testKeyMetadata3", mDoc3);
     OracleDocument doc3 = col3.insertAndGet(db.createDocumentFromString(null, "{ \"d\" : 3 }", null));
@@ -1368,7 +1375,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   
   public void testSecureFileMetadata() throws Exception {
 
-    final String[] sqlTypes = { "BLOB", "CLOB", "NCLOB"};
+    // ### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
+    //final String[] sqlTypes = { "BLOB", "CLOB", "NCLOB"};
+    
+    final String[] sqlTypes = { "BLOB", "CLOB"};
     final String[] compressions = { "NONE", "HIGH", "MEDIUM", "LOW"};
     final boolean[] cachings = {true, false};
     final String[] encryptions = {"3DES168", "AES128", "AES192", "AES256"};
@@ -1399,7 +1409,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       }
     } // end for "for lobTypes" loop
  
-    final String[] nonLobTypes = { "VARCHAR2", "NVARCHAR2", "RAW"};
+    // ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
+    //final String[] nonLobTypes = { "VARCHAR2", "NVARCHAR2", "RAW"};
+    final String[] nonLobTypes = { "VARCHAR2" };
     counter = 100;
     for (String nonLobType : nonLobTypes) {
       OracleDocument mDoc = client.createMetadataBuilder()
@@ -1431,6 +1443,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       assertEquals("SecureFile LOB settings cannot be used when the content column type is \"VARCHAR2\"", e.getMessage());
     } 
 
+    /* ### Oracle Database does not support NVARCHAR2 or RAW for JSON
     try {
       OracleDocument mDoc2 = client.createMetadataBuilder()
           .contentColumnType("NVARCHAR2")
@@ -1454,6 +1467,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       // Expect an OracleException  
       assertEquals("SecureFile LOB settings cannot be used when the content column type is \"RAW\"", e.getMessage());
     }
+    */
  
   }
 

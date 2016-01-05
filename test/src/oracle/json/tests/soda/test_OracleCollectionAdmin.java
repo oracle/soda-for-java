@@ -52,6 +52,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       assertEquals(msg, e.getMessage());
     }
     
+    /* ### Oracle Database does not support NVARCHAR2 and RAW storage for JSON
     try {
       // Test with mediaTypeColumn, but content type = "NVARCHAR2" 
       client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE").contentColumnType("NVARCHAR2")
@@ -69,6 +70,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     } catch (OracleException e) {
       assertEquals(msg, e.getMessage());
     }
+    */
     
     try {
       // Test with mediaTypeColumn, but content type = "CLOB" 
@@ -79,6 +81,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       assertEquals(msg, e.getMessage());
     }
     
+    /*  ### Oracle Database does not support NCLOB storage for JSON 
     try {
       // Test with mediaTypeColumn, but content type = "NCLOB" 
       client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE").contentColumnType("NCLOB")
@@ -87,7 +90,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     } catch (OracleException e) {
       assertEquals(msg, e.getMessage());
     }
-
+    */
 
     OracleCollection col6 = dbAdmin.createCollection("testIsHeterogeneous6");
     assertEquals(false, col6.admin().isHeterogeneous());
@@ -558,6 +561,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     OracleCollection col3 = dbAdmin.createCollection("testIndexAll3", mDoc3);
     testIndexAllwithCol(col3);
     
+    /* ### Oracle Database does not support NVARCHAR2, NCLOB, or RAW storage for JSON
     // Test with contentColumnType=RAW
     OracleDocument mDoc5 = client.createMetadataBuilder()
         .contentColumnType("RAW").build();
@@ -588,6 +592,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       // Expect an OracleException
       assertEquals("indexAll is not implemented for content columns with type NCLOB.", e.getMessage());
     }
+    */
  
   }
  
@@ -907,6 +912,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       assertTrue(t.getMessage().contains("ORA-01452"));
     }
 
+    /* ### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
+
     String indexSpecN9 =
       "{ \"name\":\"STUDENT_INDEXN9\", \"language\" : \"english\" }";
     
@@ -933,6 +940,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       // Expect an OracleException
       assertEquals("indexAll is not implemented for content columns with type NCLOB.", e.getMessage());
     }
+    */
 
   } 
 

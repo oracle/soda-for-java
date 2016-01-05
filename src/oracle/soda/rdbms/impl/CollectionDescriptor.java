@@ -21,6 +21,7 @@ import java.io.UnsupportedEncodingException;
 import java.io.IOException;
 
 import java.util.Map;
+import java.util.Locale;
 
 import javax.json.JsonObject;
 import javax.json.JsonString;
@@ -161,13 +162,29 @@ public class CollectionDescriptor
   final String   doctypeColumnName;
   final String   creationColumnName;
 
+  /**
+   * Return a SQL identifier derived from the string, case-preserving
+   */
   static String stringToIdentifier(String jsonName)
+  {
+    return(CollectionDescriptor.stringToIdentifier(jsonName, true));
+  }
+
+  /**
+   * Return a SQL identifier derived from the string,
+   * optionally either case-preserving or upper-casing
+   */
+  static String stringToIdentifier(String jsonName, boolean preserveCase)
   {
     String identifierName = null;
     if (jsonName != null)
     {
       char[] data = jsonName.toCharArray();
       if (data.length == 0) return("");
+
+      boolean hasUpper = false;
+      boolean hasLower = false;
+      boolean toUpper = !preserveCase;
 
       // Examine all characters of data
       for (int i = 0; i < data.length; ++i)
@@ -177,9 +194,32 @@ public class CollectionDescriptor
           data[i] = '_'; // Replace double quotes with underscores
         else if (ch < ' ')
           data[i] = '_'; // Replace control characters with underscores
+        else if ((ch >= 'A') && (ch <= 'Z'))
+          hasUpper = true;
+        else if ((ch >= 'a') && (ch <= 'z'))
+          hasLower = true;
+        // If the string contains non-alphanumeric characters
+        // that aren't allowed by SQL, we shouldn't uppercase it
+        else if (((ch < '0') || (ch > '9')) &&
+                 ((ch != '_') && (ch != '$') && (ch != '#')))
+          toUpper = false;
+      }
+
+      // If the string is mixed case, we shouldn't uppercase it
+      if (toUpper && hasUpper && hasLower)
+        toUpper = false;
+      // If the string doesn't start with an alphabetic character
+      // we shouldn't upper case it
+      if (toUpper)
+      {
+        char ch = data[0];
+        if (((ch < 'A') || (ch > 'Z')) && ((ch < 'a') || (ch > 'z')))
+          toUpper = false;
       }
 
       identifierName = new String(data);
+
+      if (toUpper) identifierName = identifierName.toUpperCase(Locale.US);
     }
     return(identifierName);
   }
@@ -1036,7 +1076,7 @@ public class CollectionDescriptor
       byte dbObjectType = this.dbObjectType;
       if (dbObjectName == null)
       {
-        dbObjectName = stringToIdentifier(uriName);
+        dbObjectName = stringToIdentifier(uriName, false); // Case converting
         dbObjectType = DBOBJECT_TABLE;
       }
 
@@ -1217,6 +1257,7 @@ public class CollectionDescriptor
         type = CHAR_CONTENT;
       else if (sqlType.equalsIgnoreCase("varchar2"))
         type = CHAR_CONTENT;
+      /* Raw, and n-types are not currently supported
       else if (sqlType.equalsIgnoreCase("raw"))
         type = RAW_CONTENT;
       else if (sqlType.equalsIgnoreCase("nchar"))
@@ -1225,12 +1266,13 @@ public class CollectionDescriptor
         type = NCHAR_CONTENT;
       else if (sqlType.equalsIgnoreCase("nvarchar2"))
         type = NCHAR_CONTENT;
+      else if (sqlType.equalsIgnoreCase("nclob"))
+        type = NCLOB_CONTENT;
+      */
       else if (sqlType.equalsIgnoreCase("blob"))
         type = BLOB_CONTENT;
       else if (sqlType.equalsIgnoreCase("clob"))
         type = CLOB_CONTENT;
-      else if (sqlType.equalsIgnoreCase("nclob"))
-        type = NCLOB_CONTENT;
       else
         throw SODAUtils.makeException(SODAMessage.EX_INVALID_ARG_VALUE, sqlType);
 

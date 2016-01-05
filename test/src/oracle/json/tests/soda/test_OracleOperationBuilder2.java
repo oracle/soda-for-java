@@ -652,7 +652,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
  }
  
   String[] columnSqlTypes = {
-      "CLOB", "NCLOB", "BLOB", "VARCHAR2", "NVARCHAR2", "RAW"
+      // ### Oracle Database does not support NVARCHAR2, NCLOB, and RAW storage for JSON 
+      //"CLOB", "NCLOB", "BLOB", "VARCHAR2", "NVARCHAR2", "RAW"
+      "CLOB", "BLOB", "VARCHAR2"
   };
   
   public void testFilter() throws Exception {
@@ -1894,7 +1896,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleDocument mDoc4 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .versionColumnMethod("SHA256")
-        .contentColumnType("NVARCHAR2").build();
+        // ### Oracle Database does not support NVARCHAR2 storage for JSON
+        //.contentColumnType("NVARCHAR2").build();
+        .contentColumnType("VARCHAR2").build();
     OracleCollection col4 = dbAdmin.createCollection("testReplaceOne4", mDoc4);
     testReplaceOneWithCol(col4, true, false);
     
@@ -1902,7 +1906,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleDocument mDoc5 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .versionColumnMethod("MD5")
-        .contentColumnType("RAW").build();
+        // ### Oracle Database does not support RAW storage for JSON
+        //.contentColumnType("RAW").build();
+        .contentColumnType("VARCHAR2").build();
     OracleCollection col5 = dbAdmin.createCollection("testReplaceOne5", mDoc5);
     testReplaceOneWithCol(col5, true, false);
     
@@ -1995,7 +2001,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleDocument mDoc5 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .versionColumnMethod("SEQUENTIAL")
-        .contentColumnType("NCLOB").build();
+        // ### Oracle Database does not support NVARCHAR2, NCLOB, and RAW storage for JSON    
+        //.contentColumnType("NCLOB").build();
+        .contentColumnType("CLOB").build();
     OracleCollection col5 = dbAdmin.createCollection("testReplaceOneAndGet5", mDoc5);
     testReplaceOneWithCol(col5, true, true);
     

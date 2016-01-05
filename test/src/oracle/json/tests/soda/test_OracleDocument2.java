@@ -525,7 +525,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     OracleDocument meta = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .contentColumnType("BLOB")
-         .build();
+        .build();
     OracleDocument mDoc = db.createDocumentFromByteArray(null, meta.getContentAsString().getBytes(UTF8), null);
     OracleCollection col = dbAdmin.createCollection("testDocumentEncoding", mDoc);
     for (Charset c : CHARSETS) {
@@ -535,6 +535,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     }
     
     // Test with RAW
+    /* ### Oracle Database does not support RAW storage for JSON
     OracleDocument meta2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("RAW").build();
     OracleDocument mDoc2 = db.createDocumentFromByteArray(null, 
@@ -547,6 +548,7 @@ public class test_OracleDocument2 extends SodaTestCase {
       if (c != UTF32 && c != UTF32LE && c != UTF32BE)
         basicTestForEncoding(c, col2);
     }
+    */
     
     // Test with VARCHAR2
     OracleDocument meta3 = client.createMetadataBuilder()
@@ -559,6 +561,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     }
     
     // Test with NVARCHAR2
+    /* ### Oracle Database does not support NVARCHAR2 storage for JSON
     OracleDocument meta4 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("NVARCHAR2").build();
     OracleDocument mDoc4 = db.createDocumentFromByteArray(null, 
@@ -567,6 +570,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     for (Charset c : CHARSETS) {
       basicTestForEncoding(c, col4);
     }
+    */
 
     // Test with CLOB
     OracleDocument meta5 = client.createMetadataBuilder()
@@ -579,6 +583,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     }
     
     // Test with NCLOB
+    /* ### Oracle Database does not support NCLOB storage for JSON
     OracleDocument meta6 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("NCLOB").build();
     OracleDocument mDoc6 = db.createDocumentFromByteArray(null, 
@@ -587,7 +592,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     for (Charset c : CHARSETS) {
       basicTestForEncoding(c, col6);
     }
-    
+    */ 
   }
 
   private void testlargeContentWithCol(OracleCollection col) throws Exception {
