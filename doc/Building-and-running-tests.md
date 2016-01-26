@@ -34,7 +34,7 @@ The directory /path/to/wallet/dir should already exist; if not then you should c
 
     alter system set encryption key authenticated by "mywalletpass";
 
-This creates the wallet with the password mypass and opens it.
+This creates the wallet with the password mywalletpass and opens it.
 
 The above steps are needed only once. After the wallet is created and open, it stays open as long as the database is up (unless it is explicitly closed). If the database is restarted, you have to open the wallet with:
 
