@@ -67,28 +67,28 @@ while (c.hasNext())
 
 Note that there's no SQL or JDBC programming required. Under the covers, SODA for Java transparently converts operations on document collections into SQL and executes it over JDBC.
 
-See [Getting Started with SODA for Java](https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Getting-started-example.md) for a complete introductory example.
+See [Getting Started with SODA for Java](https://github.com/oracle/soda-for-java/blob/master/doc/Getting-started-example.md) for a complete introductory example.
 
 ### Documentation
 
 The documentation is located [here](http://docs.oracle.com/cd/E63251_01/index.htm).
 
-The Javadoc is located [here](http://oracle.github.io/SODA-FOR-JAVA).
+The Javadoc is located [here](http://oracle.github.io/soda-for-java).
 
 ### Build
 
-SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-source-code.md) for
+SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md) for
 details. 
 
 SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests]
-(https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-and-running-tests.md) for details.
+(https://github.com/oracle/soda-for-java/blob/master/doc/Building-and-running-tests.md) for details.
 
 ### Contributions
 
-SODA is an open source project. See [Contributing](https://github.com/oracle/SODA-FOR-JAVA/blob/master/CONTRIBUTING.md) for details.
+SODA is an open source project. See [Contributing](https://github.com/oracle/soda-for-java/blob/master/CONTRIBUTING.md) for details.
 
 Oracle gratefully acknowledges the contributions to SODA made by the community.
 
 ### Getting in touch
 
-Please open an issue [here](https://github.com/oracle/SODA-FOR-JAVA/issues), or post to the [ORDS, SODA, and JSON in the database forum] (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
+Please open an issue [here](https://github.com/oracle/soda-for-java/issues), or post to the [ORDS, SODA, and JSON in the database forum] (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
