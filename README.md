@@ -1,5 +1,5 @@
 # SODA 1.0.2
-Simple Oracle Document Access (SODA) is a family of APIs from Oracle that let you easily work with native JSON support (as well as other types of data) in the Oracle Database, in a way typically associated with NoSQL document stores. SODA is particularly powerful when it comes to working with JSON data, but data of any type is supported.
+Simple Oracle Document Access (SODA) is a family of APIs from Oracle that let you easily work with JSON (and other types of data) in the Oracle Database, in a way typically associated with NoSQL document stores. SODA is particularly powerful when it comes to working with JSON data, but data of any type is supported.
 
 With the SODA data model, data is stored in documents, and documents are organized into collections. Each document contains the actual data (typically JSON, but can be of any type), as well as additional information automatically maintained by SODA, such as unique key, last-modified timestamp, version, type, etc. SODA lets you create and store collections of documents in the Oracle Database, and perform create, retrive, update, and delete (CRUD) operations on these documents, without needing to know Structured Query Language (SQL), or JDBC, or how the data is stored in the database. Under the covers, a collection is stored in a regular Oracle Database table, and each document is stored as a row in the table. SQL access to the table using standard tools is still allowed.
 
@@ -9,11 +9,14 @@ is also available. It is released as part of [Oracle Rest Data Serices (ORDS)] (
 
 SODA for Java supports:
 
-* CRUD operations using QBEs (simple pattern-like queries-by-example expressed in JSON), or unique document keys
+* CRUD operations on documents of any type using unique document keys
+* CRUD operations on JSON documents using QBEs (simple pattern-like queries-by-example expressed in JSON), or unique document keys
 * Bulk read/write operations
 * Transactions
 
 SODA for Java is stable, well-documented, and has a comprehensive test suite.
+
+SODA for Java is built on top of native JSON support in the Oracle Database.
 
 **This is an open source project maintained by Oracle Corp.**
 
