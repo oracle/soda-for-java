@@ -5,7 +5,8 @@ More specifically, SODA lets you create and store collections of documents in th
 
 SODA is particularly powerful when it comes to working with JSON data, but a SODA document can contain data of any Multipurpose Internet Mail Extensions (MIME) type.
 
-SODA for Java is an implementation of SODA for use with Java. SODA for REST is also available, as part of [Oracle Rest Data Serices (ORDS)] (http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html). 
+SODA for Java, hosted in this repository, is an open-source implementation of SODA for use with Java. 
+SODA for REST is also available, as part of [Oracle Rest Data Serices (ORDS)] (http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html). 
 
 SODA for Java supports:
 
