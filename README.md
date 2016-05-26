@@ -1,7 +1,7 @@
 # SODA 1.0.2
 Simple Oracle Document Access (SODA) is a family of APIs from Oracle that let you easily work with native JSON support (as well as other types of data) in the Oracle Database, in a way typically associated with NoSQL document stores. SODA is particularly powerful when it comes to working with JSON data, but data of any type is supported.
 
-More specifically, SODA lets you create and store collections of documents in the Oracle Database, and perform create, retrive, update, and delete (CRUD) operations on these documents, without needing to know Structured Query Language (SQL), or JDBC, or how the data is stored in the database. Under the covers, collections are stored in regular tables, so SQL access using standard tools is still allowed.
+With the SODA data model, data is stored in documents, and documents are organized into collections. SODA lets you create and store collections of documents in the Oracle Database, and perform create, retrive, update, and delete (CRUD) operations on these documents, without needing to know Structured Query Language (SQL), or JDBC, or how the data is stored in the database. Under the covers, collections are stored in regular tables. Each document's data and auxilliary information, such as last-modified timestamp, version, etc is stored as a row in the table. SQL access to the table using standard tools is still allowed.
 
 SODA for Java, hosted in this repository, is an implementation of SODA for use with Java. 
 SODA for REST, which can be used from any programming language capable of making http requests,
