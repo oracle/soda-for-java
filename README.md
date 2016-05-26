@@ -13,6 +13,8 @@ SODA for Java supports:
 * Bulk read/write operations
 * Transactions
 
+SODA for Java is stable, well-documented, and has a comprehensive test suite.
+
 **This is an open source project maintained by Oracle Corp.**
 
 See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/application-development/oracle-document-store/index.html) page on the Oracle Technology Network for more info.
