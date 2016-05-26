@@ -1,19 +1,15 @@
 # SODA 1.0.2
 Simple Oracle Document Access (SODA) is a family of APIs from Oracle that let you easily work with native JSON support (as well as other types of data) in the Oracle Database, in a way typically associated with NoSQL document stores. 
 
-More specifically, SODA lets you create and store collections of documents in the Oracle Database, retrieve them, and query them, without needing to know Structured Query Language (SQL), or JDBC, or how the data in the documents is stored in the database. Under the covers, collections are stored in regular tables, so SQL access using standard tools is still allowed.
+More specifically, SODA lets you create and store collections of documents in the Oracle Database, and perform create, retrive, update, and delete (CRUD) operations on these documents, without needing to know Structured Query Language (SQL), or JDBC, or how the data is stored in the database. Under the covers, collections are stored in regular tables, so SQL access using standard tools is still allowed.
 
-SODA for Java is a Java library that provides SODA. You can use it to perform create, retrieve, update, and delete (CRUD) operations on documents of any kind, and it's particularly powerful at working with JSON documents.
-
-With the SODA architecture, a database contains collections, and each collection contains documents. SODA is designed primarily for working with JSON documents, but a document can be of any Multipurpose Internet Mail Extensions (MIME) type.
+SODA is designed primarily for working with JSON documents, but a document can be of any Multipurpose Internet Mail Extensions (MIME) type.
 
 SODA supports:
 
-* CRUD operations using QBEs (simple pattern-like queries-by-example expressed in JSON) or unique document keys
+* CRUD operations using QBEs (simple pattern-like queries-by-example expressed in JSON), or unique document keys
 * Bulk read/write operations
 * Transactions
-
-Collection data is stored in tables, allowing SQL access using standard tools.
 
 **This is an open source project maintained by Oracle Corp.**
 
