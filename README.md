@@ -14,6 +14,8 @@ SODA for Java supports:
 * Bulk read/write operations
 * Optimistic locking
 * Transactions
+* Document collections backed by Oracle Database tables or views
+* Mapping of existing Oracle Database tables or views as document collections
 
 SODA for Java is stable, well-documented, and has a comprehensive test suite.
 
