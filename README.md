@@ -17,7 +17,7 @@ SODA for Java supports:
 * Document collections backed by Oracle Database tables or views
 * Mapping of existing Oracle Database tables or views as document collections
 
-SODA for Java is stable, well-documented, and has a comprehensive test suite.
+SODA for Java is stable, well-documented, and has a comprehensive test suite. We are actively working on adding new features as well.
 
 SODA for Java is built on top of native JSON support in the Oracle Database.
 
