@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -118,4 +118,47 @@ public class LogFormatter
     if (level.intValue() < Level.FINE.intValue()) return(NO_MESSAGE);
     return(format(msg, params));
   }
+
+  /**
+   * Ensure that a string doesn't contain characters that
+   * enable log forging scripting attacks. For now this means
+   * disallowing ASCII control characters, which includes newlines.
+   */
+  private static final char MIN_ALLOWED_CHARVAL = ' ';
+  private static final char MAX_ALLOWED_CHARVAL = '\uFFFD';
+
+  public static String sanitizeString(String logval)
+  {
+    if (logval != null)
+    {
+      int len = logval.length();
+
+      for (int i = 0; i < len; ++i)
+      {
+        char ch = logval.charAt(i);
+
+        // If any character is outside the allowed bounds
+        if ((ch < MIN_ALLOWED_CHARVAL) || (ch > MAX_ALLOWED_CHARVAL))
+        {
+          // Do a character-by-character conversion
+          char[] arr = new char[len];
+          logval.getChars(0, len, arr, 0);
+
+          for (int j = i; j < len; ++j)
+          {
+            ch = arr[j];
+            if ((ch < MIN_ALLOWED_CHARVAL) || (ch > MAX_ALLOWED_CHARVAL))
+              arr[j] = '\u00BF';
+          }
+
+          // Return the sanitized string
+          return(new String(arr));
+        }
+      }
+    }
+
+    // Most strings won't need sanitization
+    return(logval);
+  }
+
 }

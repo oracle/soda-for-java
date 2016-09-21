@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -24,6 +24,38 @@ public class JsonQueryPath
   private boolean  arrayEnd = false;
   private boolean  arrayBegin = false;
 
+  private void processSteps(int pathlen)
+  {
+    if (steps == null) return;
+
+    StringBuilder sb = new StringBuilder(pathlen + steps.length);
+
+    for (int i = 0; i < steps.length; ++i)
+    {
+      // Remember if the final step is an array step
+      arrayEnd = (steps[i].charAt(0) == '[');
+
+      if (i == 0)
+        // Save whether the first step is an array
+        arrayBegin = arrayEnd;
+      else if (!arrayEnd)
+        // If it's not an array step, we need a dot separator
+        sb.append(".");
+
+      sb.append(steps[i]);
+    }
+
+    this.path = sb.toString();
+  }
+
+
+  public JsonQueryPath(String[] steps)
+  {
+    this.steps = steps;
+
+    this.processSteps(100);
+  }
+
   public JsonQueryPath(String path)
     throws QueryException
   {
@@ -37,30 +69,14 @@ public class JsonQueryPath
       if (steps.length == 0)
         throw new QueryException(QueryMessage.EX_EMPTY_PATH.get(path));
 
-      StringBuilder sb = new StringBuilder(path.length()+steps.length);
-      for (int i = 0; i < steps.length; ++i)
-      {
-        // Remember if the final step is an array step
-        arrayEnd = (steps[i].charAt(0) == '[');
-
-        if (i == 0)
-          // Save whether the first step is an array
-          arrayBegin = arrayEnd;
-        else if (!arrayEnd)
-          // If it's not an array step, we need a dot separator
-          sb.append(".");
-
-        sb.append(steps[i]);
-      }
-
-      this.path = sb.toString();
+      this.processSteps(path.length());
     }
   }
 
   public JsonQueryPath()
     throws QueryException
   {
-    this(null);
+    this((String)null);
   }
 
   @Override
@@ -87,7 +103,7 @@ public class JsonQueryPath
   }
 
   /**
-   * Returns the path as a string suitable for following $
+   * Returns the path as a string suitable for following $ or @
    * For an array-leading path this will be of the form "[123].x.y"
    * For other paths, it will be of the form ".x.y"
    * If the isLeaf parameter is set to true, this will also append
@@ -96,18 +112,87 @@ public class JsonQueryPath
    */
   String toQueryString(boolean isLeaf)
   {
-    if ((arrayEnd) || (!isLeaf))
+    String adjustedPath;
+
+    if (arrayBegin)       // Path is of the form $[ ]...
+      adjustedPath = path;
+    else                  // Path is of the form $.<rest of path>
+      adjustedPath = "." + path;
+
+    return (adjustedPath);
+  }
+
+  String toQueryString(String modifier)
+  {
+    String qry = toQueryString(true);
+
+    if (modifier != null)
+      qry = qry + "." + modifier + "()";
+
+    return(qry);
+  }
+
+  /**
+   * Build a path suitable for JSON_TextContains, eliminating
+   * all array steps.
+   */
+  public void toLaxString(StringBuilder sb)
+  {
+    sb.append("$");
+
+    for (String step : steps)
     {
-      if (arrayBegin)
-        return (path);       // Path will be of the form $[ ]...
-      else
-        return ("." + path); // Path needs to be $.<rest of path>
+      if (step.charAt(0) != '[')
+      {
+        sb.append(".");
+        sb.append(step); // ### Assumes necessary escaping
+                         //     has been done
+      }
+    }
+  }
+
+  public boolean hasArraySteps()
+  {
+    if (steps != null)
+    {
+      for (String step : steps)
+        if (step.charAt(0) == '[')
+          return(true);
     }
 
-    if (arrayBegin)
-      return (path + "[*]");     // Path needs a trailing [*]
+    return(false);
+  }
 
-    return ("." + path + "[*]"); // Path is of the form $.<rest of path>[*]
+  /**
+   * Build a path to a singleton, ignoring array steps and adding [0]
+   * steps as needed. The path is appended into the supplied StringBuilder.
+   * These paths are suitable for order-by clauses and index columns.
+   */
+  public void toSingletonString(StringBuilder sb)
+  {
+    toSingletonString(sb, false);
+  }
+
+  /**
+   * Build a path to a singleton, ignoring array steps and optionally adding
+   * [0] steps as needed. The path is appended into the supplied StringBuilder.
+   * These paths are suitable for order-by clauses and index columns.
+   */
+  public void toSingletonString(StringBuilder sb, boolean forceSingle)
+  {
+    sb.append("$");
+
+    for (String step : steps)
+    {
+      if (step.charAt(0) != '[')
+      {
+        sb.append(".");
+        sb.append(step);    // ### Assumes necessary escaping
+                            //     has been done
+        if (forceSingle)
+          sb.append("[0]"); // Guarantee singleton cardinality at each step
+      }
+    }
   }
 
   public String[] getSteps()

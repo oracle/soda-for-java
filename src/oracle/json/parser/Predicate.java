@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -20,7 +20,13 @@ package oracle.json.parser;
 public class Predicate
 {
   final JsonQueryPath path;
-  final String value;
+  final String        value;
+  final String        returnType;
+
+  public JsonQueryPath getQueryPath()
+  {
+    return path;
+  }
 
   public String[] getPathSteps()
   {
@@ -37,6 +43,12 @@ public class Predicate
     return value;
   }
 
+  /* Return string is suitable for a SQL returning clause */
+  public String getReturnType()
+  {
+    return returnType;
+  }
+
   Predicate()
   {
     this(null);
@@ -47,9 +59,22 @@ public class Predicate
     this(path, null);
   }
 
-  Predicate(JsonQueryPath path, String value) 
+  Predicate(JsonQueryPath path, String value)
+  {
+    this(path, value, null);
+  }
+
+  /**
+   * The value string is either:
+   *   "1" or "-1" for asc/desc flag in order by predicates, or
+   *   a modifier such as "double", "upper", "type", etc.
+   * The return type is one of:
+   **  "number", "date", "timestamp", "varchar2", or "varchar2(___)"
+   */
+  Predicate(JsonQueryPath path, String value, String returnType)
   {
     this.path = path;
     this.value = value;
+    this.returnType = returnType;
   }
 }

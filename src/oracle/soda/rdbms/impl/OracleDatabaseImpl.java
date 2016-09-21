@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -110,6 +110,9 @@ public class OracleDatabaseImpl implements OracleDatabase
   // Length of the creation timestamp (in bytes)
   // as returned by DBMS_SODA_ADMIN
   private static final int CREATION_TIMESTAMP_LENGTH = 255;
+
+  private SODAUtils.SQLSyntaxLevel sqlSyntaxLevel =
+    SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
 
   /**
    * Not part of a public API.
@@ -966,18 +969,46 @@ public class OracleDatabaseImpl implements OracleDatabase
     }
     catch (SQLException e)
     {
+
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
-      
-      // ### Temporary workaround for the cryptic
-      // "ORA-00054: resource busy and acquire with NOWAIT specified or timeout
-      // expired" exception. This exception occurs when a collection with
-      // uncommitted writes is attempted to be dropped. We wrap ORA-00054
-      // in an OracleException with a message telling the user to commit.
-      // DBMS_SODA_ADMIN will eventually be modified to output a custom 
-      // exception with the same message, instead of the ORA-00054. 
-      // Then this workaround can be removed.
-      if (e.getErrorCode() == 54)
+
+      boolean commitNeeded = false;
+
+      // Workaround for the cryptic "ORA-00054: resource busy and acquire with
+      // NOWAIT specified or timeout expired" exception. This exception occurs
+      // in 12.1.0.2  when a collection with uncommitted writes is attempted to
+      // be dropped. We wrap ORA-00054 in an OracleException with a message 
+      // telling the user to commit. In 12.2, DBMS_SODA_ADMIN has been modified 
+      // to output a custom 40626 exception instead of the ORA-00054. For 
+      // consistency, we wrap it in the same OracleException.
+
+      try
+      {
+        if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
+          sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
+      }
+      catch (SQLException se)
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(se.getMessage());
+
+        throw new OracleException(se);
+      }
+
+      if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      {
+        if (e.getErrorCode() == 40626) 
+        {
+          commitNeeded = true;
+        } 
+      }
+      else if (e.getErrorCode() == 54)
+      {
+          commitNeeded = true; 
+      }
+     
+      if (commitNeeded)
         throw SODAUtils.makeExceptionWithSQLText(SODAMessage.EX_COMMIT_MIGHT_BE_NEEDED,
                                                  e,
                                                  sqltext);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import oracle.json.logging.OracleLog;
 import oracle.json.parser.JsonPath;
 import oracle.json.parser.IndexColumn;
+import oracle.json.parser.JsonQueryPath;
 
 import java.util.logging.Logger;
 
@@ -588,7 +589,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
    */
   private String buildIndexDDL(String indexName,
                                boolean unique,
-                               boolean singleton,
+                               boolean scalarRequired,
+                               boolean lax,
                                JsonPath[] columns)
           throws OracleException
   {
@@ -638,17 +640,17 @@ public abstract class OracleCollectionImpl implements OracleCollection
       sb.append(options.contentColumnName);
       sb.append("\"");
       addFormat(sb);
-      sb.append(",\'$");
-      for (String step : steps)
+      sb.append(",\'");
+      
+      // Use JsonQueryPath to centralize the singleton string builder
+      JsonQueryPath jqp = new JsonQueryPath(steps);
+      jqp.toSingletonString(sb);
+
+      if (jqp.hasArraySteps())
       {
-        if (step.charAt(0) != '[') // Silently ignore array steps.
-        {
-          sb.append(".");
-          sb.append(step); // Assumes necessary escaping/double-quoting
-                           // has been done
-          sb.append("[0]");
-        }
+        throw SODAUtils.makeException(SODAMessage.EX_ARRAY_STEPS_IN_PATH);
       }
+
       sb.append("\'");
 
       if (renderReturning)
@@ -675,8 +677,13 @@ public abstract class OracleCollectionImpl implements OracleCollection
         }
       }
 
-      if (singleton)
-        sb.append(" ERROR ON ERROR");
+      if (!lax)
+      {
+        if (scalarRequired)
+          sb.append(" ERROR ON ERROR");
+        else
+          sb.append(" ERROR ON ERROR NULL ON EMPTY");
+      }
 
       sb.append(") ");
 
@@ -731,7 +738,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
   // the unique name is automatically generated.
   private void createIndex(String indexName, 
                            boolean unique,
-                           boolean singleton,
+                           boolean scalarRequired,
+                           boolean lax,
                            JsonPath[] columns, 
                            String language)
           throws OracleException
@@ -782,7 +790,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
     }
     else
     {
-      sqltext = buildIndexDDL(indexName, unique, singleton, columns);
+      sqltext = buildIndexDDL(indexName, unique, scalarRequired, lax, columns);
     }
 
     try
@@ -961,13 +969,13 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     public void indexAll(String indexName) throws OracleException
     {
-      OracleCollectionImpl.this.createIndex(indexName, false, false, null, null);
+      OracleCollectionImpl.this.createIndex(indexName, false, false, false, null, null);
     }
 
     public void indexAll(String indexName, String language) 
       throws OracleException
     {
-      OracleCollectionImpl.this.createIndex(indexName, false, false, null, language);
+      OracleCollectionImpl.this.createIndex(indexName, false, false, false, null, language);
     }
 
     public void createIndex(OracleDocument indexSpecification)
@@ -995,7 +1003,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
       OracleCollectionImpl.this.createIndex(idxName,
                                             ispec.isUnique(),
-                                            ispec.isSingleton(),
+                                            ispec.isScalarRequired(),
+                                            ispec.isLax(),
                                             ispec.getColumns(), 
                                             ispec.getLanguage());
     }

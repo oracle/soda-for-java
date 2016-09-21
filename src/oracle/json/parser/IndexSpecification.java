@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -48,7 +48,8 @@ public class IndexSpecification
   private String        language  = null;
   private IndexColumn[] columns   = new IndexColumn[0]; // Empty list
   private boolean       is_unique = false;
-  private boolean       is_singleton = false;
+  private boolean       is_scalarRequired = false;
+  private boolean       is_lax = false;
 
   public IndexSpecification(InputStream inp)
   {
@@ -84,7 +85,8 @@ public class IndexSpecification
     throws QueryException
   {
     boolean hasUnique = false;
-    boolean hasSingleton = false;
+    boolean hasScalarRequired = false;
+    boolean hasLax = false;
 
     try
     {
@@ -126,17 +128,35 @@ public class IndexSpecification
 
           hasUnique = true;
         }
-        else if (entryKey.equalsIgnoreCase("singleton"))
+        else if (entryKey.equalsIgnoreCase("scalarRequired"))
         {
           if (vtype == JsonValue.ValueType.TRUE)
-            is_singleton = true;
+            is_scalarRequired = true;
           else if (vtype == JsonValue.ValueType.FALSE)
-            is_singleton = false;
+            is_scalarRequired = false;
           else
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "singleton",
+            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "scalarRequired",
                           "BOOLEAN", vtype.toString());
 
-          hasSingleton = true;
+          if (is_scalarRequired && is_lax)
+            makeException(QueryMessage.EX_SCALAR_AND_LAX);
+
+          hasScalarRequired = true;
+        }
+        else if (entryKey.equalsIgnoreCase("lax"))
+        {
+          if (vtype == JsonValue.ValueType.TRUE)
+            is_lax = true;
+          else if (vtype == JsonValue.ValueType.FALSE)
+            is_lax = false;
+          else
+            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "lax",
+                          "BOOLEAN", vtype.toString());
+
+          if (is_scalarRequired && is_lax)
+            makeException(QueryMessage.EX_SCALAR_AND_LAX);
+
+          hasLax = true;
         }
         else if (entryKey.equalsIgnoreCase("language"))
         {
@@ -285,8 +305,10 @@ public class IndexSpecification
       {
         if (hasUnique)
           makeException(QueryMessage.EX_FIELDS_EXPECTED, "unique");
-        else if (hasSingleton)
-          makeException(QueryMessage.EX_FIELDS_EXPECTED, "singleton");
+        else if (hasScalarRequired)
+          makeException(QueryMessage.EX_FIELDS_EXPECTED, "scalarRequired");
+        else if (hasLax)
+          makeException(QueryMessage.EX_FIELDS_EXPECTED, "lax");
       }
     }
     catch (IllegalArgumentException e)
@@ -343,10 +365,16 @@ public class IndexSpecification
     return(is_unique);
   }
 
-  public boolean isSingleton()
+  public boolean isScalarRequired()
   {
     if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(is_singleton);
+    return(is_scalarRequired);
+  }
+
+  public boolean isLax()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(is_lax);
   }
 
   public IndexColumn[] getColumns()

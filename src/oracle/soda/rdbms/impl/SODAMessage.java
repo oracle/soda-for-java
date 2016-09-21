@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -78,6 +78,11 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_UNSUPPORTED_ENCRYPTED_INDEX_CREATE = create(2039);
   static final SODAMessage EX_CANT_CALL_NEXT_ON_CLOSED_CURSOR    = create(2040);
   static final SODAMessage EX_COMMIT_MIGHT_BE_NEEDED             = create(2041);
+  static final SODAMessage EX_CANT_DISABLE_AUTOCOMMIT            = create(2042);
+  static final SODAMessage EX_PROJ_SPEC_HAS_NO_CONTENT           = create(2043);
+  static final SODAMessage EX_PATCH_SPEC_HAS_NO_CONTENT          = create(2044);
+  static final SODAMessage EX_PROJ_SPEC_MIXED                    = create(2045);
+  static final SODAMessage EX_ARRAY_STEPS_IN_PATH                = create(2046);
 
   /****************************************************************************/
   /* Note: 2500 to 2999 range is reserved for SODA internal errors. These     */

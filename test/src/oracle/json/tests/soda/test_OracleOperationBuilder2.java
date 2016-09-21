@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -543,15 +543,6 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    filterDoc = db.createDocumentFromString(
        "{ \"order[0].items[0].quantity\": 1, \"order[0].items[*].price\": {\"$gt\" : 9.0, \"$lte\" : 12.0} }");
    assertEquals(2, col.find().filter(filterDoc).count());
-   filterDoc = db.createDocumentFromString(
-       "{ \"order[0].items[0].quantity\": 1, \"order[0].items[*].price\": {\"$gt\" : 9.0, \"$lte\" : 12.0}," +
-       "  \"$orderby\" : {\"order[0].orderno\":1} }");
-   cursor = col.find().filter(filterDoc).getCursor();
-   assertEquals(true, cursor.hasNext());
-   assertEquals(key1, cursor.next().getKey());
-   assertEquals(key3, cursor.next().getKey());
-   assertEquals(false, cursor.hasNext());
-   cursor.close();
 
    //match doc1
    filterDoc = db.createDocumentFromString("{ \"order[0].orderno\": 301 }");
@@ -592,16 +583,6 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(false, cursor.hasNext());
    cursor.close();
 
-   //match doc2
-   filterDoc = db.createDocumentFromString(
-       "{ \"order[0, 2].orderno\" : {\"$gt\" : 301, \"$lt\" : 306}, \"$orderby\" : {\"order[0].orderno\":1} }");
-   assertEquals(1, col.find().filter(filterDoc).count());
-   cursor = col.find().filter(filterDoc).getCursor();
-   assertEquals(true, cursor.hasNext());
-   assertEquals(key2, cursor.next().getKey());
-   assertEquals(false, cursor.hasNext());
-   cursor.close();
-
    // match doc2
    filterDoc = db.createDocumentFromString(
        "{\"order[0].orderno\" : {\"$gt\" : 301, \"$lt\" : 306} }");
@@ -619,9 +600,87 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         "              {\"order[2].orderno\" : {\"$gt\" : 301, \"$lt\" : 306}} ] }");
    assertEquals(1, col.find().filter(filterDoc).count());
 
+   col.admin().drop();
+ }
+ 
+  private void testFilter3OrderBy(String contentColumnType, boolean withIndex) throws Exception {
+
+   OracleDocument mDoc = null;
+
+   if (contentColumnType.equalsIgnoreCase("BLOB")) {
+     mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
+   } else {
+     mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+   }
+   OracleCollection col = db.admin().createCollection("testFilter3", mDoc);
+
+   if (withIndex) {
+     col.admin().indexAll("indexAll-3");
+   }
+
+   if(col.admin().isHeterogeneous()) {
+     col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
+     col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
+     col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
+   }
+
+   String docStr1 = "{ \"orderno\":301, \"order\" : [ \n" +
+       "{ \"items\": [ { \"name\": \"Wicked Bugs\", \"price\": 11.37, \"quantity\": 1 }, \n" +
+           "{ \"name\": \"How to Lie with Statistics\", \"price\": 9.56, \"quantity\": 1 } ] }, \n" +
+       "{ \"items\": [ { \"name\": \"Discovering Statistics\", \"price\": 15.00, \"quantity\": 2 }, \n" +
+           "{ \"name\": \"Integrated Algebra\", \"price\": 8.99, \"quantity\": 1 } ] }\n" +
+       "] }";
+
+   String docStr2 = "{ \"orderno\":303, \"order\" : [ \n" +
+       "{ \"items\": [ { \"name\": \"Envisioning Information\", \"price\": 25.50, \"quantity\": 1 } ] }, \n" +
+       "{ \"items\": [ { \"name\": \"Calculus For Dummies\", \"price\": 14.00, \"quantity\": 2 } ] }, \n" +
+       "{ \"items\": [ { \"name\": \"Business Law\", \"price\": 18.00, \"quantity\": 2 } ] } \n" +
+       "] }";
+
+   String docStr3 = " { \"orderno\":306, \"order\" : { \"items\": [\n" +
+       "{ \"name\": \"Tart and Sweet\", \"price\": 16.49, \"quantity\": 1 }, \n" +
+       "{ \"name\": \"Young Men and Fire\", \"price\": 10.88, \"quantity\": 2}, \n" +
+       "{ \"name\": \"Barbara Pleasant\", \"price\": 13.57, \"quantity\": 3} \n" +
+       "] } }";
+
+   String key1, key2, key3;
+   OracleDocument filterDoc = null, doc = null;
+   OracleCursor cursor = null;
+
+   doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+   key1 = doc.getKey();
+   doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+   key2 = doc.getKey();
+   doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+   key3 = doc.getKey();
+
+   // match doc1, doc3
+   filterDoc = db.createDocumentFromString(
+       "{ \"order[0].items[0].quantity\": 1, \"order[0].items[*].price\": {\"$gt\" : 9.0, \"$lte\" : 12.0} }");
+   assertEquals(2, col.find().filter(filterDoc).count());
+   filterDoc = db.createDocumentFromString(
+       "{ \"order[0].items[0].quantity\": 1, \"order[0].items[*].price\": {\"$gt\" : 9.0, \"$lte\" : 12.0}," +
+       "  \"$orderby\" : {\"orderno\":1} }");
+   cursor = col.find().filter(filterDoc).getCursor();
+   assertEquals(true, cursor.hasNext());
+   assertEquals(key1, cursor.next().getKey());
+   assertEquals(key3, cursor.next().getKey());
+   assertEquals(false, cursor.hasNext());
+   cursor.close();
+
+   //match doc2
+   filterDoc = db.createDocumentFromString(
+       "{ \"orderno\" : {\"$gt\" : 301, \"$lt\" : 306}, \"$orderby\" : {\"orderno\":1} }");
+   assertEquals(1, col.find().filter(filterDoc).count());
+   cursor = col.find().filter(filterDoc).getCursor();
+   assertEquals(true, cursor.hasNext());
+   assertEquals(key2, cursor.next().getKey());
+   assertEquals(false, cursor.hasNext());
+   cursor.close();
+
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
-       "{ \"order[0, 1, 2].orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"order[0].orderno\":1} }");
+       "{ \"orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"orderno\":1} }");
    assertEquals(3, col.find().filter(filterDoc).count());
    cursor = col.find().filter(filterDoc).getCursor();
    assertEquals(true, cursor.hasNext());
@@ -630,10 +689,10 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key3, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
-   
+
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
-       "{ \"order[0 to 2].orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"order[0].orderno\":-1} }");
+       "{ \"orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"orderno\":-1} }");
    assertEquals(3, col.find().filter(filterDoc).count());
    cursor = col.find().filter(filterDoc).getCursor();
    assertEquals(true, cursor.hasNext());
@@ -645,12 +704,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
-       "{ \"order[0 to 1, 2].orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"order[0].orderno\":-1} }");
+       "{ \"orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"orderno\":-1} }");
    assertEquals(3, col.find().filter(filterDoc).count());
 
    col.admin().drop();
  }
- 
+
   String[] columnSqlTypes = {
       // ### Oracle Database does not support NVARCHAR2, NCLOB, and RAW storage for JSON 
       //"CLOB", "NCLOB", "BLOB", "VARCHAR2", "NVARCHAR2", "RAW"
@@ -672,6 +731,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   public void testFilter3() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
       testFilter3(columnSqlType);
+    }
+  }
+
+  public void testFilter3OrderBy() throws Exception {
+    for (String columnSqlType : columnSqlTypes) {
+      testFilter3OrderBy(columnSqlType, false);
+      testFilter3OrderBy(columnSqlType, true);
     }
   }
 

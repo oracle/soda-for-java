@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -29,6 +29,7 @@ import oracle.json.parser.AndORTree;
 import oracle.json.parser.QueryException;
 import oracle.json.parser.Predicate;
 import oracle.json.parser.ValueTypePair;
+import oracle.json.parser.JsonQueryPath;
 
 import oracle.soda.OracleOperationBuilder;
 import oracle.soda.OracleDocument;
@@ -1625,6 +1626,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
 
   private void generateFilterSpecOrderBy(StringBuilder sb,
                                          AndORTree tree)
+    throws OracleException
   {
     ArrayList<Predicate> orderByArray = tree.getOrderByArray();
     Predicate entry = null;
@@ -1640,20 +1642,24 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
 
       ((TableCollectionImpl)collection).addFormat(sb);
 
-      sb.append(", '$");
+      JsonQueryPath qpath = entry.getQueryPath();
 
-      String[] steps = entry.getPathSteps();
-      for (String step : steps)
+      if (qpath.hasArraySteps())
       {
-        if (step.charAt(0) != '[') // Silently ignore array steps
-        {
-          sb.append(".");
-          sb.append(step); // Assumes necessary escaping/double-quoting
-                           // has been done
-          sb.append("[0]");
-        }
+        throw SODAUtils.makeException(SODAMessage.EX_ARRAY_STEPS_IN_PATH);
       }
-      sb.append("')");
+
+      sb.append(", '");
+      qpath.toSingletonString(sb);
+      sb.append("'");
+
+      String returnType = entry.getReturnType();
+      if (returnType != null)
+      {
+        sb.append(" returning ");
+        sb.append(returnType);
+      }
+      sb.append(")");
 
       if (entry.getValue().equals("1"))
         sb.append(" asc");

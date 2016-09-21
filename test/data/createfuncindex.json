@@ -1,5 +1,6 @@
 {
   "name"   : "jUnitIndex",
+  "lax" : true,
   "fields": 
   [
     { "path"      : "name.surname",

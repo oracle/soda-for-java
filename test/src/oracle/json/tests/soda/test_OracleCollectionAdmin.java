@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -383,6 +383,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     String indexSpec =
       "{ \"name\":\"NAME_INDEX\", \"unique\":true, \n" +
+         // ### Remove "scalarRequired" once bug 23521958 is fixed
+         "\"scalarRequired\" : true,\n" +
       "   \"fields\": [ { \"path\":\"name\", \"datatype\":\"string\", \"order\":\"asc\" } ]\n" +
       "}";
 
@@ -612,11 +614,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       "{ \"name\":\"Taylor\", \"num\":[1003, 1004], \"birthday\":\"\"}";
     col.insert(db.createDocumentFromString(docStr3));
 
-    // Test when unique and language are missing(the default value will be used)
+    // Test when unique is missing, use "lax" since
+    // we use arrays.
     // Test with "string" and "numer" datatypes
     // Test with "asc" and "desc" for "order" value
     String indexSpec1 =
       "{ \"name\":\"STUDENT_INDEX1\", \n" +
+      "  \"lax\": true," +
       "  \"fields\": [\n" +
       "    { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100, \"order\":\"asc\"}, \n" +
       "    { \"path\":\"num\", \"datatype\":\"number\", \"order\":\"desc\"} ]\n" +
@@ -625,7 +629,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     colAdmin.dropIndex("STUDENT_INDEX1");
 
-    // Negative test: same as above, but datatype is number and maxLength is specified
+    // Negative test: datatype is number and maxLength is specified
     indexSpec1 =
       "{ \"name\":\"STUDENT_INDEX1\", \n" +
       "  \"fields\": [\n" +
@@ -649,7 +653,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // we lack any ability to check if the index is the same or not 
     // so for now it's just ignored if the name matches
     String indexSpecNeg1 = 
-      "{ \"name\":\"STUDENT_INDEX1\", \"unique\":true, \"fields\": [ { \"path\":\"name\" }] }";
+      // ### Remove "scalarRequired" once bug 23521958 is fixed
+      "{ \"name\":\"STUDENT_INDEX1\", \"scalarRequired\" : true, \"unique\":true, \"fields\": [ { \"path\":\"name\" }] }";
     colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg1));
     
     colAdmin.dropIndex("STUDENT_INDEX1");
@@ -659,6 +664,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     String indexSpec2 =
       "{ \"name\":\"STUDENT_INDEX2\", \n" +
       "  \"unique\":true,\n" +
+      // ### Remove "lax" once bug 23521958 is fixed
+      " \"lax\" : true,\n" +
       "  \"fields\": [\n" +
       // createIndex() reported blocked by ORA-01858 and ORA-01861, because of the existing documents
       "    { \"path\":\"birthday\", \"datatype\":\"date\", \"order\":1 } \n" +
@@ -718,7 +725,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     // Test with minor index specification
     String indexSpec3 =
-      "{ \"name\":\"STUDENT_INDEX3\", \"fields\": [ { \"path\":\"name\" }] }";
+      // ### Remove "scalarRequired" once bug 23521958 is fixed
+      "{ \"name\":\"STUDENT_INDEX3\", \"scalarRequired\" : true, \"fields\": [ { \"path\":\"name\" }] }";
 
     colAdmin.createIndex(db.createDocumentFromString(indexSpec3));
 
@@ -740,19 +748,35 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
                                          "cannot be specified without specifying \"fields\"."));
     }
 
-    // Negative test: "singleton" must only be specified with "fields".
+    // Negative test: "scalarRequired" must only be specified with "fields".
     indexSpec4 =
       "{ \"name\":\"STUDENT_INDEX4\", \n" +
-      "  \"singleton\":true,\n" +
+      "  \"scalarRequired\":true,\n" +
       "  \"language\":\"english\" \n" +
       "}";
     try {
       colAdmin.createIndex(db.createDocumentFromString(indexSpec4));
-      junit.framework.Assert.fail("No error when \"singleton\" is specified with \"fields\"");
+      junit.framework.Assert.fail("No error when \"scalarRequired\" is specified with \"fields\"");
     } 
     catch(OracleException e) {
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("In an index specification, \"singleton\" " +
+      assertTrue(t.getMessage().contains("In an index specification, \"scalarRequired\" " +
+                                         "cannot be specified without specifying \"fields\"."));
+    }
+
+    // Negative test: "lax" must only be specified with "fields".
+    indexSpec4 =
+      "{ \"name\":\"STUDENT_INDEX4\", \n" +
+      "  \"lax\":true,\n" +
+      "  \"language\":\"english\" \n" +
+      "}";
+    try {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpec4));
+      junit.framework.Assert.fail("No error when \"lax\" is specified with \"fields\"");
+    } 
+    catch(OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("In an index specification, \"lax\" " +
                                          "cannot be specified without specifying \"fields\"."));
     }
 
@@ -902,6 +926,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       // there is conflict between the specified index and the existing row 
       String indexSpecN8 =
         "{ \"name\":\"STUDENT_INDEXN8\", \"unique\" : true, \n" +
+        " \"lax\" : true, \n" +
         "  \"fields\": [ { \"path\":\"num\", \"datatype\":\"number\" }] }";
       colAdmin.createIndex(db.createDocumentFromString(indexSpecN8));
       fail("No error when there is conflict between the specified index and the existing documents");
@@ -944,7 +969,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
   } 
 
-  public void testCreateIndexSinglenton() throws Exception {
+  public void testCreateIndexScalarRequired() throws Exception {
 
     OracleCollection col = dbAdmin.createCollection("testCreateIndex");
     OracleCollectionAdmin colAdmin = col.admin();
@@ -961,7 +986,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     String indexSpec1 =
       "{ \"name\":\"STUDENT_INDEX1\", " +
-      "  \"singleton\" : true, " +
+      "  \"scalarRequired\" : true, " +
       "  \"fields\": [" +
       "    { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100, \"order\":\"asc\"}] " +
       "}";
@@ -971,7 +996,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     col.admin().drop();
   }
 
-  public void testCreateIndexSinglentonNeg1() throws Exception {
+  public void testCreateIndexScalarRequiredNeg1() throws Exception {
 
     OracleCollection col = dbAdmin.createCollection("testCreateIndex");
     OracleCollectionAdmin colAdmin = col.admin();
@@ -988,7 +1013,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     String indexSpec1 =
       "{ \"name\":\"STUDENT_INDEX1\", " +
-      "  \"singleton\" : true, " +
+      "  \"scalarRequired\" : true, " +
       "  \"fields\": [" +
       "    { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100, \"order\":\"asc\"}] " +
       "}";
@@ -1009,7 +1034,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
 
-  public void testCreateIndexSinglentonNeg2() throws Exception {
+  public void testCreateIndexScalarRequiredNeg2() throws Exception {
 
     OracleCollection col = dbAdmin.createCollection("testCreateIndex");
     OracleCollectionAdmin colAdmin = col.admin();
@@ -1026,7 +1051,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     String indexSpec1 =
       "{ \"name\":\"STUDENT_INDEX1\", " +
-      "  \"singleton\" : true," +
+      "  \"scalarRequired\" : true," +
       "  \"fields\": [" +
       "    { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100, \"order\":\"asc\"}]" +
       "}";
@@ -1044,6 +1069,40 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     colAdmin.dropIndex("STUDENT_INDEX1");
     col.admin().drop();
+  }
+
+  public void testDropWithUncommittedWrites() throws Exception {
+
+    boolean switchedOffAutoCommit = false;
+
+    if (conn.getAutoCommit() == true)
+    {
+      conn.setAutoCommit(false);
+      switchedOffAutoCommit = true;
+    }
+
+    OracleCollection col = dbAdmin.createCollection("testDropAfterInsert");
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    OracleDocument doc =
+      db.createDocumentFromString(new String("{ \"name\" : \"Alex\", \"friends\" : \"50\" }"));
+    col.insertAndGet(doc);
+
+    try {
+      colAdmin.drop();
+    }
+    catch (OracleException e) {
+      assertTrue(e.getMessage().contains("Error trying to drop the collection." +
+                                         " Make sure all outstanding writes to the " +
+                                         "collection are committed."));
+    }
+
+    // Should be able to drop after a commit
+    conn.commit();
+    colAdmin.drop();
+
+    if (switchedOffAutoCommit)
+      conn.setAutoCommit(true);
   }
 
 }

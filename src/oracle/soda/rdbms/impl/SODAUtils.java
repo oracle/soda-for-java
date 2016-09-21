@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -22,15 +22,22 @@ package oracle.soda.rdbms.impl;
 import oracle.soda.OracleBatchException;
 import oracle.soda.OracleException;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Connection;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class SODAUtils
 {
+  public enum SQLSyntaxLevel {SQL_SYNTAX_UNKNOWN,
+                              SQL_SYNTAX_12_1,
+                              SQL_SYNTAX_12_2,
+                              SQL_SYNTAX_13_1};
+
   // Not part of a public API.
   // ### This is only exposed for OracleRDBMSClient.
   public static OracleException makeException(SODAMessage msg,
@@ -54,7 +61,7 @@ public final class SODAUtils
                                     msg.getKey(),
                                     processedCount);
   }
-  
+
   static OracleException makeExceptionWithSQLText(Throwable cause,
                                                   String sqlText)
   {
@@ -80,7 +87,7 @@ public final class SODAUtils
       }
 
       public OracleSQLException(Throwable cause, String sqlText)
-
+                                
       {
          super(cause);
          this.sqlText = sqlText;
@@ -93,7 +100,7 @@ public final class SODAUtils
     }
 
     if (msg != null)
-      return new OracleSQLException(msg.get(params), cause, msg.getKey(), sqlText);
+      return new OracleSQLException(msg.get(params), cause, msg.getKey(), sqlText); 
 
     return new OracleSQLException(cause, sqlText);
   };
@@ -155,4 +162,38 @@ public final class SODAUtils
     return exceptions;
   }
 
+  /**
+   * Return true if the SQL syntax is known to be below the 12.2 level.
+   * If unknown, or if known to be 12.2 or higher, returns false.
+   * This routine may be used to exclude features that can't be supported
+   * on older database labels.
+   */
+  public static boolean sqlSyntaxBelow_12_2(SQLSyntaxLevel sqlSyntaxLevel)
+  {
+    return (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_12_1);
+  }
+
+  public static SQLSyntaxLevel getDatabaseVersion(Connection conn)
+    throws SQLException
+  {
+    DatabaseMetaData dbmd = (conn == null) ? null : conn.getMetaData();
+    if (dbmd == null) return SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
+
+    int dbMajor = dbmd.getDatabaseMajorVersion();
+    int dbMinor = dbmd.getDatabaseMinorVersion();
+
+    if (dbMajor > 12)
+    {
+      return SQLSyntaxLevel.SQL_SYNTAX_13_1;
+    }
+    else if (dbMajor > 11)
+    {
+      if (dbMinor > 1)
+        return SQLSyntaxLevel.SQL_SYNTAX_12_2;
+      else
+        return SQLSyntaxLevel.SQL_SYNTAX_12_1;
+    }
+
+    return SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
+  }
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /**
@@ -13,6 +13,8 @@ All rights reserved.*/
 package oracle.json.testharness;
 
 import oracle.jdbc.OracleConnection;
+import oracle.soda.rdbms.impl.SODAUtils;
+
 import java.sql.DatabaseMetaData;
 
 public abstract class DatabaseTestCase extends JsonTestCase {
@@ -24,9 +26,15 @@ public abstract class DatabaseTestCase extends JsonTestCase {
 
     protected OracleConnection conn;
 
+    protected static SODAUtils.SQLSyntaxLevel sqlSyntaxLevel =
+      SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
+
     @Override
-        protected void setUp() throws Exception {
+    protected void setUp() throws Exception {
         conn = ConnectionFactory.createConnection();
+
+        if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
+            sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
     }
 
     public boolean isPatch(Integer... patches) {
