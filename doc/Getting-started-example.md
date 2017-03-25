@@ -1,4 +1,4 @@
-#Getting started with SODA for Java
+# Getting started with SODA for Java
 
 To get started, you must have a live Oracle database 12.2.0.1 instance (available from [this page](http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html)).
 
