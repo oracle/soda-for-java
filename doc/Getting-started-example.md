@@ -14,10 +14,10 @@ for this purpose, and then issue the following command (in sqlplus, for example)
 
 The following simple SODA Java program performs several common operations:
 
-*     Creates a new collection
-*     Inserts documents into the collection
-*     Retrieves the first inserted document by its auto-generated key
-*     Retrieves documents matching a query-by-example, or QBE
+ * Creates a new collection
+ * Inserts documents into the collection
+ * Retrieves the first inserted document by its auto-generated key
+ * Retrieves documents matching a query-by-example, or QBE
 
 ```java
 import java.sql.Connection;
