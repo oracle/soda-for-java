@@ -6,8 +6,8 @@ With the SODA architecture, your data is stored as documents, and documents are 
 SODA for Java, hosted in this repository, is a library which implements SODA for use with Java. 
 SODA for REST, which can be used from any programming language capable of making http requests,
 is also available. SODA for REST is not part of this repository, and is released separately as part 
-of [Oracle Rest Data Serices (ORDS)] (http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html) and
-documented [here] (https://docs.oracle.com/cd/E56351_01/doc.30/e58123/toc.htm).
+of [Oracle Rest Data Serices (ORDS)](http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html) and
+documented [here](https://docs.oracle.com/cd/E56351_01/doc.30/e58123/toc.htm).
 
 SODA for Java supports:
 
