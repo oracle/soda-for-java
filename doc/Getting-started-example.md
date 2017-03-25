@@ -11,7 +11,7 @@ document collections will be stored in this schema. Pick or create a schema
 for this purpose, and then issue the following command (in sqlplus, for example):
 
     grant SODA_APP to schemaName;
-
+    
 The following simple SODA Java program performs several common operations:
 
  * Creates a new collection
