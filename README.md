@@ -9,6 +9,8 @@ is also available. SODA for REST is not part of this repository, and is released
 of [Oracle Rest Data Serices (ORDS)](http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html) and
 documented [here](https://docs.oracle.com/cd/E56351_01/doc.30/e58123/toc.htm).
 
+Both SODA for REST and SODA for Java are available on the cloud. Please refer to the cloud [documentation](https://docs.oracle.com/en/cloud/paas/exadata-express-cloud/develop-document-store-applications-using-soda.html) for more info.
+
 SODA for Java supports:
 
 * CRUD operations on documents containing data of any type using unique document keys
