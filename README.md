@@ -90,8 +90,7 @@ The Javadoc is located [here](http://oracle.github.io/soda-for-java).
 SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md) for
 details. 
 
-SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests]
-(https://github.com/oracle/soda-for-java/blob/master/doc/Building-and-running-tests.md) for details.
+SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests](https://github.com/oracle/soda-for-java/blob/master/doc/Building-and-running-tests.md) for details.
 
 ### Contributions
 
@@ -101,4 +100,4 @@ Oracle gratefully acknowledges the contributions to SODA made by the community.
 
 ### Getting in touch
 
-Please open an issue [here](https://github.com/oracle/soda-for-java/issues), or post to the [ORDS, SODA, and JSON in the database forum] (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
+Please open an issue [here](https://github.com/oracle/soda-for-java/issues), or post to the [ORDS, SODA, and JSON in the database forum](https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
