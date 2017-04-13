@@ -3,8 +3,7 @@
 To build and execute SODA tests, you must have a live Oracle database
 12.2.0.1 instance, or 12.1.0.2 instance with patch 20885778 applied.
 
-The patch for 12.1.0.2 is available from My Oracle Support ([https://support.oracle.com](https://support.oracle.com)). 
-Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: [https://support.oracle.com/rs?type=patch&id=20885778](https://support.oracle.com/rs?type=patch&id=20885778).
+The patch is only necessary for the 12.1.0.2 release, and is available from My Oracle Support ([https://support.oracle.com](https://support.oracle.com)). Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: [https://support.oracle.com/rs?type=patch&id=20885778](https://support.oracle.com/rs?type=patch&id=20885778).
 Make sure you follow all the installation steps specified in the README.txt file included with
 the patch, including the post-installation step.
 
