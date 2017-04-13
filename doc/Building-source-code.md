@@ -1,4 +1,4 @@
-#Building the source code
+# Building the source code
 
 SODA is built using Ant with Ivy. Make sure you have ant installed and configured.
 It's not required that Ivy is installed - as long as you have an internet connection, 
