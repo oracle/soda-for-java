@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -501,7 +501,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     String contentSqlType = ((JsonString) getValue(colAdmin.getMetadata(), path("contentColumn", "sqlType"))).getString();
     // Test to create index
     if( !(contentSqlType.equalsIgnoreCase("NVARCHAR2") || contentSqlType.equalsIgnoreCase("NCLOB"))) {
-      colAdmin.indexAll("indexForEncodingTests");
+      colAdmin.createJsonSearchIndex("indexForEncodingTests");
       colAdmin.dropIndex("indexForEncodingTests");
     }
  
@@ -592,10 +592,10 @@ public class test_OracleDocument2 extends SodaTestCase {
     for (Charset c : CHARSETS) {
       basicTestForEncoding(c, col6);
     }
-    */ 
+    */
   }
 
-  private void testlargeContentWithCol(OracleCollection col) throws Exception {
+  private void testLargeContentWithCol(OracleCollection col) throws Exception {
     OracleDocument doc = null;
     OracleCollectionAdmin colAdmin = col.admin();
     OracleDatabaseImpl dbImpl = (OracleDatabaseImpl) db;
@@ -691,7 +691,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     
   }
   
-  public void testlargeContent() throws Exception {
+  public void testLargeContent() throws Exception {
     
     // Test with heterogeneous and versionColumnMethod=SEQUENTIAL
     OracleDocument mDoc = client.createMetadataBuilder()
@@ -699,8 +699,8 @@ public class test_OracleDocument2 extends SodaTestCase {
         .contentColumnType("BLOB")
         .versionColumnMethod("SEQUENTIAL")
         .build();
-    OracleCollection col = dbAdmin.createCollection("testlargeContent", mDoc);
-    testlargeContentWithCol(col);
+    OracleCollection col = dbAdmin.createCollection("testLargeContent", mDoc);
+    testLargeContentWithCol(col);
     
     // Test non-heterogeneous and versionColumnMethod=TIMESTAMP
     OracleDocument mDoc2 = client.createMetadataBuilder()
@@ -708,17 +708,17 @@ public class test_OracleDocument2 extends SodaTestCase {
         .contentColumnType("CLOB")
         .versionColumnMethod("TIMESTAMP")
         .build();
-    OracleCollection col2 = dbAdmin.createCollection("testlargeContent2", mDoc2);
-    testlargeContentWithCol(col2);
+    OracleCollection col2 = dbAdmin.createCollection("testLargeContent2", mDoc2);
+    testLargeContentWithCol(col2);
     
    // Test non-heterogeneous and versionColumnMethod=SHA256
-    OracleDocument mDoc3 = client.createMetadataBuilder()
+   OracleDocument mDoc3 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .contentColumnType("CLOB")
         .versionColumnMethod("SHA256")
         .build();
-    OracleCollection col3 = dbAdmin.createCollection("testlargeContent3", mDoc3);
-    testlargeContentWithCol(col3);
+    OracleCollection col3 = dbAdmin.createCollection("testLargeContent3", mDoc3);
+    testLargeContentWithCol(col3);
     
     // Test with heterogeneous and versionColumnMethod=UUID
     OracleDocument mDoc4 = client.createMetadataBuilder()
@@ -726,8 +726,8 @@ public class test_OracleDocument2 extends SodaTestCase {
         .contentColumnType("BLOB")
         .versionColumnMethod("UUID")
         .build();
-    OracleCollection col4 = dbAdmin.createCollection("testlargeContent4", mDoc4);
-    testlargeContentWithCol(col4);
+    OracleCollection col4 = dbAdmin.createCollection("testLargeContent4", mDoc4);
+    testLargeContentWithCol(col4);
     
     // Test with heterogeneous and versionColumnMethod=MD5
     OracleDocument mDoc5 = client.createMetadataBuilder()
@@ -735,8 +735,8 @@ public class test_OracleDocument2 extends SodaTestCase {
         .contentColumnType("BLOB")
         .versionColumnMethod("MD5")
         .build();
-    OracleCollection col5 = dbAdmin.createCollection("testlargeContent5", mDoc5);
-    testlargeContentWithCol(col5);
+    OracleCollection col5 = dbAdmin.createCollection("testLargeContent5", mDoc5);
+    testLargeContentWithCol(col5);
     
   }
   

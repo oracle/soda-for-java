@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -65,21 +65,20 @@ public interface OracleCollectionAdmin
     throws OracleException;
 
   /**
-   * Turns on indexing of all JSON content, thus enabling
-   * more efficient read operations.
-   * @param indexName                name of the Index. Cannot be
+   * Turns on Json Search Index.
+   *
+   * @param indexName                name of the index. Cannot be
    *                                 <code>null</code>
    * @param language                 language of JSON documents
    * 
    * @throws OracleException         if an error occurs while creating
    *                                 the index
    */
-  public void indexAll(String indexName, String language)
+  public void createJsonSearchIndex(String indexName, String language)
     throws OracleException;
 
   /**
-   * Turns on indexing of all JSON content, thus enabling
-   * more efficient read operations.
+   * Turns on Json Search Index.
    *
    * @param indexName                name of the index. Cannot be
    *                                 <code>null</code>
@@ -87,7 +86,7 @@ public interface OracleCollectionAdmin
    * @throws OracleException         if an error occurs while creating
    *                                 the index
    */
-  public void indexAll(String indexName) 
+  public void createJsonSearchIndex(String indexName)
     throws OracleException;
 
   /**
@@ -106,6 +105,18 @@ public interface OracleCollectionAdmin
    *                                 <code>false</code> otherwise
    */
   public boolean isReadOnly();
+
+  /**
+   * Returns a JSON data guide for the collection. Requires 12.2.0.1
+   * and above Oracle Database release.
+   *
+   * @return                         <code>OracleDocument</code> representing
+   *                                 JSON data guide for the collection. <code>null</code>
+   *                                 if the data guide is not available.
+   * @throws OracleException         if an error occurs while fetching the JSON
+   *                                 data guide.
+   */
+  public OracleDocument getDataGuide() throws OracleException;
 
   /**
    * Returns collection metadata expressed in JSON.

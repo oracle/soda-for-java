@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -114,6 +114,8 @@ public class OracleDatabaseImpl implements OracleDatabase
   private SODAUtils.SQLSyntaxLevel sqlSyntaxLevel =
     SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
 
+  private boolean avoidTxnManagement;
+
   /**
    * Not part of a public API.
    *
@@ -126,11 +128,13 @@ public class OracleDatabaseImpl implements OracleDatabase
   public OracleDatabaseImpl(OracleConnection conn,
                             DescriptorCache descriptorCache,
                             MetricsCollector metrics,
-                            boolean localCaching)
+                            boolean localCaching,
+                            boolean avoidTxnManagement)
   {
     this.conn = conn;
     this.sharedDescriptorCache = descriptorCache;
     this.metrics = metrics;
+    this.avoidTxnManagement = avoidTxnManagement;
 
     if (localCaching)
     {
@@ -352,6 +356,7 @@ public class OracleDatabaseImpl implements OracleDatabase
             throw SODAUtils.makeException(SODAMessage.EX_MISMATCHED_DESCRIPTORS);
           }
 
+          coll.setAvoidTxnManagement(avoidTxnManagement);
           return(coll);
         }
 
@@ -395,6 +400,10 @@ public class OracleDatabaseImpl implements OracleDatabase
           }
         }
 
+        if (coll != null) 
+        {
+          coll.setAvoidTxnManagement(avoidTxnManagement);
+        }
         return(coll);
   }
 
@@ -983,18 +992,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       // to output a custom 40626 exception instead of the ORA-00054. For 
       // consistency, we wrap it in the same OracleException.
 
-      try
-      {
-        if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
-          sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
-      }
-      catch (SQLException se)
-      {
-        if (OracleLog.isLoggingEnabled())
-          log.severe(se.getMessage());
-
-        throw new OracleException(se);
-      }
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
 
       if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       {

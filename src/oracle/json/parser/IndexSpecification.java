@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -23,6 +23,8 @@ All rights reserved.*/
 
 package oracle.json.parser;
 
+import oracle.soda.rdbms.impl.SODAUtils;
+
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -42,27 +44,31 @@ public class IndexSpecification
 {
   private final InputStream source;
 
-  private boolean       is_parsed = false;
+  private boolean is_parsed = false;
 
-  private String        idxName   = null;
-  private String        language  = null;
-  private IndexColumn[] columns   = new IndexColumn[0]; // Empty list
-  private boolean       is_unique = false;
-  private boolean       is_scalarRequired = false;
-  private boolean       is_lax = false;
+  private String idxName   = null;
+  private String language  = null;
+
+  private IndexColumn[] columns = new IndexColumn[0];
+  private boolean is_unique = false;
+  private boolean is_scalarRequired = false;
+  private boolean is_lax = false;
+  private String search_on = null;
+  private boolean is_121_text_index_with_lang = false;
+  private String dataguide = null;
 
   public IndexSpecification(InputStream inp)
   {
     source = inp;
   }
 
-  private void makeException(QueryMessage msg, Object... params)
+  private void makeAndThrowException(QueryMessage msg, Object... params)
    throws QueryException
   {
     QueryException.throwSyntaxException(msg, params);
   }
 
-  private void close(boolean silent)
+  private void close()
     throws QueryException
   {
     try
@@ -71,8 +77,7 @@ public class IndexSpecification
     }
     catch (IOException e)
     {
-      if (!silent)
-        throw(new QueryException(QueryMessage.EX_INVALID_INDEX_SPEC.get(), e));
+      throw(new QueryException(QueryMessage.EX_INVALID_INDEX_SPEC.get(), e));
     }
   }
 
@@ -87,17 +92,18 @@ public class IndexSpecification
     boolean hasUnique = false;
     boolean hasScalarRequired = false;
     boolean hasLax = false;
+    QueryException ex = null;
 
     try
     {
       if (source == null)
-        makeException(QueryMessage.EX_INVALID_INDEX_SPEC);
+        makeAndThrowException(QueryMessage.EX_INVALID_INDEX_SPEC);
 
       DocumentLoader loader = new DocumentLoader(source);
 
       JsonObject jObj = (JsonObject)loader.parse();
 
-      close(false);
+      close();
 
       ArrayList<IndexColumn> columnList = new ArrayList<IndexColumn>();
 
@@ -111,8 +117,8 @@ public class IndexSpecification
         if (entryKey.equalsIgnoreCase("name"))
         {
           if (vtype != JsonValue.ValueType.STRING)
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "index name",
-                          "STRING", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "index name",
+              "STRING", vtype.toString());
 
           idxName = ((JsonString)entryVal).getString();
         }
@@ -123,8 +129,8 @@ public class IndexSpecification
           else if (vtype == JsonValue.ValueType.FALSE)
             is_unique = false;
           else
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "unique",
-                          "BOOLEAN", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "unique",
+              "BOOLEAN", vtype.toString());
 
           hasUnique = true;
         }
@@ -135,11 +141,11 @@ public class IndexSpecification
           else if (vtype == JsonValue.ValueType.FALSE)
             is_scalarRequired = false;
           else
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "scalarRequired",
-                          "BOOLEAN", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "scalarRequired",
+              "BOOLEAN", vtype.toString());
 
           if (is_scalarRequired && is_lax)
-            makeException(QueryMessage.EX_SCALAR_AND_LAX);
+            makeAndThrowException(QueryMessage.EX_SCALAR_AND_LAX);
 
           hasScalarRequired = true;
         }
@@ -150,40 +156,88 @@ public class IndexSpecification
           else if (vtype == JsonValue.ValueType.FALSE)
             is_lax = false;
           else
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "lax",
-                          "BOOLEAN", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "lax",
+              "BOOLEAN", vtype.toString());
 
           if (is_scalarRequired && is_lax)
-            makeException(QueryMessage.EX_SCALAR_AND_LAX);
+            makeAndThrowException(QueryMessage.EX_SCALAR_AND_LAX);
 
           hasLax = true;
         }
         else if (entryKey.equalsIgnoreCase("language"))
         {
           if (vtype != JsonValue.ValueType.STRING)
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "language",
-                          "STRING", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "language",
+              "STRING", vtype.toString());
 
           language = ((JsonString)entryVal).getString();
+        }
+        else if (entryKey.equalsIgnoreCase("dataguide"))
+        {
+          if (vtype != JsonValue.ValueType.STRING)
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "dataguide",
+              "STRING", vtype.toString());
+
+          dataguide = ((JsonString)entryVal).getString();
+
+          if (!dataguide.equalsIgnoreCase("on") &&
+            !dataguide.equalsIgnoreCase("off"))
+            makeAndThrowException(QueryMessage.EX_BAD_DATAGUIDE_VALUE, dataguide);
+        }
+        else if (entryKey.equalsIgnoreCase("search_on"))
+        {
+          if (vtype != JsonValue.ValueType.STRING)
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "search_on",
+              "STRING", vtype.toString());
+
+          search_on = ((JsonString)entryVal).getString();
+
+          // Valid values are:
+          //   "none"
+          //   "text" (text index only)
+          //   "text_value" (text and SDATA index, default)
+          if (!search_on.equalsIgnoreCase("text") &&
+              !search_on.equalsIgnoreCase("text_value") &&
+              !search_on.equalsIgnoreCase("none"))
+              makeAndThrowException(QueryMessage.EX_BAD_SEARCH_ON_VALUE, search_on);
+        }
+        // Note: old text index with languages is not officially supported
+        // on 12.1. We are allowing it here, just to continue
+        // running tests that we have written for it, in case
+        // it needs to be revived. Although we can run the
+        // tests, it's not usable in production for multiple reasons:
+        // 12.1.0.2->12.2.0.1 and above upgrade is broken,
+        // this index uses a slow auto lexer, etc.
+        //
+        // DO NOT USE TEXT INDEX WITH LANGUAGE SUPPORT IN PRODUCTION ON 12.1!!!
+        else if (entryKey.equalsIgnoreCase("textIndex121WithLang"))
+        {
+          if (vtype == JsonValue.ValueType.TRUE)
+            is_121_text_index_with_lang = true;
+          else if (vtype == JsonValue.ValueType.FALSE)
+            is_121_text_index_with_lang = false;
+          else
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "textIndex121WithLang",
+              "BOOLEAN", vtype.toString());
         }
         else if (entryKey.equalsIgnoreCase("fields"))
         {
           if (vtype != JsonValue.ValueType.ARRAY)
-            makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "fields",
-                          "ARRAY", vtype.toString());
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "fields",
+              "ARRAY", vtype.toString());
 
           JsonArray jArr = (JsonArray)entryVal;
           Iterator<JsonValue> iter = jArr.iterator();
 
           if (!iter.hasNext())
-            makeException(QueryMessage.EX_FIELDS_CANNOT_BE_EMPTY);
+            makeAndThrowException(QueryMessage.EX_FIELDS_CANNOT_BE_EMPTY);
 
           while (iter.hasNext()) 
           {
             JsonValue arrElem = iter.next();
             if (arrElem.getValueType() != JsonValue.ValueType.OBJECT)
-              makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "field",
-                            "OBJECT", arrElem.getValueType().toString());
+              makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "field",
+                "OBJECT", arrElem.getValueType().toString());
 
             JsonObject  obj  = (JsonObject)arrElem;
             IndexColumn idx  = new IndexColumn();
@@ -204,31 +258,32 @@ public class IndexSpecification
               if (fkey.equalsIgnoreCase("path"))
               {
                 if (ftype != JsonValue.ValueType.STRING)
-                  makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                                "fields.path", "STRING", ftype.toString());
+                  makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "fields.path", "STRING", ftype.toString());
 
                 path = ((JsonString)fval).getString();
               }
               else if (fkey.equalsIgnoreCase("datatype"))
               {
                 if (ftype != JsonValue.ValueType.STRING)
-                  makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                                "fields.datatype", "STRING", ftype.toString());
+                  makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "fields.datatype", "STRING", ftype.toString());
 
                 dtype = ((JsonString)fval).getString();
+                  System.out.println ("DTYPE IS " + dtype);
               }
               else if (fkey.equalsIgnoreCase("maxLength"))
               {
                 lengthSpecified = true;
 
                 if (ftype != JsonValue.ValueType.NUMBER)
-                  makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                                "fields.maxLength", "NUMBER", ftype.toString());
+                  makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "fields.maxLength", "NUMBER", ftype.toString());
 
                 JsonNumber ival = (JsonNumber)fval;
                 if (!ival.isIntegral())
-                    makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                                  "fields.maxLength", "integer", "decimal");
+                    makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                      "fields.maxLength", "integer", "decimal");
 
                 maxLength = ival.intValue();
               }
@@ -239,27 +294,27 @@ public class IndexSpecification
                   order = ((JsonString) fval).getString();
                   if (!order.equalsIgnoreCase("asc") && !(order.equalsIgnoreCase("desc")) &&
                       !order.equals("1") && !(order.equals("-1")))
-                    makeException(QueryMessage.EX_WRONG_ORDER, order);
+                    makeAndThrowException(QueryMessage.EX_WRONG_ORDER, order);
                 }
                 else if (ftype == JsonValue.ValueType.NUMBER)
                 {
                   order = ((JsonNumber) fval).toString();
                   if (!order.equals("-1") && !(order.equals("1")))
-                    makeException(QueryMessage.EX_WRONG_ORDER, order);
+                    makeAndThrowException(QueryMessage.EX_WRONG_ORDER, order);
                 }
                 else 
-                  makeException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                                "fields.order", "STRING", ftype.toString());
+                  makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "fields.order", "STRING", ftype.toString());
               }
             }
 
             if (path == null)
-              makeException(QueryMessage.EX_INDEX_PROP_MISSING, "fields.path");
+              makeAndThrowException(QueryMessage.EX_INDEX_PROP_MISSING, "fields.path");
             
             PathParser pp = new PathParser(path);
             String[] parr = pp.splitAndSQLEscape();
             if (parr == null)
-              makeException(QueryMessage.EX_INDEX_ILLEGAL_PATH, path);
+              makeAndThrowException(QueryMessage.EX_INDEX_ILLEGAL_PATH, path);
 
             idx.setPath(parr);
             if (dtype != null)
@@ -268,10 +323,10 @@ public class IndexSpecification
 
               if (sqlType == IndexColumn.SQLTYPE_NONE)
               {
-                makeException(QueryMessage.EX_INVALID_INDEX_DTYPE, dtype);
+                makeAndThrowException(QueryMessage.EX_INVALID_INDEX_DTYPE, dtype);
               }
               else if (sqlType != IndexColumn.SQLTYPE_CHAR && lengthSpecified)
-                makeException(QueryMessage.EX_LENGTH_NOT_ALLOWED, path);
+                makeAndThrowException(QueryMessage.EX_LENGTH_NOT_ALLOWED, path);
             }
 
             if (maxLength > 0)
@@ -280,8 +335,8 @@ public class IndexSpecification
             }
             else if (maxLength < 0)
             {
-              makeException(QueryMessage.EX_INVALID_INDEX_DLEN,
-                            Integer.toString(maxLength));
+              makeAndThrowException(QueryMessage.EX_INVALID_INDEX_DLEN,
+                Integer.toString(maxLength));
             }
             idx.setOrder(order);
             columnList.add(idx);
@@ -295,7 +350,7 @@ public class IndexSpecification
       {
         if (language != null)
         {
-          makeException(QueryMessage.EX_LANGUAGE_NOT_EXPECTED);
+          makeAndThrowException(QueryMessage.EX_LANGUAGE_NOT_EXPECTED);
         }
 
         columns = new IndexColumn[sz];
@@ -304,11 +359,11 @@ public class IndexSpecification
       else if (sz == 0)
       {
         if (hasUnique)
-          makeException(QueryMessage.EX_FIELDS_EXPECTED, "unique");
+          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "unique");
         else if (hasScalarRequired)
-          makeException(QueryMessage.EX_FIELDS_EXPECTED, "scalarRequired");
+          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "scalarRequired");
         else if (hasLax)
-          makeException(QueryMessage.EX_FIELDS_EXPECTED, "lax");
+          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "lax");
       }
     }
     catch (IllegalArgumentException e)
@@ -325,12 +380,55 @@ public class IndexSpecification
     }
     finally
     {
-      // This will only really attempt to close if an exception occurs
-      close(true);
+      try
+      {
+        // This will only really attempt to close if an exception occurs
+        close();
+      }
+      catch (QueryException e)
+      {
+        // This will be thrown after the try/catch/finally block
+        // but only if this isn't already finalizing an exception case.
+        ex = e;
+      }
+    }
+
+    if (ex != null)
+      throw ex;
+
+    //
+    // Minimal cross-validation
+    //
+    if (columns.length > 0)
+    {
+      if (language != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "language");
+      if (search_on != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "search_on");
+      if (dataguide != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "dataguide");
+      if (is_121_text_index_with_lang)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "textIndex121WithLang");
+    }
+    else {
+
+      if (search_on != null && is_121_text_index_with_lang)
+      {
+          makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS,
+                                "search_on",
+                                "textIndex121WithLang");
+      }
+
+      if (dataguide != null && is_121_text_index_with_lang)
+      {
+          makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS,
+                                "dataguide",
+                                "textIndex121WithLang");
+      }
     }
 
     if ((nameRequired) && (idxName == null))
-      makeException(QueryMessage.EX_INDEX_PROP_MISSING, "name");
+      makeAndThrowException(QueryMessage.EX_INDEX_PROP_MISSING, "name");
 
     is_parsed = true;
 
@@ -383,7 +481,26 @@ public class IndexSpecification
     return(columns);
   }
 
-  public static String getLexer(String language)
+  public String getSearchOn()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(search_on);
+  }
+
+  public String getDataGuide()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return (dataguide);
+  }
+
+  public boolean is121TextIndexWithLang()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(is_121_text_index_with_lang);
+  }
+
+  // Old (12.1) style lexer. Desupported.
+  public static String get121Lexer(String language)
     throws QueryException
   {
     String lexer = null;
@@ -459,4 +576,69 @@ public class IndexSpecification
                                           language);
     return(lexer);
   }
+
+  // New 12.2.0.1 and above lexer
+  public static String getLexer(String language)
+    throws QueryException
+  {
+    String lexer = null;
+
+    // English is the default.
+    if (language == null)
+      lexer = null;
+    else if (language.equalsIgnoreCase("english"))
+      lexer = null;
+    else if (language.equalsIgnoreCase("danish"))
+      lexer = "DANISH";
+    else if (language.equalsIgnoreCase("finnish"))
+      lexer = "FINNISH";
+    else if (language.equalsIgnoreCase("dutch"))
+      lexer = "DUTCH";
+    else if (language.equalsIgnoreCase("portuguese"))
+      lexer = "PORTUGUESE";
+    else if (language.equalsIgnoreCase("romanian"))
+      lexer = "ROMANIAN";
+    else if (language.equalsIgnoreCase("german"))
+      lexer = "GERMAN";
+    else if (language.equalsIgnoreCase("simp-chinese"))
+      lexer = "SIMPLIFIED_CHINESE";
+    else if (language.equalsIgnoreCase("trad-chinese"))
+      lexer = "TRADITIONAL_CHINESE";
+    else if (language.equalsIgnoreCase("korean"))
+      lexer = "KOREAN";
+    else if (language.equalsIgnoreCase("swedish"))
+      lexer = "SWEDISH";
+    else if (language.equalsIgnoreCase("japanese"))
+      lexer = "JAPANESE";
+    else if (language.equalsIgnoreCase("german-din"))
+      lexer = "GERMAN_DIN";
+    else if (language.equalsIgnoreCase("norwegian"))
+      lexer = "NORWEGIAN";
+    else if (language.equalsIgnoreCase("catalan"))
+      lexer = "CATALAN";
+    else if (language.equalsIgnoreCase("french"))
+      lexer = "FRENCH";
+    else if (language.equalsIgnoreCase("spanish"))
+      lexer = "SPANISH";
+    else if (language.equalsIgnoreCase("italian"))
+      lexer = "ITALIAN";
+    else if (language.equalsIgnoreCase("brazilian-portuguese"))
+      lexer = "BRAZILIAN_PORTUGUESE";
+    else if (language.equalsIgnoreCase("french-canadian"))
+      lexer = "FRENCH_CANADIAN";
+    else if (language.equalsIgnoreCase("latin-american-spanish"))
+      lexer = "LATIN_AMERICAN_SPANISH";
+    else if (language.equalsIgnoreCase("mexican-spanish"))
+      lexer = "MEXICAN_SPANISH";
+
+    /* Not supported with new lexer: arabic, nynorsk, bokmal, persian, croatian,
+       serbian, slovak, slovenian, hebrew, thai,czech, polish, russian, greek,
+       hungarian, turkish
+     */
+    else
+      QueryException.throwSyntaxException(QueryMessage.EX_INVALID_INDEX_LANG,
+        language);
+    return(lexer);
+  }
+
 }

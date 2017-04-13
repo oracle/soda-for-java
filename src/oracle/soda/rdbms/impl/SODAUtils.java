@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,6 +19,7 @@ All rights reserved.*/
 
 package oracle.soda.rdbms.impl;
 
+import oracle.json.logging.OracleLog;
 import oracle.soda.OracleBatchException;
 import oracle.soda.OracleException;
 
@@ -30,13 +31,18 @@ import java.sql.Connection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public final class SODAUtils
 {
   public enum SQLSyntaxLevel {SQL_SYNTAX_UNKNOWN,
                               SQL_SYNTAX_12_1,
-                              SQL_SYNTAX_12_2,
+                              SQL_SYNTAX_12_2_0_1,
+                              SQL_SYNTAX_12_2_0_2,
                               SQL_SYNTAX_13_1};
+
+  private static final Logger log =
+    Logger.getLogger(SODAUtils.class.getName());
 
   // Not part of a public API.
   // ### This is only exposed for OracleRDBMSClient.
@@ -170,7 +176,29 @@ public final class SODAUtils
    */
   public static boolean sqlSyntaxBelow_12_2(SQLSyntaxLevel sqlSyntaxLevel)
   {
-    return (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_12_1);
+    return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_12_1);
+  }
+
+  public static boolean sqlSyntaxBelow_12_2_0_2(SQLSyntaxLevel sqlSyntaxLevel)
+  {
+    if (sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      return true;
+    }
+    else if (sqlSyntax_12_2_0_1(sqlSyntaxLevel)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public static boolean sqlSyntax_12_2_0_2(SQLSyntaxLevel sqlSyntaxLevel)
+  {
+    return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_12_2_0_2);
+  }
+
+  public static boolean sqlSyntax_12_2_0_1(SQLSyntaxLevel sqlSyntaxLevel)
+  {
+    return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_12_2_0_1);
   }
 
   public static SQLSyntaxLevel getDatabaseVersion(Connection conn)
@@ -188,12 +216,36 @@ public final class SODAUtils
     }
     else if (dbMajor > 11)
     {
-      if (dbMinor > 1)
-        return SQLSyntaxLevel.SQL_SYNTAX_12_2;
+      if (dbMinor > 1) {
+        String version = dbmd.getDatabaseProductVersion();
+        if (version.contains("12.2.0.2")) {
+          return SQLSyntaxLevel.SQL_SYNTAX_12_2_0_2;
+        }
+        else {
+          return SQLSyntaxLevel.SQL_SYNTAX_12_2_0_1;
+        }
+      }
       else
         return SQLSyntaxLevel.SQL_SYNTAX_12_1;
     }
 
     return SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
+  }
+
+  public static SQLSyntaxLevel getSQLSyntaxlevel(Connection conn,
+                                                 SQLSyntaxLevel sqlSyntaxLevel)
+    throws OracleException
+  {
+    try {
+      if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
+        sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
+    }
+    catch (Exception e) {
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.getMessage());
+      throw SODAUtils.makeException(SODAMessage.EX_UNABLE_TO_GET_DB_VERSION, e);
+    }
+
+    return sqlSyntaxLevel;
   }
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -77,14 +77,19 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     
     assertEquals(3, col.find().count());
     col.find().remove();
-    
+
+    OracleDocument metaDoc2 = client.createMetadataBuilder()
+      .keyColumnAssignmentMethod("CLIENT")
+      .build();
+    OracleCollection col2 = dbAdmin.createCollection("testSQLInjection2", metaDoc2);
+
     for (int i = 1; i <= 10; i++) {
-      col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"dataValue\" : " + i + " }", null));
+      col2.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"dataValue\" : " + i + " }", null));
     }
     
     String fStr = "{ \"$query\" : {\"dataValue\" : {\"$gt\" : \"" + createTblStr + "\" }}, \"$orderby\" : {\"d\" : -1} }";
     OracleDocument filterDoc = db.createDocumentFromString(fStr);
-    assertEquals(0, col.find().filter(filterDoc).count());
+    assertEquals(0, col2.find().filter(filterDoc).count());
       
   }
 

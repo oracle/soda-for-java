@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -28,7 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Clob;
 
 import java.util.ArrayList;
 
@@ -65,6 +65,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
   static byte[] EMPTY_DATA = new byte[0];
 
+  private static final int ORA_SQL_DATAGUIDE_NOT_EXISTS = 40582;
+
   protected final String collectionName;
   protected final OracleConnection conn;
   protected final OracleDatabaseImpl db;
@@ -84,6 +86,10 @@ public abstract class OracleCollectionImpl implements OracleCollection
   // This also triggers avoidance of a 32k limit on setBytes/setString.
   protected boolean internalDriver = false;
 
+  private SODAUtils.SQLSyntaxLevel sqlSyntaxLevel = SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
+
+  boolean avoidTxnManagement = false;
+
   OracleCollectionImpl(OracleDatabaseImpl db, String name)
   {
     this(db, name, CollectionDescriptor.createDefault(name));
@@ -99,6 +105,10 @@ public abstract class OracleCollectionImpl implements OracleCollection
     this.conn = db.getConnection();
 
     setAvoid();
+  }
+
+  void setAvoidTxnManagement(boolean avoidTxnManagement) {
+    this.avoidTxnManagement = avoidTxnManagement;
   }
 
   public void setAvoid()
@@ -265,7 +275,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
     return (version);
   }
 
-  // ### Inefficiently convert a hex string to a decimal number
+  // Convert a hex string to a decimal number
+  // ### Could this conversion be more efficient?
   protected String uidToDecimal(String hexstr)
   {
     byte[] raw = ByteArray.hexToRaw(hexstr);
@@ -534,46 +545,141 @@ public abstract class OracleCollectionImpl implements OracleCollection
       sb.append(" format json");
   }
 
-  private String buildCTXIndexDDL(String indexName, String language)
-          throws OracleException
-  { 
+  private String buildCTXIndexDDL(String indexName, String language,
+                                  boolean is121TextIndexWithLang)
+    throws OracleException
+  {
+    if (!is121TextIndexWithLang)
+    {
+      sb.setLength(0);
+      sb.append("create index \"");
+      sb.append(indexName);
+      sb.append("\" on ");
+      appendTable(sb);
+      sb.append(" (\"");
+      sb.append(options.contentColumnName);
+      sb.append("\") ");
+      sb.append("indextype is CTXSYS.CONTEXT");
+      sb.append(" parameters('section group CTXSYS.JSON_SECTION_GROUP sync (on commit)");
+      sb.append("')");
+
+      // ### Should we specify these hard coded parameters?
+      //sb.append(" memory 100M");
+      //sb.append("')");
+      //sb.append(" parallel 8");
+    }
+    // ###
+    // 12.1 Text Index with language support. Uses
+    // slow auto-lexer and broken on update to 12.2.
+    // Do not use in production!!!
+    else
+    {
+      String lexerName = null;
+
+      try {
+        lexerName = IndexSpecification.get121Lexer(language);
+      } catch (QueryException e) {
+        throw SODAUtils.makeException(SODAMessage.EX_INVALID_INDEX_CREATE, e);
+      }
+
+      sb.setLength(0);
+
+      sb.append("create index \"");
+      sb.append(indexName);
+      sb.append("\" on ");
+      appendTable(sb);
+      sb.append(" (\"");
+      sb.append(options.contentColumnName);
+      sb.append("\") ");
+      sb.append("indextype is CTXSYS.CONTEXT");
+
+      sb.append(" parameters('");     // BEGIN PARAMETERS
+
+      sb.append("section group CTXSYS.JSON_SECTION_GROUP");
+
+      // Append the lexer for this language
+      if (lexerName != null) {
+        sb.append(" lexer ");
+        sb.append(lexerName);
+      }
+
+      sb.append(" stoplist CTXSYS.EMPTY_STOPLIST");
+      sb.append(" sync (on commit)");
+      sb.append(" memory 100M"); // ### Hard-coded!
+
+      sb.append("')");                // END PARAMETERS
+
+      sb.append(" parallel 8");
+    }
+
+    return (sb.toString());
+  }
+
+  private String buildDGIndexDDL(String indexName,
+                                 String language,
+                                 String search_on,
+                                 String dataguide)
+    throws OracleException
+  {
     sb.setLength(0);
 
-    sb.append("create index \"");
-    sb.append(indexName);
-    sb.append("\" on ");
-    appendTable(sb);
-    sb.append(" (\"");
-    sb.append(options.contentColumnName);
-    sb.append("\") ");
-    sb.append("indextype is ctxsys.context parameters(");
+    // Default data guide type
+    if (search_on == null)
+      search_on = "text_value";
 
-    sb.append("'section group CTXSYS.JSON_SECTION_GROUP ");
+    // By default, dataguide is "on"
+    if (dataguide == null)
+      dataguide = "on";
 
-    // Append the lexer for this language
+    String lexerName = null;
+
     try
     {
-      sb.append("lexer ");
-      sb.append(IndexSpecification.getLexer(language));
-      sb.append(" ");
+      // English is the default, and will be picked when language is
+      // not specified.
+      if (language != null) {
+        lexerName = IndexSpecification.getLexer(language);
+      }
     }
     catch (QueryException e)
     {
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_INDEX_CREATE, e);
     }
 
-    sb.append("stoplist CTXSYS.EMPTY_STOPLIST ");
+    sb.append("create search index \"");
+    sb.append(indexName);
+    sb.append("\" on ");
+    appendTable(sb);
+    sb.append(" (\"");
+    sb.append(options.contentColumnName);
+    sb.append("\") ");
+    sb.append("for json");
 
-    sb.append("sync (on commit) ");
-    sb.append("memory 100M");
-    sb.append("') parallel 8");
+    sb.append(" parameters('");     // BEGIN PARAMETERS
+
+    sb.append("sync (on commit)");
+    sb.append(" search_on ");
+    sb.append(search_on.toLowerCase());
+    sb.append(" dataguide ");
+    sb.append(dataguide.toLowerCase());
+
+    // If language parameter is omitted,
+    // it defaults to English.
+    if (lexerName != null)
+    {
+      sb.append(" language ");
+      sb.append(lexerName);
+    }
+
+    sb.append("')");                // END PARAMETERS
+
     return (sb.toString());
   }
 
   /**
    * Build the drop DDL for an index
    */
-  private String dropIndexDDL(String indexName)
+  private String dropIndexDDL(String indexName, boolean forceFlag)
   {
     sb.setLength(0);
     sb.append("drop index \"");
@@ -581,6 +687,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
     // through CollectionDescriptor.stringToIdentifier())
     sb.append(indexName);
     sb.append("\"");
+    if (forceFlag) sb.append(" force");
     return(sb.toString());
   }
 
@@ -592,7 +699,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                boolean scalarRequired,
                                boolean lax,
                                JsonPath[] columns)
-          throws OracleException
+    throws OracleException
   {
     sb.setLength(0);
     sb.append("create ");
@@ -723,9 +830,39 @@ public abstract class OracleCollectionImpl implements OracleCollection
     return(str);
   }
 
+  private void checkAllowedTextIndexContentAndKeyTypes() throws OracleException {
+    // Text indexing cannot currently support the National Character Set.
+    // This might or might not be supported in the future. We throw
+    // the error here as opposed to relying on the SQL, because
+    // it will create an invalid index object.
+    if ((options.contentDataType == CollectionDescriptor.NCHAR_CONTENT) ||
+      (options.contentDataType == CollectionDescriptor.NCLOB_CONTENT))
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_INDEX_CREATE,
+        options.getContentDataType());
+    }
+    // Text indexing doesn't support encrypted columns. We throw
+    // the error here as opposed to relying on the SQL, because
+    // the SQL incorrectly doesn't throw the error (bug 20202126).
+    // Even if the error is thrown once the bug is fixed, the SQL will
+    // likely create an invalid index object.
+    else if (options.contentLobEncrypt != CollectionDescriptor.LOB_ENCRYPT_NONE)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_ENCRYPTED_INDEX_CREATE);
+    }
+    // Text indexing cannot currently support National Character Set
+    // primary key. This seems like a legacy issue, and will hopefully
+    // be fixed in the future. Bug number: 20116846. We throw the
+    // error here as opposed to relying on the SQL, because it
+    // will create an invalid index object.
+    else if (options.keyDataType == CollectionDescriptor.NCHAR_KEY)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_INDEX_CREATE2);
+    }
+  }
+
   /**
-   * Create a concatenated index on an array of paths.
-   * The RDBMS implementation accepts an IndexColumn[] array as well.
+   * Create an index
    */
   // ### 
   //
@@ -740,9 +877,12 @@ public abstract class OracleCollectionImpl implements OracleCollection
                            boolean unique,
                            boolean scalarRequired,
                            boolean lax,
-                           JsonPath[] columns, 
-                           String language)
-          throws OracleException
+                           JsonPath[] columns,
+                           String language,
+                           String search_on,
+                           String dataguide,
+                           boolean is121TextIndexWithLang)
+    throws OracleException
   {
     PreparedStatement stmt = null;
 
@@ -756,40 +896,54 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     if (columns == null || columns.length == 0)
     {
+      checkAllowedTextIndexContentAndKeyTypes();
 
-      // Text indexing cannot currently support the National Character Set.
-      // This might or might not be supported in the future. We throw
-      // the error here as opposed to relying on the SQL, because
-      // it will create an invalid index object.
-      if ((options.contentDataType == CollectionDescriptor.NCHAR_CONTENT) ||
-          (options.contentDataType == CollectionDescriptor.NCLOB_CONTENT))
+      if (isHeterogeneous())
       {
-        throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_INDEX_CREATE,
-                                      options.getContentDataType());
-      }
-      // Text indexing doesn't support encrypted columns. We throw
-      // the error here as opposed to relying on the SQL, because
-      // the SQL incorrectly doesn't throw the error (bug 20202126).
-      // Even if the error is thrown once the bug is fixed, the SQL will 
-      // likely create an invalid index object.
-      else if (options.contentLobEncrypt != CollectionDescriptor.LOB_ENCRYPT_NONE)
-      {
-        throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_ENCRYPTED_INDEX_CREATE);
-      }
-      // Text indexing cannot currently support National Character Set
-      // primary key. This seems like a legacy issue, and will hopefully
-      // be fixed in the future. Bug number: 20116846. We throw the
-      // error here as opposed to relying on the SQL, because it
-      // will create an invalid index object.
-      else if (options.keyDataType == CollectionDescriptor.NCHAR_KEY)
-      {
-        throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_INDEX_CREATE2);
+        throw SODAUtils.makeException(SODAMessage.EX_NO_TEXT_INDEX_ON_HETERO_COLLECTIONS);
       }
 
-      sqltext = buildCTXIndexDDL(indexName, language);
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+
+      // Field cross-validation is performed in IndexSpecification class,
+      // after parsing. However, IndexSpecification class is not aware of db release
+      // info. Perform additional validation here based on db release
+      // info.
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      {
+        if (search_on != null)
+          throw SODAUtils.makeException((SODAMessage.EX_INVALID_PARAM_121_INDEX), "search_on");
+
+        if (dataguide != null)
+          throw SODAUtils.makeException((SODAMessage.EX_INVALID_PARAM_121_INDEX), "dataguide");
+
+        if (language != null && !is121TextIndexWithLang)
+          throw SODAUtils.makeException(SODAMessage.EX_INVALID_PARAM_121_INDEX, "language");
+      }
+
+      if (is121TextIndexWithLang || SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      {
+        sqltext = buildCTXIndexDDL(indexName, language, is121TextIndexWithLang);
+      }
+      else
+      {
+        sqltext = buildDGIndexDDL(indexName, language, search_on, dataguide);
+      }
     }
     else
     {
+      if (isHeterogeneous())
+      {
+        throw SODAUtils.makeException(SODAMessage.EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS);
+      }
+
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel) && !scalarRequired && !lax)
+      {
+        throw SODAUtils.makeException(SODAMessage.EX_NULL_ON_EMPTY_NOT_SUPPORTED);
+      }
+
       sqltext = buildIndexDDL(indexName, unique, scalarRequired, lax, columns);
     }
 
@@ -851,7 +1005,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     indexName = CollectionDescriptor.stringToIdentifier(indexName);
 
-    String sqltext = dropIndexDDL(indexName);
+    boolean forceFlag = false; // ### Add for spatial and CTX indexes?
+    String sqltext = dropIndexDDL(indexName, forceFlag);
 
     try
     {
@@ -922,7 +1077,85 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     OracleCollectionImpl.this.dropIndex(idxName);
   }
-  
+
+  private OracleDocument getDataGuide() throws OracleException
+  {
+    OracleDocument    doc = null;
+    PreparedStatement stmt = null;
+    ResultSet         rows = null;
+
+    String sqltext = "select DBMS_JSON.GET_INDEX_DATAGUIDE(?,?,?,?) from SYS.DUAL";
+
+    try
+    {
+      metrics.startTiming();
+
+      stmt = conn.prepareStatement(sqltext);
+
+      // get_index_dataguide requires double quotes
+      // inside the table name string literal, in order to
+      // interpret the table name literally. Otherwise,
+      // it's interpreted as an unquoted identifier,
+      // e.g. might get upper-cased.
+      String quotedName = options.dbObjectName;
+
+      // ### Due to bug 23509094, quotes don't work, so for now attempt
+      // ### to avoid them for uppercase alphanumeric ASCII strings.
+      if (!quotedName.matches("^[_#$A-Z][_#$A-Z\\d]*$"))
+        quotedName = "\"" + quotedName + "\"";
+
+      stmt.setString(1, quotedName);
+      stmt.setString(2, options.contentColumnName);
+      stmt.setInt(3, 1); // JSON Schema (1) versus Relational (2)
+      stmt.setInt(4, 0); // Not the pretty-printed mode (which is 1)
+
+      rows = stmt.executeQuery();
+
+      if (rows.next())
+      {
+        // We get it as a CLOB because it's a temp LOB and we want to free it
+        Clob tmp = rows.getClob(1);
+        String tmpStr = tmp.getSubString(1L, (int) tmp.length());
+
+        doc = new OracleDocumentImpl(tmpStr);
+
+        tmp.free();
+      }
+
+
+      stmt.close();
+      stmt = null;
+
+      metrics.recordCall();
+    }
+    catch (SQLException e)
+    {
+      int errcode = e.getErrorCode();
+      if (errcode == ORA_SQL_DATAGUIDE_NOT_EXISTS)
+      {
+        // No DataGuide available, null return is OK
+      }
+      else
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.warning(e.toString());
+        throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
+      }
+    }
+    finally
+    {
+      for (String message : SODAUtils.closeCursor(stmt, rows))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
+
+    return(doc);
+
+  }
+
+
   /**
    * OracleCollectionAdministrationImpl
    *
@@ -967,15 +1200,34 @@ public abstract class OracleCollectionImpl implements OracleCollection
       return(result);
     }
 
-    public void indexAll(String indexName) throws OracleException
+    /**
+     * Returns a JSON schema for documents in the collection.
+     *
+     * @return       JSON schema for the collection, or null if unknown
+     */
+    public OracleDocument getDataGuide() throws OracleException
     {
-      OracleCollectionImpl.this.createIndex(indexName, false, false, false, null, null);
+      OracleDocument result = OracleCollectionImpl.this.getDataGuide();
+      return(result);
     }
 
-    public void indexAll(String indexName, String language) 
+    public void createJsonSearchIndex(String indexName) throws OracleException
+    {
+      OracleCollectionImpl.this.createIndex(indexName, false, false, false,
+        null, null, null, null, false);
+    }
+
+    public void createJsonSearchIndex(String indexName, String language)
       throws OracleException
     {
-      OracleCollectionImpl.this.createIndex(indexName, false, false, false, null, language);
+
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel) && language != null)
+        throw SODAUtils.makeException(SODAMessage.EX_LANG_NOT_SUPPORTED_WITH_121_TEXT_INDEX);
+
+      OracleCollectionImpl.this.createIndex(indexName, false, false, false,
+        null, language, null, null, false);
     }
 
     public void createIndex(OracleDocument indexSpecification)
@@ -1005,8 +1257,11 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                             ispec.isUnique(),
                                             ispec.isScalarRequired(),
                                             ispec.isLax(),
-                                            ispec.getColumns(), 
-                                            ispec.getLanguage());
+                                            ispec.getColumns(),
+                                            ispec.getLanguage(),
+                                            ispec.getSearchOn(),
+                                            ispec.getDataGuide(),
+                                            ispec.is121TextIndexWithLang());
     }
 
     public void dropIndex(String indexName)

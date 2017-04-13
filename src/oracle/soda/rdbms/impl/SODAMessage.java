@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -83,6 +83,15 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_PATCH_SPEC_HAS_NO_CONTENT          = create(2044);
   static final SODAMessage EX_PROJ_SPEC_MIXED                    = create(2045);
   static final SODAMessage EX_ARRAY_STEPS_IN_PATH                = create(2046);
+  // Not part of a public API.
+  // ### Public for OracleRDBMSClient
+  public static final SODAMessage EX_NOT_ORACLE_CONNECTION       = create(2047);
+  static final SODAMessage EX_LANG_NOT_SUPPORTED_WITH_121_TEXT_INDEX
+                                                                 = create(2048);
+  static final SODAMessage EX_NULL_ON_EMPTY_NOT_SUPPORTED        = create(2049);
+  static final SODAMessage EX_INVALID_PARAM_121_INDEX            = create(2050);
+  static final SODAMessage EX_OPERATION_REQUIRES_TXN_MANAGEMENT  = create(2051);
+
 
   /****************************************************************************/
   /* Note: 2500 to 2999 range is reserved for SODA internal errors. These     */
@@ -96,6 +105,8 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_INSERT_FAILED                      = create(2503);
   static final SODAMessage EX_UNABLE_TO_CREATE_UUID              = create(2504);
   static final SODAMessage EX_2G_SIZE_LIMIT_EXCEEDED             = create(2505);
+  static final SODAMessage EX_IDENTITY_ASSIGN_RETURNING          = create(2506);
+  static final SODAMessage EX_UNABLE_TO_GET_DB_VERSION           = create(2507);
 
   /***************************************************************************/
   /* Note: 3000 to 3499 range is reserved for unimplemented (or unsupported) */
@@ -108,6 +119,14 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_UNSUPPORTED_INDEX_CREATE2          = create(3002);
   static final SODAMessage EX_MD5_NOT_SUPPORTED                  = create(3003);
   static final SODAMessage EX_SHA256_NOT_SUPPORTED               = create(3004);
+  static final SODAMessage EX_UNIMPLEMENTED_FEATURE              = create(3005);
+  static final SODAMessage EX_NO_SPATIAL_INDEX_ON_HETERO_COLLECTIONS
+                                                                 = create(3006);
+  static final SODAMessage EX_NO_TEXT_INDEX_ON_HETERO_COLLECTIONS
+                                                                 = create(3007);
+  static final SODAMessage EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS
+                                                                 = create(3008);
+  static final SODAMessage EX_NO_QBE_ON_HETERO_COLLECTIONS       = create(3009);
 
   /**
    * Load the ResourceBundle using the default Locale.

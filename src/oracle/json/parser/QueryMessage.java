@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -82,12 +82,17 @@ public final class QueryMessage extends Message
   static final QueryMessage EX_LANGUAGE_NOT_EXPECTED         = create(5043);
   static final QueryMessage EX_WRONG_ORDER                   = create(5044);
   static final QueryMessage EX_SCALAR_AND_LAX                = create(5058);
+  static final QueryMessage EX_INCOMPATIBLE_FIELDS           = create(5059);
+  static final QueryMessage EX_BAD_DATAGUIDE_VALUE           = create(5060);
+  static final QueryMessage EX_BAD_SEARCH_ON_VALUE           = create(5061);
+  static final QueryMessage EX_MUST_NOT_BE_LITERAL           = create(5062);
+  static final QueryMessage EX_SQL_JSON_MISPLACED            = create(5063);
 
   /************************************************************************/
-  /* Note: 5500 to 5999 range is reserved for SQL phase "run-time" errors */
+  /* Note: 5500 to 5999 range is reserved for SQL phase "runtime" errors */
   /************************************************************************/
-  static final QueryMessage RR_BIND_MISMATCH           = create(5500);
-  static final QueryMessage EX_UNSUPPORTED_OP          = create(5501);
+  static final QueryMessage RR_BIND_MISMATCH                 = create(5500);
+  static final QueryMessage EX_UNSUPPORTED_OP                = create(5501);
 
   /**
    * Load the ResourceBundle using the default Locale.

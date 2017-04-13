@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -36,6 +36,7 @@ import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
 import oracle.soda.rdbms.impl.OracleDocumentImpl;
 
 import oracle.json.testharness.SodaTestCase;
+import oracle.soda.rdbms.impl.SODAUtils;
 
 public class test_OracleDatabaseAdmin extends SodaTestCase {
   String metaData =
@@ -666,7 +667,12 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
         // Expect an OracleException
         // ORA-01403: no data found
         Throwable t = e.getCause();
-        assertTrue(t.getMessage().contains("ORA-01403"));
+        if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+          assertTrue(t.getMessage().contains("ORA-01403"));
+        }
+        else {
+          assertTrue(t.getMessage().contains("The view intended to back the collection does not exist."));
+        }
       }
     }
     
@@ -684,9 +690,16 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when CONTENT_COLUMN_TYPE is different between view and collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      // ORA-01403: no data found
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-01403"));
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+        // ORA-01403: no data found
+        assertTrue(t.getMessage().contains("ORA-01403"));
+      }
+      else {
+        String obj = testView ? "view" : "table";
+        assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
+                                           "collection do not match collection metadata."));
+      }
     }
     
     try {
@@ -706,9 +719,16 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when CONTENT_COLUMN_NAME is different between view and collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      // ORA-01403: no data found
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-01403"));
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+        // ORA-01403: no data found
+        assertTrue(t.getMessage().contains("ORA-01403"));
+      }
+      else {
+        String obj = testView ? "view" : "table";
+        assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
+                                           "collection do not match collection metadata."));
+      }
     }
 
     // Insert an row data with null media type
@@ -1430,7 +1450,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       } // end for try catch
     }
  
-    // Negative tests about enable Securefile for non-LOB types
+    // Negative tests: enabling Securefile for non-LOB types
     try {
       OracleDocument mDoc = client.createMetadataBuilder()
           .contentColumnType("VARCHAR2")
@@ -1895,5 +1915,4 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     }
 
   }
-
 }

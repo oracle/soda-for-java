@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -18,13 +18,12 @@ import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 
 
-import oracle.soda.OracleException;
-import oracle.soda.OracleCollection;
-import oracle.soda.OracleCollectionAdmin;
-import oracle.soda.OracleDocument;
+import oracle.soda.*;
 
+import oracle.soda.rdbms.OracleRDBMSClient;
 import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 import oracle.soda.rdbms.impl.TableCollectionImpl;
 import oracle.soda.rdbms.impl.OracleDocumentFragmentImpl;
@@ -1115,5 +1114,53 @@ public class test_OracleCollection extends SodaTestCase {
       //assertEquals("", e.getMessage());
     }
  
+  }
+
+  public void testAvoidTxnManagementMode() throws Exception {
+    // Set avoid txn management to true
+    OracleDatabase db2 = client.getDatabase(conn, true);
+
+    OracleDocument mDoc = client.createMetadataBuilder().
+                                 keyColumnAssignmentMethod("CLIENT").
+                                 build();
+    OracleCollection col = db2.admin().createCollection("testTxnManagementMode", mDoc);
+
+    OracleDocument doc = db.createDocumentFromString("k1", "{\"name\" : \"max\"}");
+
+    try {
+      col.save(doc);
+      fail("No exception thrown when insert is attempted");
+    }
+    catch (OracleException e) {
+      assertTrue(e.getMessage().contains("requires transaction management when connection is in auto-commit mode"));
+    }
+
+    OracleDocument doc2 = db.createDocumentFromString("k2", "{\"name\" : \"max\"}");
+    ArrayList<OracleDocument> docArr = new ArrayList<OracleDocument>();
+    docArr.add(doc);
+    docArr.add(doc2);
+
+    try {
+      col.insertAndGet(docArr.iterator());
+      fail("No exception thrown when insert is attempted");
+    }
+    catch (OracleException e) {
+      assertTrue(e.getMessage().contains("requires transaction management when connection is in auto-commit mode"));
+    }
+
+    col.admin().truncate();
+
+    try {
+      conn.setAutoCommit(false);
+
+      col.save(doc);
+      col.admin().truncate();
+      col.insertAndGet(docArr.iterator());
+
+      conn.setAutoCommit(true);
+    }
+    finally {
+      conn.setAutoCommit(true);
+    }
   }
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -118,14 +118,11 @@ public class IndexColumn extends JsonPath
         sqlType = SQLTYPE_NUMBER;
       else if (str.equalsIgnoreCase("DATE"))
         sqlType = SQLTYPE_DATE;
-      else if ((str.equalsIgnoreCase("TIMESTAMP")) ||
-               (str.equalsIgnoreCase("DATETIME")))
+      else if ((str.equalsIgnoreCase("TIMESTAMP")))
         sqlType = SQLTYPE_TIMESTAMP;
       else if ((str.equalsIgnoreCase("STRING")) ||
                (str.equalsIgnoreCase("VARCHAR")) ||
-               (str.equalsIgnoreCase("VARCHAR2")) ||
-               (str.equalsIgnoreCase("NVARCHAR")) ||
-               (str.equalsIgnoreCase("NVARCHAR2")))
+               (str.equalsIgnoreCase("VARCHAR2")))
         sqlType = SQLTYPE_CHAR;
     }
     // Set the SQL type only if a valid type was detected

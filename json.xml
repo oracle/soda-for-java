@@ -22,7 +22,7 @@
     <property name="jsr353.jar" value="${env.SODA_JSR353_JAR}"/>
     
     <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
-    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.0.3.jar"/>
+    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.0.4.jar"/>
 
     <!--
        Generic project layout

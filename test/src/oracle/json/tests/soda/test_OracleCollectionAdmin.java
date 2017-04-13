@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,6 +19,8 @@ import oracle.soda.OracleCollectionAdmin;
 import oracle.soda.OracleException;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDocument;
+
+import oracle.soda.rdbms.impl.SODAUtils;
 
 import oracle.json.testharness.SodaTestCase;
 import oracle.json.testharness.ConnectionFactory;
@@ -122,7 +124,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       assertTrue(t.getMessage().contains("ORA-02290"));
     }
     
-    // Test with no mediaTypeColumn, and content type = "CLOB" 
+    // Test with no mediaTypeColumn, and content type = "BLOB"
     OracleDocument metaDoc8 = client.createMetadataBuilder().removeOptionalColumns().contentColumnType("BLOB")
         .build();
     OracleCollection col8 = dbAdmin.createCollection("testIsHeterogeneous8", metaDoc8);
@@ -382,11 +384,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     col.insert(db.createDocumentFromString("{ \"name\": \"Roger Federer\" }"));
 
     String indexSpec =
-      "{ \"name\":\"NAME_INDEX\", \"unique\":true, \n" +
-         // ### Remove "scalarRequired" once bug 23521958 is fixed
-         "\"scalarRequired\" : true,\n" +
-      "   \"fields\": [ { \"path\":\"name\", \"datatype\":\"string\", \"order\":\"asc\" } ]\n" +
-      "}";
+      "{ \"name\":\"NAME_INDEX\", \"unique\":true, \n";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpec += "\"scalarRequired\" : true,\n";
+
+    indexSpec += "   \"fields\": [ { \"path\":\"name\"," +
+                     "\"datatype\":\"string\", \"order\":\"asc\" } ]\n}";
 
     colAdmin.createIndex(db.createDocumentFromString(indexSpec));
     col.insert(db.createDocumentFromString("{ \"name\": \"Novak Djokovic\" }"));
@@ -421,33 +425,39 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch(OracleException e) {
       assertEquals("indexName argument cannot be null.", e.getMessage());
     }
-    
-    String fullIndexName = "indexAll-1"; 
-    colAdmin.indexAll(fullIndexName);
-    
-    // Test to drop full text index
+
+    String fullIndexName = "jsonSearchIndex-1";
+    String jsonSearchIndexSpec = createTextIndexSpec(fullIndexName);
+    OracleDocument d = db.createDocumentFromString(jsonSearchIndexSpec);
+    colAdmin.createIndex(d);
+
+    // Test to drop json search text index
     colAdmin.dropIndex(fullIndexName);
-    
+
   }
 
-  private void testIndexAllwithCol(OracleCollection col) throws Exception {
+  private void testJsonSearchIndexWithCol(OracleCollection col) throws Exception {
     OracleCollectionAdmin colAdmin = col.admin();
-    
+
+    if (!supportHeterogeneousQBEs() && colAdmin.isHeterogeneous())
+      return;
+
     col.insert(db.createDocumentFromString("{ \"data\" : \"v1\" }"));
     col.insert(db.createDocumentFromString(null));
     if (colAdmin.isHeterogeneous()) {
       col.insert(db.createDocumentFromString(null, "abcd", "text/plain"));
       col.insert(db.createDocumentFromString(null, null, "text/plain"));
     }
-    
+
     String indexName1 = "index1";
-    
-    // Call indexAll for first time
-    colAdmin.indexAll(indexName1);
-    
-    try { 
-      // Call indexAll for second time
-      colAdmin.indexAll("index2");
+
+    // Create json search text index for the first time
+    colAdmin.createJsonSearchIndex(indexName1);
+
+    try {
+      // Create json search text index with a different name
+      // on the same collection (this is not allowed)
+      colAdmin.createJsonSearchIndex("indexName2");
       fail("No exception when creating full-text index for second time");
     } catch (OracleException e) {
       // Expect an OracleException
@@ -458,144 +468,171 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     try { 
       // Test with already used index name
-      colAdmin.indexAll(indexName1);
-      // we lack any ability to check if the index is the same or not 
+      colAdmin.createJsonSearchIndex(indexName1);
+      // we lack any ability to check if the index is the same or not
       // so for now it's just ignored if the name matches
       // fail("No exception when the specified index name has been used");
     } catch (OracleException e) {
       // Expect an OracleException
       //assertEquals("", e.getMessage());
     }
-    
+
     colAdmin.dropIndex(indexName1);
-    
-    try { 
-      // Test with null collection name
-      colAdmin.indexAll(null);
+
+    try {
+      // Test with null index name
+      colAdmin.createJsonSearchIndex(null);
       fail("No exception when the index name is null");
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals("indexName argument cannot be null.", e.getMessage());
     }
-        
-    try { 
-      // Test with null collection name
-      colAdmin.indexAll(null, "english");
+
+    try {
+      // Test with null index name, and null language
+      colAdmin.createJsonSearchIndex(null, null);
       fail("No exception when the index name is null");
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals("indexName argument cannot be null.", e.getMessage());
     }
-   
+
+    try {
+      // Test with null collection name
+      colAdmin.createJsonSearchIndex(null, "english");
+      fail("No exception when the index name is null");
+    } catch (OracleException e) {
+      // Expect an OracleException
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+        assertEquals("Language parameter is not supported with" +
+                     " a 12.1.0.2 Oracle Database text index.",
+                     e.getMessage());
+      else
+        assertEquals("indexName argument cannot be null.", e.getMessage());
+    }
+
     // Test with null for language
     // then the default language, english, will be used
-    colAdmin.indexAll("index3", null);
+    colAdmin.createJsonSearchIndex("index3", null);
     colAdmin.dropIndex("index3");
-    
-    try { 
+
+    try {
       // Test with invalid language
-      colAdmin.indexAll("index4", "invalidLanguage");
+      colAdmin.createJsonSearchIndex("index4", "invalidLanguage");
       fail("No exception when language is invalid");
     } catch (OracleException e) {
       // Expect an OracleException
-      Throwable t = e.getCause();
-      assertEquals("Language invalidLanguage is not recognized.", t.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+        assertEquals("Language parameter is not supported with" +
+                     " a 12.1.0.2 Oracle Database text index.",
+                     e.getMessage());
+      }
+      else {
+        Throwable t = e.getCause();
+        assertEquals("Language invalidLanguage is not recognized.", t.getMessage());
+      }
     }
 
     colAdmin.dropIndex("index4");
-    
-    // Test indexAll(indexName, language)
-    colAdmin.indexAll("index5", "english");
-    
-    try { 
-      // try to create the second full text index by indexAll(indexName, language)
-      colAdmin.indexAll("index6", "english");
-      fail("No exception when creating full-text index for second time");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
-      Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-29879"));
+
+    // Test with name and language
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+    {
+      colAdmin.createJsonSearchIndex("index5", "english");
+
+      try {
+        // Try to create a different second json search index with
+        // indexName and language
+        colAdmin.createJsonSearchIndex("index6", "english");
+        fail("No exception when creating full-text index for second time");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
+        Throwable t = e.getCause();
+        assertTrue(t.getMessage().contains("ORA-29879"));
+      }
+
+      try {
+        // Try to create the second json search index
+        // with index name
+        colAdmin.createJsonSearchIndex("index6");
+        fail("No exception when creating full-text index for second time");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
+        Throwable t = e.getCause();
+        assertTrue(t.getMessage().contains("ORA-29879"));
+      }
+
+      colAdmin.dropIndex("index5");
     }
-    
-    try { 
-      // try to create the second full text index by indexAll(indexName)
-      colAdmin.indexAll("index6");
-      fail("No exception when creating full-text index for second time");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
-      Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-29879"));
-    }
-    
-    colAdmin.dropIndex("index5");
-    
-    // Test indexAll on an empty collection
+
+    // Test creating json search text index on an empty collection
     col.find().remove();
     assertEquals(0, col.find().count());
-    
-    colAdmin.indexAll("Index6", "english");
-    colAdmin.dropIndex("Index6");
-    
-    colAdmin.indexAll("Index6");
+
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      colAdmin.createJsonSearchIndex("Index6", "english");
+      colAdmin.dropIndex("Index6");
+    }
+
+    colAdmin.createJsonSearchIndex("Index6");
     colAdmin.dropIndex("Index6");
   }
   
-  public void testIndexAll() throws Exception {
-    
+  public void testJsonSearchIndex() throws Exception {
+
     // Test with contentColumnType=BLOB
     OracleDocument mDoc = client.createMetadataBuilder()
         .contentColumnType("BLOB")
         .mediaTypeColumnName("MediaTypeCol").build();
     OracleCollection col = dbAdmin.createCollection("testIndexAll1", mDoc);
-    testIndexAllwithCol(col);
+    testJsonSearchIndexWithCol(col);
     
     // Test with contentColumnType=CLOB
     OracleDocument mDoc2 = client.createMetadataBuilder()
         .contentColumnType("CLOB").build();
     OracleCollection col2 = dbAdmin.createCollection("testIndexAll2", mDoc2);
-    testIndexAllwithCol(col2);
+    testJsonSearchIndexWithCol(col2);
     
     // Test with contentColumnType=VARCHAR2
     OracleDocument mDoc3 = client.createMetadataBuilder()
         .contentColumnType("VARCHAR2").build();
     OracleCollection col3 = dbAdmin.createCollection("testIndexAll3", mDoc3);
-    testIndexAllwithCol(col3);
+    testJsonSearchIndexWithCol(col3);
     
     /* ### Oracle Database does not support NVARCHAR2, NCLOB, or RAW storage for JSON
     // Test with contentColumnType=RAW
     OracleDocument mDoc5 = client.createMetadataBuilder()
         .contentColumnType("RAW").build();
     OracleCollection col5 = dbAdmin.createCollection("testIndexAll5", mDoc5);
-    testIndexAllwithCol(col5);
+    testJsonSearchIndexWithCol(col5);
     
-    // IndexAll is NOT enabled for contentColumnType=NVARCHAR2 or NCLOB
+    // JSON search text index is NOT enabled for contentColumnType=NVARCHAR2 or NCLOB
     OracleDocument mDoc4 = client.createMetadataBuilder()
         .contentColumnType("NVARCHAR2").build();
     OracleCollection col4 = dbAdmin.createCollection("testIndexAll4", mDoc4);
-    //testIndexAllwithCol(col4);
-    try { 
-      col4.admin().indexAll("indexAll4");
-      fail("No exception when call indexAll() on content columnType NVARCHAR2 collection");
+    //testJsonSearchIndexWithCol(col4);
+    try {
+      col4.admin().createJsonSearchIndex("indexAll4");
+      fail("No exception when calling createJsonSearchIndex on content columnType NVARCHAR2 collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("indexAll is not implemented for content columns with type NVARCHAR2.", e.getMessage());
+      assertEquals("JSON search index is not implemented for content columns with type NVARCHAR2.", e.getMessage());
     }
  
     OracleDocument mDoc6 = client.createMetadataBuilder()
         .contentColumnType("NCLOB").build();
     OracleCollection col6 = dbAdmin.createCollection("testIndexAll6", mDoc6);
-    //testIndexAllwithCol(col6);
-    try { 
-      col6.admin().indexAll("indexAll6");
-      fail("No exception when call indexAll() on content columnType NCLOB collection");
+    //testJsonSearchIndexWithCol(col6);
+    try {
+      col6.admin().createJsonSearchIndex("indexAll6");
+      fail("No exception when calling createJsonSearchIndex on content columnType NCLOB collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("indexAll is not implemented for content columns with type NCLOB.", e.getMessage());
+      assertEquals("JSON search index is not implemented for content columns with type NCLOB.", e.getMessage());
     }
     */
- 
   }
  
   public void testCreateIndex() throws Exception {
@@ -652,24 +689,30 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // Test to create an duplicated name index
     // we lack any ability to check if the index is the same or not 
     // so for now it's just ignored if the name matches
-    String indexSpecNeg1 = 
-      // ### Remove "scalarRequired" once bug 23521958 is fixed
-      "{ \"name\":\"STUDENT_INDEX1\", \"scalarRequired\" : true, \"unique\":true, \"fields\": [ { \"path\":\"name\" }] }";
+    String indexSpecNeg1 =
+      "{ \"name\":\"STUDENT_INDEX1\",";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpecNeg1 += "\"scalarRequired\" : true,";
+
+    indexSpecNeg1 += "\"unique\":true, \"fields\": [ { \"path\":\"name\" }] }";
     colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg1));
     
     colAdmin.dropIndex("STUDENT_INDEX1");
 
-    // Test with "date" and "datetime" for datatypes
+    // Test with "date" and "timestamp" for datatypes
     // Test with 1 and -1 for "order" value
     String indexSpec2 =
       "{ \"name\":\"STUDENT_INDEX2\", \n" +
-      "  \"unique\":true,\n" +
-      // ### Remove "lax" once bug 23521958 is fixed
-      " \"lax\" : true,\n" +
-      "  \"fields\": [\n" +
+      "  \"unique\":true,\n";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpec2 += " \"lax\" : true,\n";
+
+    indexSpec2 += "  \"fields\": [\n" +
       // createIndex() reported blocked by ORA-01858 and ORA-01861, because of the existing documents
       "    { \"path\":\"birthday\", \"datatype\":\"date\", \"order\":1 } \n" +
-      "  , { \"path\":\"loggingtime\", \"datatype\":\"datetime\", \"order\":-1} \n" +
+      "  , { \"path\":\"loggingtime\", \"datatype\":\"timestamp\", \"order\":-1} \n" +
       "   ] \n" +
       "}";
     
@@ -681,7 +724,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     colAdmin.dropIndex("STUDENT_INDEX2");
 
-    // Negative test: same as above, but maxLength is specified with datatype datetime.
+    // Negative test: same as above, but maxLength is specified with datatype timestamp.
     indexSpec2 =
       "{ \"name\":\"STUDENT_INDEX2\", \n" +
       "  \"unique\":true,\n" +
@@ -689,14 +732,14 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       "  \"fields\": [\n" +
       // createIndex() reported blocked by ORA-01858 and ORA-01861, because of the existing documents
       "    { \"path\":\"birthday\", \"datatype\":\"date\", \"order\":1 } \n" +
-      "  , { \"path\":\"loggingtime\", \"datatype\":\"datetime\", \"maxLength\":100, \"order\":-1} \n" +
+      "  , { \"path\":\"loggingtime\", \"datatype\":\"timestamp\", \"maxLength\":100, \"order\":-1} \n" +
       "   ] \n" +
       "}";
 
     try
     {
       colAdmin.createIndex(db.createDocumentFromString(indexSpec2));
-      junit.framework.Assert.fail("No error when creating an index with datatype datetime and maxLength");
+      junit.framework.Assert.fail("No error when creating an index with datatype timestamp and maxLength");
     }
     catch(OracleException e) {
       Throwable t = e.getCause();
@@ -724,9 +767,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
 
     // Test with minor index specification
-    String indexSpec3 =
-      // ### Remove "scalarRequired" once bug 23521958 is fixed
-      "{ \"name\":\"STUDENT_INDEX3\", \"scalarRequired\" : true, \"fields\": [ { \"path\":\"name\" }] }";
+    String indexSpec3 = "{ \"name\":\"STUDENT_INDEX3\",";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      indexSpec3 += "\"scalarRequired\" : true,";
+    }
+
+    indexSpec3 += "\"fields\": [ { \"path\":\"name\" }] }";
 
     colAdmin.createIndex(db.createDocumentFromString(indexSpec3));
 
@@ -741,7 +788,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     try {
       colAdmin.createIndex(db.createDocumentFromString(indexSpec4));
       junit.framework.Assert.fail("No error when \"unique\" is specified with \"fields\"");
-    } 
+    }
     catch(OracleException e) {
       Throwable t = e.getCause();
       assertTrue(t.getMessage().contains("In an index specification, \"unique\" " +
@@ -773,27 +820,26 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     try {
       colAdmin.createIndex(db.createDocumentFromString(indexSpec4));
       junit.framework.Assert.fail("No error when \"lax\" is specified with \"fields\"");
-    } 
+    }
     catch(OracleException e) {
       Throwable t = e.getCause();
       assertTrue(t.getMessage().contains("In an index specification, \"lax\" " +
                                          "cannot be specified without specifying \"fields\"."));
     }
 
-    // Test with no fields array in index(means a full-text index)
-    indexSpec4 =
-      "{ \"name\":\"STUDENT_INDEX4\", \n" +
-      "  \"language\":\"english\" \n" +
-      "}";
-    colAdmin.createIndex(db.createDocumentFromString(indexSpec4));
+    // Create a json search index
+    String fullIndexName = "STUDENT_INDEX4";
+    String jsonSearchIndexSpec = createTextIndexSpec(fullIndexName);
+    OracleDocument d = db.createDocumentFromString(jsonSearchIndexSpec);
+    colAdmin.createIndex(d);
 
-    String indexSpec5 = "{ \"name\":\"STUDENT_INDEX5\" }";
     try {
-      // Try to create the second full text index
-      colAdmin.createIndex(db.createDocumentFromString(indexSpec5));
-      fail("No error when create a second full text index");
-    } 
-    catch(OracleException e) {
+      // Try to create the second json search index
+      fullIndexName = "STUDENT_INDEX5";
+      jsonSearchIndexSpec = createTextIndexSpec(fullIndexName);
+      colAdmin.createIndex(db.createDocumentFromString(jsonSearchIndexSpec));
+      fail("No error when creating a second json search index");
+    } catch (OracleException e) {
       //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
       Throwable t = e.getCause();
       assertTrue(t.getMessage().contains("ORA-29879"));
@@ -801,9 +847,9 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin.dropIndex("STUDENT_INDEX5");
 
     try {
-      // Try to create the second full text index by indexAll
-      colAdmin.indexAll("indexAll");
-      fail("No error when create a second full text index");
+      // Try to create the second json search index by createJsonSearchIndex
+      colAdmin.createJsonSearchIndex("indexAll");
+      fail("No error when create a second json search index");
     } 
     catch(OracleException e) {
       //ORA-29879: cannot create multiple domain indexes on a column list using same indextype
@@ -926,7 +972,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       // there is conflict between the specified index and the existing row 
       String indexSpecN8 =
         "{ \"name\":\"STUDENT_INDEXN8\", \"unique\" : true, \n" +
-        " \"lax\" : true, \n" +
+        "  \"lax\":true, " +
         "  \"fields\": [ { \"path\":\"num\", \"datatype\":\"number\" }] }";
       colAdmin.createIndex(db.createDocumentFromString(indexSpecN8));
       fail("No error when there is conflict between the specified index and the existing documents");
@@ -937,37 +983,188 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       assertTrue(t.getMessage().contains("ORA-01452"));
     }
 
-    /* ### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
+    //### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
+    /*
+    String indexSpecN9 = createTextIndexSpec("STUDENT_INDEXN9");
 
-    String indexSpecN9 =
-      "{ \"name\":\"STUDENT_INDEXN9\", \"language\" : \"english\" }";
-    
-    try { 
-      // full text index is NOT supported for NVARCHAR2 contentColumnType
+    try {
+      // JSON search index is NOT supported for NVARCHAR2 contentColumnType
       OracleDocument mDoc2 = client.createMetadataBuilder()
-          .contentColumnType("NVARCHAR2").build();
+        .contentColumnType("NVARCHAR2").build();
       OracleCollection col2 = dbAdmin.createCollection("testCreateIndex2", mDoc2);
       col2.admin().createIndex(db.createDocumentFromString(indexSpecN9));
-      fail("No exception when create text index on NVARCHAR2 collection");
+      fail("No exception when creating json search index on NVARCHAR2 collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("indexAll is not implemented for content columns with type NVARCHAR2.", e.getMessage());
+      assertEquals("JSON search index is not implemented" +
+                   " for content columns with type NVARCHAR2.", e.getMessage());
     }
-    
-    try { 
-      // full text index is NOT supported for NCLOB contentColumnType
+
+    try {
+      // JSON search index is NOT supported for NCLOB contentColumnType
       OracleDocument mDoc3 = client.createMetadataBuilder()
-          .contentColumnType("NCLOB").build();
+        .contentColumnType("NCLOB").build();
       OracleCollection col3 = dbAdmin.createCollection("testCreateIndex3", mDoc3);
       col3.admin().createIndex(db.createDocumentFromString(indexSpecN9));
-      fail("No exception when create text index on NCLOB collection");
+      fail("No exception when creating json search index on NCLOB collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("indexAll is not implemented for content columns with type NCLOB.", e.getMessage());
+      assertEquals("JSON search index is not implemented" +
+                   " for content columns with type NCLOB.", e.getMessage());
     }
     */
+  }
 
-  } 
+  public void testCreateIndex2() throws Exception {
+    OracleCollection col = dbAdmin.createCollection("testCreateIndex2");
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    // test with "lax":true index
+    String indexSpec1 =
+      "{ \"name\":\"FUNC_INDEX1\", " +
+      "  \"lax\" : true, " +
+      "  \"fields\": [" +
+      "    { \"path\":\"name\", \"orderDate\":\"date\", \"order\":\"asc\"}] " +
+      "}";
+
+    col.admin().createIndex(db.createDocumentFromString(indexSpec1));
+    // all the following "orderDate" field values are invalid for "date" type
+    // but "lax" index allows these violations
+    col.insert(db.createDocumentFromString("{ \"name\":\"Mike\" }"));
+    col.insert(db.createDocumentFromString("{ \"orderDate\": \"2016\"}"));
+    col.insert(db.createDocumentFromString("{ \"orderDate\": {\"date\":\"2016-07-15\"} }"));
+
+    col.admin().dropIndex("FUNC_INDEX1");
+    col.find().remove();
+
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      // test with "scalarRequired":false(the default index will be created)
+      String indexSpec2 =
+        "{ \"name\":\"FUNC_INDEX2\", " +
+        "  \"scalarRequired\" : false, " +
+        "  \"fields\": [" +
+        "    { \"path\":\"orderName\", \"datatype\":\"string\", \"maxLength\":100 }] " +
+        "}";
+
+      col.admin().createIndex(db.createDocumentFromString(indexSpec2));
+      // missing "orderName" field is allowed
+      col.insert(db.createDocumentFromString("{ \"name\":\"Mike\" }"));
+
+      try {
+        // non-scalar value is not allowed
+        col.insert(db.createDocumentFromString("{ \"orderName\":{\"name1\":\"Mike\", \"name2\":\"John\" } }"));
+        fail("Error should have been generated because the non-scalar value is beging inserted");
+      } catch (OracleException e) {
+        Throwable c = e.getCause();
+        assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+      }
+
+      col.admin().dropIndex("FUNC_INDEX2");
+      col.find().remove();
+
+      // test with "lax":false(the default index will be created)
+      String indexSpec3 =
+        "{ \"name\":\"FUNC_INDEX3\", " +
+        "  \"lax\" : false, " +
+        "  \"fields\": [" +
+        "    { \"path\":\"orderDate\", \"datatype\":\"timestamp\" }] " +
+        "}";
+
+      col.admin().createIndex(db.createDocumentFromString(indexSpec3));
+      // missing "orderName" field is allowed
+      col.insert(db.createDocumentFromString("{ \"date\":\"2016\" }"));
+
+      try {
+        // the value does not match "TIMESTAMP" format(required ISO8601)
+        col.insert(db.createDocumentFromString("{ \"orderDate\": \"2016-07-15 18:00:00\" } }"));
+        fail("Error should have been generated because invalid timestamp value is beging inserted");
+      } catch (OracleException e) {
+        Throwable c = e.getCause();
+        assertTrue(c.getMessage().contains("literal does not match format string"));
+      }
+
+      col.admin().dropIndex("FUNC_INDEX3");
+      col.find().remove();
+    }
+
+    // test with field path containing array steps.
+    String indexSpecN1 = "{ \"name\":\"FUNC_INDEXN1\", ";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      indexSpecN1 += "\"scalarRequired\" : true,";
+    }
+
+    indexSpecN1 += " \"fields\": [" +
+                   " { \"path\":\"order[0].orderNo\", \"datatype\":\"number\" }]}";
+
+    try
+    {
+      col.admin().createIndex(db.createDocumentFromString(indexSpecN1));
+      col.admin().dropIndex("FUNC_INDEXN1");
+      fail("Error should have been generated because field path is invalid");
+    }
+    catch (OracleException e)
+    {
+      assertTrue(e.getMessage().contains("Path for an index or order by condition should not contain array steps."));
+    }
+
+  }
+
+  public void testCreateIndexNeg() throws Exception {
+
+    // On 12.1.0.2, default indexing mode is not supported.
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      String errorMsg = "Default functional index mode relies on json_value " +
+        "\"null on empty\" clause supported starting with " +
+        "12.2.0.1 Oracle Database release. \"scalarRequired\" " +
+        "and \"lax\" modes are supported on 12.1.0.2. Note: \"lax\" " +
+        "indexes are not used by QBEs, so \"scalarRequired\" is recommended.";
+
+      OracleCollection col = dbAdmin.createCollection("testCreateIndex");
+      OracleCollectionAdmin colAdmin = col.admin();
+
+      String indexSpec1 =
+        "{ \"name\":\"STUDENT_INDEX1\", " +
+          "  \"fields\": [" +
+          "   { \"path\":\"name\", \"datatype\":\"string\"," +
+          "   \"maxLength\":100, \"order\":\"asc\"}]}";
+
+      try {
+        colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+      }
+      catch (OracleException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+
+      indexSpec1 =
+        "{ \"name\":\"STUDENT_INDEX1\", " +
+          "  \"lax\" : false," +
+          "  \"fields\": [" +
+          "   { \"path\":\"name\", \"datatype\":\"string\"," +
+          "   \"maxLength\":100, \"order\":\"asc\"}]}";
+
+      try {
+        colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+      }
+      catch (OracleException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+
+      indexSpec1 =
+        "{ \"name\":\"STUDENT_INDEX1\", " +
+          "  \"scalarRequired\" : false," +
+          "  \"fields\": [" +
+          "   { \"path\":\"name\", \"datatype\":\"string\"," +
+          "   \"maxLength\":100, \"order\":\"asc\"}]}";
+
+      try {
+        colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+      }
+      catch (OracleException e) {
+        assertEquals(errorMsg, e.getMessage());
+      }
+    }
+  }
 
   public void testCreateIndexScalarRequired() throws Exception {
 
@@ -1071,6 +1268,209 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     col.admin().drop();
   }
 
+  // tests about inconsistent data type between index spec and the existing doc
+  public void testCreateIndexScalarRequiredNeg3() throws Exception {
+
+    OracleCollection col = dbAdmin.createCollection("testCreateIndexScalarReqNeg3");
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    String docStr1 = "{ \"name\":\"Mike\" }";
+    col.insert(db.createDocumentFromString(docStr1));
+
+    // "number" type has the conflict with the existing doc field value
+    String indexSpecNeg1 =
+      "{ \"name\":\"FUNC_INDEX_NEG1\", " +
+      "  \"scalarRequired\" : true," +
+      "  \"fields\": [" +
+      "    { \"path\":\"name\", \"datatype\":\"number\"}]" +
+      "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg1));
+      colAdmin.dropIndex("FUNC_INDEX_NEG1");
+      fail("Error should have been generated because the datatype of indexed field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      assertTrue(c.getMessage().contains("invalid number"));
+    }
+
+    // "date" type has the conflict with the existing doc field value
+    String indexSpecNeg2 =
+      "{ \"name\":\"FUNC_INDEX_NEG2\", " +
+      "  \"scalarRequired\" : true," +
+      "  \"fields\": [" +
+      "    { \"path\":\"name\", \"datatype\":\"date\"}]" +
+      "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg2));
+      colAdmin.dropIndex("FUNC_INDEX_NEG2");
+      fail("Error should have been generated because the datatype of indexed field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      if (!SODAUtils.sqlSyntaxBelow_12_2_0_2(sqlSyntaxLevel)) {
+        assertTrue(c.getMessage().contains("a non-numeric character was found" + 
+                                           " where a numeric was expected"));
+      }
+      else {
+        assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
+      }
+    }
+
+    // "timestamp" type has the conflict with the existing doc field value
+    String indexSpecNeg3 =
+      "{ \"name\":\"FUNC_INDEX_NEG3\", " +
+      "  \"scalarRequired\" : true," +
+      "  \"fields\": [" +
+      "    { \"path\":\"name\", \"datatype\":\"timestamp\"}]" +
+      "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg3));
+      colAdmin.dropIndex("FUNC_INDEX_NEG3");
+      fail("Error should have been generated because the datatype of indexed field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      if (!SODAUtils.sqlSyntaxBelow_12_2_0_2(sqlSyntaxLevel)) {
+        assertTrue(c.getMessage().contains("a non-numeric character was found" + 
+                                           " where a numeric was expected"));
+      }
+      else {
+        assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
+      }
+    }
+
+    col.admin().drop();
+  }
+
+  public void testCreateIndexNeg2() throws Exception {
+    OracleCollection col = dbAdmin.createCollection("testCreateDefaultIndexNeg1");
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    String docStr1 = "{ \"name\":\"Mike\" }";
+    col.insert(db.createDocumentFromString(docStr1));
+
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      // missing the indexed value is allowed for the default mode
+      String docStr2 = "{ \"orderNo\": 1001 }";
+      col.insert(db.createDocumentFromString(docStr2));
+    }
+
+    String indexSpec1 = "{ \"name\":\"FUNC_INDEX1\", ";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      indexSpec1 += "\"scalarRequired\" : true,";
+    }
+
+    indexSpec1 += "\"fields\": [" +
+                  " { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100 }]" +
+                  "}";
+
+    colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+
+    // the indexed field value is non-scalar
+    String docStr3 = "{ \"name\":{\"FirstName\":\"Mike\", \"LastName\":\"Mike\" } }";
+
+    try
+    {
+      col.insert(db.createDocumentFromString(docStr3));
+      fail("Error should have been generated because one non-scalar value is inserted");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+    }
+    colAdmin.dropIndex("FUNC_INDEX1");
+
+    // the index's "number" type has the conflict with the existing doc field value
+    String indexSpecNeg1 = "{ \"name\":\"FUNC_INDEX_NEG1\", ";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpecNeg1 += "\"scalarRequired\" : true,";
+
+    indexSpecNeg1 += " \"fields\": [{ \"path\":\"name\", \"datatype\":\"number\"}]}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg1));
+      colAdmin.dropIndex("FUNC_INDEX_NEG1");
+      fail("Error should have been generated because the datatype of indexed" +
+           "field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      assertTrue(c.getMessage().contains("invalid number"));
+    }
+
+    // the index's "date" type has the conflict with the existing doc field value
+    String indexSpecNeg2 =
+      "{ \"name\":\"FUNC_INDEX_NEG2\", ";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpecNeg2 += "\"scalarRequired\" : true,";
+
+    indexSpecNeg2 += "\"fields\": [{ \"path\":\"name\", \"datatype\":\"date\"}]}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg2));
+      colAdmin.dropIndex("FUNC_INDEX_NEG2");
+      fail("Error should have been generated because the datatype" +
+           " of indexed field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      if (!SODAUtils.sqlSyntaxBelow_12_2_0_2(sqlSyntaxLevel)) {
+        assertTrue(c.getMessage().contains("a non-numeric character was found" +
+                                           " where a numeric was expected"));
+      }
+      else {
+        assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
+      }
+    }
+
+    // the index's "timestamp" type has the conflict with the existing doc field value
+    String indexSpecNeg3 = "{ \"name\":\"FUNC_INDEX_NEG3\", ";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      indexSpecNeg3 += "\"scalarRequired\" : true,";
+
+    indexSpecNeg3 += " \"fields\": [{ \"path\":\"name\", \"datatype\":\"timestamp\"}]}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpecNeg3));
+      colAdmin.dropIndex("FUNC_INDEX_NEG3");
+      fail("Error should have been generated because the datatype" +
+           " of indexed field has conflict with the existing documents");
+    }
+    catch (OracleException e)
+    {
+      Throwable c = e.getCause();
+      if (!SODAUtils.sqlSyntaxBelow_12_2_0_2(sqlSyntaxLevel)) {
+        assertTrue(c.getMessage().contains("a non-numeric character was found" +
+                                           " where a numeric was expected"));
+      }
+      else {
+        assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
+      }
+    }
+
+    col.admin().drop();
+  }
+
   public void testDropWithUncommittedWrites() throws Exception {
 
     boolean switchedOffAutoCommit = false;
@@ -1105,4 +1505,144 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       conn.setAutoCommit(true);
   }
 
+  private void testDataGuide(boolean mixedCaseTable) throws Exception {
+
+    String collName = null;
+
+    if (mixedCaseTable)
+      collName = "testDataGuide";
+    else
+      collName = "testdataguide";
+
+    OracleCollection col = dbAdmin.createCollection(collName);
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    OracleDocument index = db.createDocumentFromString(
+      new String("{\"name\" : \"PERSON_METADATA_INDEX2\", \"dataguide\" : \"on\"}"));
+
+    colAdmin.createIndex(index);
+
+    OracleDocument doc = null;
+
+    for (int i=0; i < 50; i++) {
+      doc = db.createDocumentFromString(new String("{ \"name\" : \"Alex\", \"friends\" : \"" +
+        i + "\" }"));
+      col.insertAndGet(doc);
+    }
+
+    doc = colAdmin.getDataGuide();
+
+    String schema = "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
+                    "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
+                    "\"friends\":{\"type\":\"string\",\"o:length\":2," +
+                    "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
+
+    assertEquals(schema, doc.getContentAsString());
+  }
+
+  public void testDataGuide() throws Exception
+  {
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    testDataGuide(false);
+  }
+
+  public void testDataGuideMixedCaseTable() throws Exception
+  {
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    testDataGuide(true);
+  }
+
+  public void testJsonSearchIndexDefaulting() throws Exception {
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    OracleCollection col = dbAdmin.createCollection("testJsonSearchCol");
+
+    // Only name is specified. dataguide, search_on, language are defaulted.
+    OracleDocument index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"}");
+    col.admin().createIndex(index);
+    col.admin().dropIndex("jsonSearchIndex1");
+
+    // Name and dataguide is specified. search_on and language are defaulted.
+    index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\",\"dataguide\" : \"on\"}");
+    col.admin().createIndex(index);
+    col.admin().dropIndex("jsonSearchIndex1");
+
+    // Name, dataguide, search_on is specified. language is defaulted.
+    index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
+                                        "\"dataguide\" : \"on\"," +
+                                        "\"search_on\" : \"text\"}");
+    col.admin().createIndex(index);
+    col.admin().dropIndex("jsonSearchIndex1");
+
+    // All fields are specified. Some letters in uppercase.
+    index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
+                                        "\"dataguiDE\" : \"On\"," +
+                                        "\"sEARch_on\" : \"tEXt\"," +
+                                        "\"languagE\" : \"simP-chinese\"}");
+    col.admin().createIndex(index);
+    col.admin().dropIndex("jsonSearchIndex1");
+
+  }
+
+  public void testJsonSearchIndexNeg() throws Exception {
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    OracleCollection col = dbAdmin.createCollection("testJsonSearchCol");
+
+    // Invalid value for dataguide
+    OracleDocument index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
+                                                       "\"dataguide\" : \"onn\"}");
+    try {
+      col.admin().createIndex(index);
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+
+      assertEquals(t.getMessage(), "\"dataguide\" cannot be \"onn\". " +
+                                   "Valid values are \"on\" or \"off\".");
+
+      col.admin().dropIndex("jsonSearchIndex1");
+    }
+
+    // Invalid value for search_on
+    index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
+                                        "\"search_on\" : \"blah\"}");
+
+    try {
+      col.admin().createIndex(index);
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+
+      assertEquals(t.getMessage(), "\"search_on\" cannot be \"blah\". " +
+                                   "Valid values are \"none\", \"text\"," +
+                                   " and \"text_value\".");
+      col.admin().dropIndex("jsonSearchIndex1");
+    }
+
+
+    // Invalid value for language
+    index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
+                                        "\"language\" : \"blah\"}");
+
+    try {
+      col.admin().createIndex(index);
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+
+      assertEquals(t.getMessage(), "Language blah is not recognized.");
+
+      col.admin().dropIndex("jsonSearchIndex1");
+    }
+
+  }
 }

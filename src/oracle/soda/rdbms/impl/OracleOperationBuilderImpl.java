@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -370,6 +370,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
     {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
                                     "filterSpec");
+    }
+
+    if (collection.admin().isHeterogeneous())
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_NO_QBE_ON_HETERO_COLLECTIONS);
     }
 
     try

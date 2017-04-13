@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda.rdbms;
@@ -17,6 +17,7 @@ import oracle.soda.OracleDatabase;
 import oracle.soda.OracleException;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 
 import oracle.jdbc.OracleConnection;
@@ -104,13 +105,60 @@ public class OracleRDBMSClient implements OracleClient
     @Override
     public OracleDatabase getDatabase(Connection connection) 
         throws OracleException {
+        return getDatabase(connection, false);
+    }
 
-        OracleConnection oconn = (OracleConnection) connection;
+    /**
+     * Gets the document collections database. This method serves
+     * the same purpose as {@link #getDatabase(Connection)}, except
+     * it also provides the <code>avoidTxnManagement</code>
+     * flag. If this flag is set to <code>true</code> SODA will report
+     * an error for any operation that requires
+     * transaction management. This is useful when running
+     * distributed transactions, to ensure that SODA's local
+     * transaction management does not interfere with global
+     * transaction decisions. Note: unless you're performing
+     * distributed transactions, you should not use this
+     * method. Instead, use {@link #getDatabase(Connection)}.
+     * <p>
+     * The same JDBC connection should not be used to back more than
+     * one {@link oracle.soda.OracleDatabase}
+     *
+     * @param connection             JDBC connection.The passed in JDBC
+     *                               connection must be an instance of
+     *                               <code>oracle.jdbc.OracleConnection</code>
+     * @param avoidTxnManagement     flag specifying whether to avoid transaction
+     *                               management. If set to <code>true</code>,
+     *                               an error will be thrown if a SODA operation
+     *                               requires transaction management. If set to
+     *                               <code>false</code>, it has no effect.
+     * @return                       document collections database
+     * @throws OracleException       if there's an error getting the database
+     */
+    public OracleDatabase getDatabase(Connection connection, boolean avoidTxnManagement)
+        throws OracleException {
+        OracleConnection oconn = null;
 
         String name;
 
         try {
-            name = oconn.getCurrentSchema();
+            if (connection instanceof OracleConnection)
+                oconn = (OracleConnection)connection;
+            else if (connection.isWrapperFor(oracle.jdbc.OracleConnection.class))
+                oconn = (OracleConnection)connection.unwrap(oracle.jdbc.OracleConnection.class);
+            else
+                throw SODAUtils.makeException(SODAMessage.EX_NOT_ORACLE_CONNECTION);
+
+            // To create the cache key, get the database URL,
+            // and append the schema name to it. It's not sufficient
+            // to just use the schema name, because connections
+            // could be coming from multiple databases with
+            // the same schema.
+            DatabaseMetaData dbmd = oconn.getMetaData();
+            name = dbmd.getURL();
+            name += "/";
+            name += oconn.getCurrentSchema();
+
         }
         catch (SQLException e) {
             throw new OracleException(e);
@@ -127,10 +175,14 @@ public class OracleRDBMSClient implements OracleClient
         }
 
         // ### Might be better to have metrics collector use be
-        //     optional, since collecting metrics carries a cost 
-        return new OracleDatabaseImpl(oconn, cache, mcollector, localMetadataCache);
+        //     optional, since collecting metrics carries a cost
+        return new OracleDatabaseImpl(oconn,
+                                      cache,
+                                      mcollector,
+                                      localMetadataCache,
+                                      avoidTxnManagement);
     }
-    
+
     /**
      * Creates an {@link OracleRDBMSMetadataBuilder} initialized with default
      * collection metadata settings.

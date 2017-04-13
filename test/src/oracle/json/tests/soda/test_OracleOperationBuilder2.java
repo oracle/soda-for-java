@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -30,7 +30,34 @@ import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 
 import oracle.json.testharness.SodaTestCase;
 
+import oracle.soda.rdbms.impl.SODAUtils;
+
 public class test_OracleOperationBuilder2 extends SodaTestCase {
+
+  // to check whether text index is used in explain plan
+  private void chkExplainPlan(OracleOperationBuilderImpl builderImpl,
+                              boolean textIndexUsed) throws OracleException
+  {
+    String plan = null;
+
+    if (textIndexUsed) {
+      plan = builderImpl.explainPlan("basic");
+      // Note: (?s) allows matching across return lines
+      if (!plan.matches("(?s).*DOMAIN INDEX.*"))
+      {
+        fail("DOMAIN INDEX is not found in explain plan:\n" + plan);
+      }
+    }
+
+  }
+
+  private void chkExplainPlan122(OracleOperationBuilderImpl builderImpl,
+                                 boolean textIndexUsed) throws OracleException
+  {
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      chkExplainPlan(builderImpl, textIndexUsed);
+    }
+  }
 
   public void testFilterWithEmptyStep() throws Exception          {
      testFilterWithEmptyStep(false);
@@ -42,11 +69,11 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
 
   private void testFilterWithEmptyStep(boolean withJTextIndex) throws Exception {
-    OracleCollection col = db.admin().createCollection("testFilter");
+    OracleCollection col = db.admin().createCollection("testFilterWES" + (withJTextIndex?"Idx":""));
 
     if (withJTextIndex)
     {
-       col.admin().indexAll("testFilterIndex");
+      col.admin().createJsonSearchIndex("testFilterIndex");
     }
 
     OracleDocument doc = db.createDocumentFromString("{\"\" : 1}");
@@ -71,6 +98,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // Single top-level empty step
     filter = db.createDocumentFromString("{\"\" : 1}");
     assertEquals(1, col.find().filter(filter).count());
+    //index rewrite is not supported for empty step
+    //chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filter), withJTextIndex);
 
     // Top level empty step with another non-empty step
     filter = db.createDocumentFromString("{\".name\" : \"alex\"}");
@@ -128,20 +157,30 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     {
       col.admin().dropIndex("testFilterIndex");
     }
+
+    col.admin().drop();
   }
 
-  private void testFilter(String contentColumnType) throws Exception {
+  private void testFilter(String contentColumnType, boolean withIndex) throws Exception {
 
     OracleDocument mDoc = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType(contentColumnType).build();
-    
-    OracleCollection col = db.admin().createCollection("testFilter", mDoc);
+
+    OracleCollection col = db.admin().createCollection("testFilter" + contentColumnType +
+                                                       (withIndex?"Idx":""), mDoc);
     for (int i = 1; i <= 10; i++) {
       col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"d\" : " + i + " }"));
     }
-    
-    OracleDocument filterDoc =db.createDocumentFromString("{ \"$id\" : [\"id-3\", \"id-5\", \"id-7\"] }"); 
-    
+
+    if (withIndex) {
+      String textIndex = createTextIndexSpec("jsonSearchIndex-0");
+      col.admin().createIndex(db.createDocumentFromString(textIndex));
+    }
+
+    OracleDocument filterDoc =db.createDocumentFromString("{ \"$id\" : [\"id-3\", \"id-5\", \"id-7\"] }");
+    //the query condition is about key, and does not involve text content
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
     OracleOperationBuilder builder = col.find().filter(filterDoc);
     assertEquals(3, builder.count());
     OracleCursor cursor = builder.getCursor();
@@ -149,6 +188,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals("{ \"d\" : 5 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     assertEquals("id-7", cursor.next().getKey());
     assertFalse(cursor.hasNext());
+    cursor.close();
     
     HashSet<String> keySet = new HashSet<String>();
     keySet.add("id-2");
@@ -163,6 +203,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     cursor.next(); // skip id-7
     assertEquals("{ \"d\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     assertFalse(cursor.hasNext());
+    cursor.close();
     
     filterDoc = db.createDocumentFromString("{ \"$id\" : [\"id-1\", \"id-7\"] }");
     builder = col.find().key("id-3").filter(filterDoc);
@@ -172,7 +213,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals("{ \"d\" : 3 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     assertEquals("{ \"d\" : 7 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     assertFalse(cursor.hasNext());
-    
+    cursor.close();
+
     // SODA filter might not support the following key array syntax
     /*filterDoc =db.createDocumentFromString(" [\"id-2\", \"id-5\", \"id-8\"] ");
     builder = col.find().key("id-4").filter(filterDoc);
@@ -185,8 +227,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     
     String fStr = "{ \"$query\" : {\"d\" : {\"$gt\" : 5 }}, \"$orderby\" : {\"d\" : -1} }";
     filterDoc = db.createDocumentFromString(fStr);
-    builder = ((OracleOperationBuilderImpl) col.find()).filter(filterDoc);
-    cursor = builder.getCursor();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+    builder = col.find().filter(filterDoc);
     assertEquals(1, ((OracleOperationBuilderImpl) builder).startKey("id-3", false, false).count());
     
     builder = ((OracleOperationBuilderImpl) builder).startKey("id-7", false, false);
@@ -195,10 +237,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals("id-6", cursor.next().getKey());
     assertEquals("{ \"d\" : 10 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     assertFalse(cursor.hasNext());
+    cursor.close();
 
-    fStr = "{ \"d\" : 1 } blah blah blah";
     // Test with "{ \"d\" : 1 }"
     filterDoc = db.createDocumentFromString("{ \"d\" : 1 }");
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
     OracleDocument doc =  col.find().filter(filterDoc).getOne();
     assertEquals("id-1", doc.getKey());
   
@@ -210,6 +254,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } catch (OracleException e) {
       // Expect OracleException
       assertEquals("Invalid filter condition.", e.getMessage());
+      cursor.close();
     }
     
     try {
@@ -220,21 +265,27 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } catch (OracleException e) {
       // Expect OracleException
       assertEquals("Invalid filter condition.", e.getMessage());
+      cursor.close();
     }
 
     col.admin().drop(); 
   }
- 
- private void testFilter2(String contentColumnType) throws Exception {
-    
-    OracleDocument doc = null, mDoc = null; 
-    
-    if (contentColumnType.equalsIgnoreCase("BLOB")) {
+
+  private void testFilter2(String contentColumnType, boolean withIndex) throws Exception {
+
+    OracleDocument doc = null, mDoc = null;
+
+    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
       mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter2", mDoc);
+
+    OracleCollection col = db.admin().createCollection("testFilter2" + contentColumnType + (withIndex?"Idx":""), mDoc);
+
+    if (withIndex) {
+      col.admin().createJsonSearchIndex("jsonSearchIndex-1");
+    }
     
     String docStr1 = "{ \n" +
         "\"seq\": 101, \n" +
@@ -264,26 +315,29 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     key2 = doc.getKey();
     doc = col.insertAndGet(db.createDocumentFromString(docStr3));
     key3 = doc.getKey();
-    
-    if (col.admin().isHeterogeneous()) {
+
+    if (col.admin().isHeterogeneous() && supportHeterogeneousQBEs()) {
       doc = col.insertAndGet(db.createDocumentFromString(null, "data4", "text/plain"));
       key4 = doc.getKey();
     } else {
       doc = col.insertAndGet(db.createDocumentFromString("{ \"data\" : 4 }"));
       key4 = doc.getKey();
     }
- 
+
     // match doc2
     OracleDocument filterDoc = db.createDocumentFromString(
         "{ \"seq\" : { \"$gt\" : 101, \"$lte\" : 102 } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key2, doc.getKey());
-    
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
     // match doc1, doc3, doc5
     filterDoc = db.createDocumentFromString(
         "{ \"$id\" : [ \"" + key1 + "\", \"" + key3 + "\", \"" + key4 + "\" ] }");
     assertEquals(3, col.find().filter(filterDoc).count());
+    //query the documents by keys does not use text index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
     // match doc1
     filterDoc = db.createDocumentFromString(
@@ -291,6 +345,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key1, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc2, doc3
     filterDoc = db.createDocumentFromString(
@@ -304,6 +359,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(key3, cursor.next().getKey());
     assertEquals(false, cursor.hasNext());
     cursor.close();
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString(
@@ -311,13 +367,14 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc2, doc3 if doc4 is non-JSON. 
     // If doc4 is JSON, match it as well.
     filterDoc = db.createDocumentFromString(
         "{ \"type\" : {\"$nin\": [\"t1\"]}, \"$orderby\" : {\"seq\":1}  }");
 
-    if (col.admin().isHeterogeneous()) {
+    if (col.admin().isHeterogeneous() && supportHeterogeneousQBEs()) {
       assertEquals(2, col.find().filter(filterDoc).count());
     }
     else {
@@ -329,31 +386,34 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(key2, cursor.next().getKey());
     assertEquals(key3, cursor.next().getKey());
 
-    if (!col.admin().isHeterogeneous())
-    {
+    if (!col.admin().isHeterogeneous()) {
       assertEquals(key4, cursor.next().getKey());
-
     }
     assertEquals(false, cursor.hasNext());
     cursor.close();
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString("{\"term1[0]\" : 30 }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1
     filterDoc = db.createDocumentFromString("{ \"term3[0].language\" : {\"$eq\":\"en\"} }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key1, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString("{ \"type\" : {\"$in\": [\"t2\", \"t3\"]}, \"term1[1]\" : {\"$gt\" : 20}}");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1
     filterDoc = db.createDocumentFromString(
@@ -364,6 +424,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(key1, cursor.next().getKey());
     assertEquals(false, cursor.hasNext());
     cursor.close();
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // Tests about "$all" operator 
     // match doc3
@@ -371,6 +432,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString(" {\"term1\" : {\"$all\":[32, 31, 30]} }");
@@ -378,7 +440,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
-    
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
     // match doc3, 
     // for "$all", all the constants in query condition must match the values in the instance doc
     // but does not need to cover all the values in the instance doc
@@ -386,11 +449,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // since 30 and 31 are found in the instance doc, it's a match.
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(key3, doc.getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match none, since 33 does not match any value in the instance doc
     filterDoc = db.createDocumentFromString(" {\"term1\" : {\"$all\":[30, 31, 33]} }");
     assertEquals(0, col.find().filter(filterDoc).count());
     assertNull(col.find().filter(filterDoc).getOne());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     //
     // Tests with $not
@@ -402,6 +467,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                                             "{\"$not\" : {\"$all\":[\"ch\"]}}, " +
                                             "\"$orderby\" : {\"seq\":1}}");
     matchUpToTwoDocs(filterDoc, col, key1, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3 only if doc4 is not JSON. 
     // If doc4 is JSON, match it as well.
@@ -409,6 +476,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                                             "\"type\": {\"$not\" : {\"$eq\":\"t2\"}}," +
                                             "\"$orderby\" : {\"seq\":1}}");
     matchUpToTwoDocs(filterDoc, col, key3, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3 only if doc4 is not JSON.
     // If doc4 is JSON, match it as well.
@@ -416,22 +485,28 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                                             "\"$orderby\" : {\"seq\":1}}");
 
     matchUpToTwoDocs(filterDoc, col, key3, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1 only if doc4 is not JSON.
     // If doc4 is JSON, match it as well.
     filterDoc = db.createDocumentFromString("{\"seq\" : {\"$not\":{\"$gte\":102}}," +
                                             "\"$orderby\" : {\"seq\":1}}");
     matchUpToTwoDocs(filterDoc, col, key1, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1, doc2,and doc3 only doc4 is not JSON.
     // If doc4 is JSON, match it as well.
     filterDoc = db.createDocumentFromString("{\"type\" : {\"$not\": {\"$startsWith\":\"n\"}} }");
-    if (col.admin().isHeterogeneous()) {
+    if (col.admin().isHeterogeneous() && supportHeterogeneousQBEs()) {
       assertEquals(3, col.find().filter(filterDoc).count());
     }
     else {
       assertEquals(4, col.find().filter(filterDoc).count());
     }
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     //
     // Tests with $nor
@@ -442,6 +517,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{\"$nor\" : [{\"term3[0].language\" : \"ch\"}]," +
                                             "\"$orderby\" : {\"seq\":1}}");
     matchUpToTwoDocs(filterDoc, col, key1, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1 if mixed with non-JSON. Also doc4 otherwise.
     filterDoc = db.createDocumentFromString(
@@ -449,6 +526,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                      "{\"term1[2]\": {\"$exists\":true}} ]," +
                      "\"$orderby\" : {\"seq\" :1}}");
     matchUpToTwoDocs(filterDoc, col, key1, key4);
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1
     filterDoc = db.createDocumentFromString(
@@ -457,6 +536,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                      "\"$orderby\" : {\"seq\" :1}}");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    // negations are not supported with the json text index
+    // chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
+    if (withIndex) {
+      col.admin().dropIndex("jsonSearchIndex-1");
+    }
 
     col.admin().drop();
   } 
@@ -492,18 +577,28 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     cursor.close();
   }
 
-  private void testFilter3(String contentColumnType) throws Exception {
-   
-   OracleDocument mDoc = null; 
-   
-   if (contentColumnType.equalsIgnoreCase("BLOB")) {
-     mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
+  private void testFilter3(String contentColumnType, boolean withIndex) throws Exception {
+   OracleDocument mDoc = null;
+
+   if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
+     mDoc = client.createMetadataBuilder().
+                   contentColumnType("BLOB").
+                   mediaTypeColumnName("MediaType").build();
    } else {
-     mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+     mDoc = client.createMetadataBuilder().
+                   contentColumnType(contentColumnType).build();
    }
-   OracleCollection col = db.admin().createCollection("testFilter3", mDoc);
-   
-   if(col.admin().isHeterogeneous()) {
+
+   OracleCollection col = db.admin().createCollection("testFilter3" +
+                                                      contentColumnType +
+                                                      (withIndex?"Idx":""),
+                                                      mDoc);
+
+   if (withIndex) {
+     col.admin().createJsonSearchIndex("jsonSearchIndex-3");
+   }
+
+   if(col.admin().isHeterogeneous() && supportHeterogeneousQBEs()) {
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
@@ -513,7 +608,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
        "{ \"orderno\":301, \"items\": [ { \"name\": \"Wicked Bugs\", \"price\": 11.37, \"quantity\": 1 }, \n" + 
            "{ \"name\": \"How to Lie with Statistics\", \"price\": 9.56, \"quantity\": 1 } ] }, \n" + 
        "{ \"orderno\":302, \"items\": [ { \"name\": \"Discovering Statistics\", \"price\": 15.00, \"quantity\": 2 }, \n" + 
-           "{ \"name\": \"Integrated Algebra\", \"price\": 8.99, \"quantity\": 1 } ] }\n" + 
+           "{ \"name\": \"Integrated Algebra\", \"price\": 8.99, \"quantity\": 1 } ] }\n" +
        "] }";
 
    String docStr2 = "{ \"order\" : [ \n" + 
@@ -547,12 +642,16 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    //match doc1
    filterDoc = db.createDocumentFromString("{ \"order[0].orderno\": 301 }");
    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+   chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
    
    filterDoc = db.createDocumentFromString("{ \"order[1].items[0].name\": \"Discovering Statistics\" }");
    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+   chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
    
    filterDoc = db.createDocumentFromString("{ \"order[1].items[0].name\": {\"$startsWith\": \"Discovering\"} }");
    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+   // bug22571013: index is not used for $startsWith
+   // chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    filterDoc = db.createDocumentFromString(
        "{ \"order[0].orderno\": {\"$gte\" : 301}, \"order[1].items[0].name\": {\"$startsWith\": \"Discovering\"} }");
@@ -562,16 +661,21 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key1, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    //match doc3
    filterDoc = db.createDocumentFromString("{ \"order[0].items[0].name\": {\"$startsWith\": \"Tart\"} }");
    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
-   
+   // bug22571013: index is not used for $startsWith
+   // chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
    filterDoc = db.createDocumentFromString("{ \"order[0].items[1].price\": 10.88 }");
    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
-   
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
    filterDoc = db.createDocumentFromString("{ \"order[0].items[2].quantity\": {\"$exists\" : true} }");
    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    filterDoc = db.createDocumentFromString(
        "{ \"$and\" : [{\"order[0].items[0].name\": {\"$startsWith\": \"Tart\"}}, " +
@@ -582,43 +686,52 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key3, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    // match doc2
    filterDoc = db.createDocumentFromString(
        "{\"order[0].orderno\" : {\"$gt\" : 301, \"$lt\" : 306} }");
    assertEquals(1, col.find().filter(filterDoc).count());
    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
-   
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
    // also match doc2
    filterDoc = db.createDocumentFromString(
        "{\"order[2].orderno\" : {\"$gt\" : 301, \"$lt\" : 306} }");
    assertEquals(1, col.find().filter(filterDoc).count());
    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
-   
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
    filterDoc = db.createDocumentFromString(
         "{ \"$or\" : [ {\"order[0].orderno\" : {\"$gt\" : 301, \"$lt\" : 306}}, " +
         "              {\"order[2].orderno\" : {\"$gt\" : 301, \"$lt\" : 306}} ] }");
    assertEquals(1, col.find().filter(filterDoc).count());
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
+   if (withIndex) {
+     col.admin().dropIndex("jsonSearchIndex-3");
+   }
    col.admin().drop();
  }
- 
-  private void testFilter3OrderBy(String contentColumnType, boolean withIndex) throws Exception {
 
+ private void testFilter3OrderBy(String contentColumnType, boolean withIndex) throws Exception {
    OracleDocument mDoc = null;
 
-   if (contentColumnType.equalsIgnoreCase("BLOB")) {
+   if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
      mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
    } else {
      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
    }
-   OracleCollection col = db.admin().createCollection("testFilter3", mDoc);
+   OracleCollection col = db.admin().createCollection("testFilter3OrderBy" +
+                                                      contentColumnType +
+                                                      (withIndex?"Idx":""),
+                                                      mDoc);
 
    if (withIndex) {
-     col.admin().indexAll("indexAll-3");
+     col.admin().createJsonSearchIndex("indexAll-3");
    }
 
-   if(col.admin().isHeterogeneous()) {
+   if (col.admin().isHeterogeneous() && supportHeterogeneousQBEs()) {
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
      col.insert(db.createDocumentFromString(null, "{orderno}", "text/plain"));
@@ -667,6 +780,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key3, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    //match doc2
    filterDoc = db.createDocumentFromString(
@@ -677,6 +791,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key2, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
@@ -689,6 +804,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key3, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
@@ -701,12 +817,17 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(key1, cursor.next().getKey());
    assertEquals(false, cursor.hasNext());
    cursor.close();
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
    //match doc1, 2, 3
    filterDoc = db.createDocumentFromString(
        "{ \"orderno\" : {\"$gte\" : 301, \"$lte\" : 306}, \"$orderby\" : {\"orderno\":-1} }");
    assertEquals(3, col.find().filter(filterDoc).count());
+   chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
+   if (withIndex) {
+     col.admin().dropIndex("indexAll-3");
+   }
    col.admin().drop();
  }
 
@@ -715,22 +836,25 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       //"CLOB", "NCLOB", "BLOB", "VARCHAR2", "NVARCHAR2", "RAW"
       "CLOB", "BLOB", "VARCHAR2"
   };
-  
+
   public void testFilter() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter(columnSqlType);
+      testFilter(columnSqlType, false);
+      testFilter(columnSqlType, true);
     }
   }
-  
+
   public void testFilter2() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter2(columnSqlType);
+      testFilter2(columnSqlType, false);
+      testFilter2(columnSqlType, true);
     }
   }
-  
+
   public void testFilter3() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter3(columnSqlType);
+      testFilter3(columnSqlType, false);
+      testFilter3(columnSqlType, true);
     }
   }
 
@@ -744,12 +868,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   private void testFilterNeg(String contentColumnType) throws Exception {
     OracleDocument mDoc = null, filterDoc = null; 
     
-    if (contentColumnType.equalsIgnoreCase("BLOB")) {
+    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
       mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter4" + contentColumnType, mDoc);
+    OracleCollection col = db.admin().createCollection("testFilterNeg" + contentColumnType, mDoc);
     OracleCursor cursor = null;
     
     String[] invalidArrayPaths = {
@@ -875,17 +999,37 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
   }
 
+  private void checkKeys(OracleCollection col,
+                         OracleDocument filterDoc,
+                         HashSet<String> expectedKeys)
+    throws Exception {
+    OracleCursor c = col.find().filter(filterDoc).getCursor();
+
+    HashSet<String> keys = new HashSet<String>();
+
+    while (c.hasNext())
+      keys.add(c.next().getKey());
+
+    c.close();
+
+    assertEquals(keys, expectedKeys);
+  }
+
   // QBE Tests about path beginning with array step
-  private void testFilter4(String contentColumnType) throws Exception {
-    OracleDocument mDoc = null; 
-    
-    if (contentColumnType.equalsIgnoreCase("BLOB")) {
+  private void testFilter4(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
+
+    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
       mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter4", mDoc);
-    
+    OracleCollection col = db.admin().createCollection("testFilter4" + contentColumnType + (withIndex?"Idx":""), mDoc);
+
+    if (withIndex) {
+      col.admin().createJsonSearchIndex("jsonSearchIndex-4");
+    }
+
     String docStr1 = 
             "[ { \"name\":\"Angelia\", \"gender\":\"F\", \"age\":20}, \n" +
             "  { \"name\":\"Amanda\", \"age\":25, \"gender\":\"F\"}, \n" +
@@ -923,6 +1067,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{ \"[0].name\": \"Angelia\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
    
     if (isPatch(PATCH1)) {
       // the later tests can not work on 12102 db, see bug20061399
@@ -933,22 +1078,28 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     filterDoc = db.createDocumentFromString("{ \"[1].name\": \"Amanda\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
  
     // match doc2
     filterDoc = db.createDocumentFromString("{ \"[0][0].name\": \"Carrie\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
-
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"[0][1].name\": \"Candy\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"[1].name\": \"Christina\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"[2][0].name\": \"Daisy\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"[2][1].name\": \"Diana\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"[2][2].name\": \"Demi\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
  
     // match doc3
     filterDoc = db.createDocumentFromString("{ \"[2][1].name\": {\"$startsWith\": \"D\"},  \"[2][1].gender\": \"M\" }");
@@ -957,57 +1108,80 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     assertEquals(key3, cursor.next().getKey());
     assertEquals(false, cursor.hasNext());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc2
     filterDoc = db.createDocumentFromString("{ \"[2][2]\": {\"$exists\" : true} }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    //$exists on a top-level array element is not supported
+    //with the json text index
+    //chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1, 2, 3
     filterDoc = db.createDocumentFromString("{ \"[2]\": {\"$exists\" : true} }");
     assertEquals(3, col.find().filter(filterDoc).count());
+    //$exists on a top-level array element is not supported
+    //with the json text index
+    //chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc1
     filterDoc = db.createDocumentFromString("{ \"[2][0]\": {\"$exists\" : false} }");
-    // blocked by bug20407304
-    /*assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());*/
+    assertEquals(0, col.find().filter(filterDoc).count());
+    //$exists on a top-level array element is not supported
+    //with the json text index
+    //chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString("{ \"[0][1].name\": \"Brian\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
-    // match doc3
-    // blocked by bug20407304
-    /*filterDoc = db.createDocumentFromString("{ \"[*][0].age\": {\"$lte\" : 20 } }");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    // match doc1 and doc3
+    // ### blocked by bug 20407304 on 12.1.0.2
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      filterDoc = db.createDocumentFromString("{ \"[*][0].age\": {\"$lte\" : 20 } }");
+      HashSet<String> expectedKeys = new HashSet<String>();
+      expectedKeys.add(key1);
+      expectedKeys.add(key3);
+      checkKeys(col, filterDoc, expectedKeys);
+    }
 
-    // match doc2
-    filterDoc = db.createDocumentFromString("{ \"[0, 1, 2][0 to 2].age\": {\"$gt\" : 24 } }");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());*/
+    // match doc1 and doc2
+    // ### blocked by bug 22651752 on 12.1.0.2
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      filterDoc = db.createDocumentFromString("{ \"[0, 1, 2][0 to 2].age\": {\"$gt\" : 24 } }");
+      HashSet<String> expectedKeys = new HashSet<String>();
+      expectedKeys.add(key1);
+      expectedKeys.add(key2);
+      checkKeys(col, filterDoc, expectedKeys);
+    }
 
     // match doc1
     filterDoc = db.createDocumentFromString("{ \"[0 to 2].name\": \"Angelia\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
-    // match doc2
-    // blocked by bug20407304
-    /*filterDoc = db.createDocumentFromString("{ \"[0,1].age\": {\"$eq\" : 23 } }");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());*/
+    // match doc2 and doc3
+    // ### blocked by bug 20407304 on 12.1.0.2
+    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      filterDoc = db.createDocumentFromString("{ \"[0,1].age\": {\"$eq\" : 23 } }");
+      HashSet<String> expectedKeys = new HashSet<String>();
+      expectedKeys.add(key2);
+      expectedKeys.add(key3);
+      checkKeys(col, filterDoc, expectedKeys);
+    }
 
     // match doc1
     filterDoc = db.createDocumentFromString("{ \"[0 to 1, 2].age\": {\"$gt\" : 23 } }");
-    assertEquals(3, col.find().filter(filterDoc).count());
-    HashSet<String> keys = new HashSet<String>();
-    keys.add(key1);
-    keys.add(key2);
-    keys.add(key3);
-    assertTrue(keys.contains(col.find().filter(filterDoc).getOne().getKey()));
+    HashSet<String> expectedKeys = new HashSet<String>();
+    expectedKeys.add(key1);
+    expectedKeys.add(key2);
+    expectedKeys.add(key3);
+    checkKeys(col, filterDoc, expectedKeys);
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     col.find().remove();
     col.admin().drop();
@@ -1015,40 +1189,45 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   
   public void testFilter4() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter4(columnSqlType);
+      testFilter4(columnSqlType, false);
+      testFilter4(columnSqlType, true);
     }
   }
   
   //QBE Tests about path containing multiple level array steps 
-  private void testFilter5(String contentColumnType) throws Exception {
-    OracleDocument mDoc = null; 
-    
-    if (contentColumnType.equalsIgnoreCase("BLOB")) {
+  private void testFilter5(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
+
+    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
       mDoc = client.createMetadataBuilder().contentColumnType("BLOB").mediaTypeColumnName("MediaType").build();
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter5", mDoc);
-    
-    String docStr1 = 
-            "{\"matrix\": [ \n" +
-            "   [{\"id\":\"00\"}, {\"id\":\"01\"}, {\"id\":\"02\"}], \n" +
-            "   {\"id\":\"1\"}, \n" +
-            "   [{\"id\":\"20\"}, {\"id\":\"21\"}, {\"id\":\"22\"}] " +
-            "]}";
+    OracleCollection col = db.admin().createCollection("testFilter5" + contentColumnType + (withIndex?"Idx":""), mDoc);
 
-    String docStr2 =  
-            "{\"matrix\": [ \n" +
-            "   [{\"id\":\"2.00\"}, [{\"id\":\"2.010\"}, {\"id\":\"2.011\"}, {\"id\":\"2.012\"}] ], \n" +
-            "   [{\"id\":\"2.10\"}, {\"id\":\"2.11\"}, [{\"value\":99}, {\"value\":101}] ], \n" +
-            "   {\"id\":\"2.2\"} \n" + 
-            "] }";
+    if (withIndex) {
+      col.admin().createJsonSearchIndex("jsonSearchIndex-5");
+    }
 
-    String docStr3 = 
-            "{\"matrix\": [ \n" +
-            "   {\"id\":\"3.0\"}, \n" +
-            "   [{\"id\":\"3.10\"}, {\"id\":\"3.11\", \"value\":[[{\"id\":\"00\"}, {\"id\":\"01\"}, {\"id\":\"02\"}]] }]\n" +
-            "] }";
+    String docStr1 =
+      "{\"matrix\": [ \n" +
+      "   [{\"id\":\"00\"}, {\"id\":\"01\"}, {\"id\":\"02\"}], \n" +
+      "   {\"id\":\"1\"}, \n" +
+      "   [{\"id\":\"20\"}, {\"id\":\"21\"}, {\"id\":\"22\"}] " +
+      "]}";
+
+    String docStr2 =
+      "{\"matrix\": [ \n" +
+      "   [{\"id\":\"2.00\"}, [{\"id\":\"2.010\"}, {\"id\":\"2.011\"}, {\"id\":\"2.012\"}] ], \n" +
+      "   [{\"id\":\"2.10\"}, {\"id\":\"2.11\"}, [{\"value\":99}, {\"value\":101}] ], \n" +
+      "   {\"id\":\"2.2\"} \n" +
+      "] }";
+
+    String docStr3 =
+      "{\"matrix\": [ \n" +
+      "   {\"id\":\"3.0\"}, \n" +
+      "   [{\"id\":\"3.10\"}, {\"id\":\"3.11\", \"value\":[[{\"id\":\"00\"}, {\"id\":\"01\"}, {\"id\":\"02\"}]] }]\n" +
+      "] }";
 
     String key1, key2, key3;
     OracleDocument doc, filterDoc;
@@ -1059,59 +1238,79 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     doc = col.insertAndGet(db.createDocumentFromString(docStr3));
     key3 = doc.getKey();
     assertEquals(3, col.find().count());
-   
+
     // match doc1
     filterDoc = db.createDocumentFromString("{ \"matrix[0][0].id\": \"00\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0][1].id\": \"01\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
-    
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
     filterDoc = db.createDocumentFromString("{ \"matrix[0][2].id\": \"02\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1].id\": \"1\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[2][0].id\": \"20\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[2][1].id\": \"21\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[2][2].id\": \"22\" }");
     assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     //match doc2
     filterDoc = db.createDocumentFromString("{ \"matrix[0][0].id\": \"2.00\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0][1][0].id\": \"2.010\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0][1][1].id\": \"2.011\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0][1][2].id\": \"2.012\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
-    
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
     filterDoc = db.createDocumentFromString("{ \"matrix[1][0].id\": \"2.10\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][1].id\": \"2.11\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
-    
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
     filterDoc = db.createDocumentFromString("{ \"matrix[2].id\": \"2.2\" }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     //match doc3
     filterDoc = db.createDocumentFromString("{ \"matrix[0].id\": \"3.0\" }");
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][0].id\": \"3.10\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][1].id\": \"3.11\" }");
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][1].value[0][0].id\": \"00\" }");
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][1].value[0][1].id\": \"01\" }");
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][1].value[0][2].id\": \"02\" }");
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     //match doc2
     filterDoc = db.createDocumentFromString("{ \"matrix[1][2][0].value\": {\"$lte\":99} }");
@@ -1119,48 +1318,65 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     assertEquals(key2, cursor.next().getKey());
     assertEquals(false, cursor.hasNext());
-    
+    cursor.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
     filterDoc = db.createDocumentFromString("{ \"matrix[1][2][1].value\": {\"$gt\":100, \"$lt\":102} }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     filterDoc = db.createDocumentFromString("{ \"matrix[1][2][1]\": {\"$exists\":true} }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[1][2][1].value\": {\"$exists\":true} }");
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
     filterDoc = db.createDocumentFromString("{ \"matrix[*][*][*].id\": \"2.011\"}");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0,1,3][0 to 5][*].id\": {\"$startsWith\" : \"2.\"}}");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    // blocked by bug25755119
+    // assertEquals(1, col.find().filter(filterDoc).count());
+    // assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    //bug22571013: index is not used for $startsWith
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
 
     // match doc3
     filterDoc = db.createDocumentFromString("{ \"matrix[*][0, 1, 2].value[*][*].id\": \"01\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
     filterDoc = db.createDocumentFromString("{ \"matrix[0 to 2][*].value[0, 1 to 3][0 to 1, 2].id\": \"02\" }");
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
 
     col.find().remove();
     col.admin().drop();
-    
+
   }
 
   public void testFilter5() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter5(columnSqlType);
+      testFilter5(columnSqlType, false);
+      testFilter5(columnSqlType, true);
     }
   }
 
   // Test $orderby with $query or other top-level query
   // operators (before and after $orderby).
-  private void testFilter6(String contentColumnType) throws Exception {
+  private void testFilter6(String contentColumnType, boolean withIndex) throws Exception {
 
-    OracleCollection col = db.admin().createCollection("testFilter6",
+    OracleCollection col = db.admin().createCollection("testFilter6" + contentColumnType + (withIndex?"Idx":""),
                                                        getClientAssignedKeyMetadata(
                                                        contentColumnType));
+
+    if (withIndex) {
+      String textIndex = createTextIndexSpec("jsonSearchIndex-6");
+      col.admin().createIndex(db.createDocumentFromString(textIndex));
+    }
 
     OracleDocument d;
 
@@ -1178,10 +1394,10 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // Test mixing $orderby with other top-level
     // query operators. We support this for convenience,
     // without requiring an explicit $query operator.
-    f = db.createDocumentFromString( "{\"$or\" : [{\"b\" : 1}," +
-                                                 "{\"b\" : 3}," +
-                                                 "{\"b\" : 4}]," +
-                                     "\"$orderby\" : { \"b\" : 1 }}");
+    f = db.createDocumentFromString("{\"$or\" : [{\"b\" : 1}," +
+                                                "{\"b\" : 3}," +
+                                                "{\"b\" : 4}]," +
+                                    "\"$orderby\" : { \"b\" : 1 }}");
 
     OracleCursor c = col.find().filter(f).getCursor();
 
@@ -1190,6 +1406,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     checkKey("4", c);
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f), withIndex);
 
     // Same, but the $orderby is positioned first.
     f = db.createDocumentFromString("{\"$orderby\" : { \"b\" : 1 }," +
@@ -1204,6 +1421,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     checkKey("4", c);
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f), withIndex);
 
     // Same as above, but using an explicit $query
     f = db.createDocumentFromString("{\"$query\" : {\"$or\" : [{\"b\" : 1}," +
@@ -1218,23 +1436,28 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     checkKey("4", c);
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f), withIndex);
 
     col.admin().drop();
   }
 
   public void testFilter6() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter6(columnSqlType);
+      testFilter6(columnSqlType, false);
+      testFilter6(columnSqlType, true);
     }
   }
 
   // Test $ge and $le (synonyms for $gte and $lte)
-  private void testFilter7(String contentColumnType) throws Exception {
+  private void testFilter7(String contentColumnType, boolean withIndex) throws Exception {
 
-    OracleCollection col = db.admin().createCollection("testFilter7",
+    OracleCollection col = db.admin().createCollection("testFilter7" + contentColumnType + (withIndex?"Idx":""),
                                                        getClientAssignedKeyMetadata(
                                                        contentColumnType));
 
+    if (withIndex) {
+      col.admin().createJsonSearchIndex("jsonSearchIndex-7");
+    }
 
     OracleDocument d;
 
@@ -1259,6 +1482,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     checkKey("3", c);
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f), withIndex);
 
     // Test $ge (a synonym for $gte)
     f = db.createDocumentFromString( "{\"b\" : { \"$ge\" : 3 }," +
@@ -1271,22 +1495,28 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     checkKey("6", c);
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f), withIndex);
 
     col.admin().drop();
   }
 
   public void testFilter7() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter7(columnSqlType);
+      testFilter7(columnSqlType, false);
+      testFilter7(columnSqlType, true);
     }
   }
 
   // Test $ge and $le (synonyms for $gte and $lte)
-  private void testFilter8(String contentColumnType) throws Exception {
+  private void testFilter8(String contentColumnType, boolean withIndex) throws Exception {
 
-    OracleCollection col = db.admin().createCollection("testFilter8",
+    OracleCollection col = db.admin().createCollection("testFilter8" + contentColumnType + (withIndex?"Idx":""),
                                                        getClientAssignedKeyMetadata(
                                                        contentColumnType));
+
+    if (withIndex) {
+      col.admin().createJsonSearchIndex("jsonSearchIndex-8");
+    }
 
     OracleDocument d;
 
@@ -1304,31 +1534,81 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     col.insert(d);
 
     OracleDocument f;
+    HashSet<String> expectedKeys = new HashSet<String>();
 
     // "true" string constant
-    checkSingleResult("{\"b\" : \"true\"}", "1", col);
+    // ### in 12.2 "true" is a synonym for true.
+    //     Change of behavior wrt 12.1.
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      checkSingleResult("{\"b\" : \"true\"}", "1", col, withIndex);
+    }
+    else {
+      f = db.createDocumentFromString("{\"b\" : \"true\"}");
+      expectedKeys.clear();
+      expectedKeys.add("1");
+      expectedKeys.add("4");
+      checkKeys(col, f, expectedKeys);
+      chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
+    }
 
     // "false" string constant
-    checkSingleResult("{\"b\" : \"false\"}", "2", col);
+    // ### in 12.2 "false" is a synonym for false.
+    //     Change of behavior wrt 12.1.
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      checkSingleResult("{\"b\" : \"false\"}", "2", col, withIndex);
+    }
+    else {
+      f = db.createDocumentFromString("{\"b\" : \"false\"}");
+      expectedKeys.clear();
+      expectedKeys.add("2");
+      expectedKeys.add("5");
+      checkKeys(col, f, expectedKeys);
+      chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
+    }
 
     // "null" string constant
-    checkSingleResult("{\"b\" : \"null\"}", "3", col);
+    checkSingleResult("{\"b\" : \"null\"}", "3", col, withIndex);
 
     // true constant
-    checkSingleResult("{\"b\" : true}", "4", col);
+    // ### in 12.2 "true" is a synonym for true.
+    //     Change of behavior wrt 12.1.
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      checkSingleResult("{\"b\" : true}", "4", col, withIndex);
+    }
+    else {
+      f = db.createDocumentFromString("{\"b\" : true}");
+      expectedKeys.clear();
+      expectedKeys.add("1");
+      expectedKeys.add("4");
+      checkKeys(col, f, expectedKeys);
+      chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
+    }
 
     // false constant
-    checkSingleResult("{\"b\" : false}", "5", col);
+    // ### in 12.2 "false" is a synonym for false.
+    //     Change of behavior wrt 12.1.
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      checkSingleResult("{\"b\" : false}", "5", col, withIndex);
+    }
+    else {
+      f = db.createDocumentFromString("{\"b\" : false}");
+      expectedKeys.clear();
+      expectedKeys.add("2");
+      expectedKeys.add("5");
+      checkKeys(col, f, expectedKeys);
+      chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
+    }
 
     // null constant
-    checkSingleResult("{\"b\" : null}", "6", col);
+    checkSingleResult("{\"b\" : null}", "6", col, withIndex);
 
     col.admin().drop();
   }
 
   private void checkSingleResult(String filter,
                                  String expectedKey,
-                                 OracleCollection col)
+                                 OracleCollection col,
+                                 boolean withIndex)
                                  throws OracleException, IOException
   {
     OracleDocument f = db.createDocumentFromString(filter);
@@ -1341,6 +1621,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     c.close();
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
   }
 
   private void checkKey(String expectedKey, OracleCursor c) 
@@ -1359,7 +1640,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   {
     OracleDocument mDoc = null;
 
-    if (contentColumnType.equalsIgnoreCase("BLOB")) {
+    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
       mDoc = client.createMetadataBuilder().
                     keyColumnAssignmentMethod("CLIENT").
                     contentColumnType("BLOB").
@@ -1375,13 +1656,178 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   public void testFilter8() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      testFilter8(columnSqlType);
+      testFilter8(columnSqlType, false);
+      testFilter8(columnSqlType, true);
     }
   }
 
-  public void testFilterWithSkipAndLimit() throws Exception {
+  //QBE test about single operator, which is used to verify index is used for each operator
+  private void testFilter9(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
 
-    OracleCollection col = db.admin().createCollection("testFilterSL",
+    mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    OracleCollection col = db.admin().createCollection("testFilter9" +
+                                                       contentColumnType +
+                                                       (withIndex?"Idx":""), mDoc);
+
+    if (withIndex)
+      col.admin().createJsonSearchIndex("jsonSearchIndex-9");
+
+    String docStr1 =
+      "{\"PONumber\":1, \"BookName\":\"Livestock Game\", \"Author\":\"Amy Stewart\", \"CustomerReivews\":2, \"Price\":11.37}";
+
+    String docStr2 =
+      "{\"PONumber\":2, \"BookName\":\"Fashioning Apollo\", \"Author\":[\"Jamie\", \"Charles\"], \"Price\":14.7}";
+
+    String docStr3 =
+      "{\"PONumber\":3, \"BookName\":\"Moon Shot\", \"Author\":\"Scott\", \"Price\":20.2}";
+
+    String key1, key2, key3;
+    OracleDocument doc, filterDoc;
+    doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+    key1 = doc.getKey();
+    doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+    key2 = doc.getKey();
+    doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+    key3 = doc.getKey();
+    assertEquals(3, col.find().count());
+
+    // test $exists (match doc1)
+    filterDoc = db.createDocumentFromString("{ \"CustomerReivews\" : {\"$exists\" : true} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $eq (match doc2)
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$eq\" : \"Fashioning Apollo\"} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
+    // test when $eq is omitted
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : \"Fashioning Apollo\" }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
+    // test $ne
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$ne\" : \"Fashioning Apollo\"} }");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    // negations is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test "$orderby" (match doc3, 2, 1)
+    filterDoc = db.createDocumentFromString("{ \"$orderby\":{\"PONumber\":-1} }");
+    assertEquals(3, col.find().filter(filterDoc).count());
+    OracleCursor cursor = col.find().filter(filterDoc).getCursor();
+    assertEquals(key3, cursor.next().getKey());
+    assertEquals(key2, cursor.next().getKey());
+    assertEquals(key1, cursor.next().getKey());
+    assertEquals(false, cursor.hasNext());
+    cursor.close();
+    // $orderby is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $gt (match doc3)
+    filterDoc = db.createDocumentFromString("{ \"Price\" : {\"$gt\" : 20} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $lt (match doc1)
+    filterDoc = db.createDocumentFromString("{ \"Price\" : {\"$lt\" : 12} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $gte (match doc3)
+    filterDoc = db.createDocumentFromString("{ \"Price\" : {\"$gte\" : 20.2} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $lte (match doc1)
+    filterDoc = db.createDocumentFromString("{ \"Price\" : {\"$lte\" : 11.37} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $regex
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$regex\" : \"Moon.*\"} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    //bug#: index should support "%abc" (i.e. start with) or "abc%" (i.e. end with) kind of regular expression.
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$regex\" : \".*Shot\"} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    //bug#: index should support "%abc" (i.e. start with) or "abc%" (i.e. end with) kind of regular expression.
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $in
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$in\" : [\"Moon Shot\", \"Flight Theory\"]} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    //bug2257103: $in is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $nin
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$nin\" : [\"Moon Shot\", \"Livestock Game\"]} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    // negation is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $all
+    filterDoc = db.createDocumentFromString("{ \"Author\" : {\"$all\" : [\"Jamie\", \"Charles\"]} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $startsWith
+    filterDoc = db.createDocumentFromString("{ \"BookName\" : {\"$startsWith\" : \"Livestock\"} }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    // bug22571013:$startsWith is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $not
+    filterDoc = db.createDocumentFromString("{ \"Price\": {\"$not\" : {\"$eq\" : 20.2}} }");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    // negations is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    // test $and
+    filterDoc = db.createDocumentFromString("{ \"$and\":[ {\"PONumber\":1}, {\"Price\":11.37} ] }");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+
+    // test $or
+    filterDoc = db.createDocumentFromString("{ \"$or\":[ {\"PONumber\":1}, {\"Price\":20.2} ] }");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    //$nor
+    filterDoc = db.createDocumentFromString("{ \"$nor\":[ {\"PONumber\":1}, {\"Price\":20.2} ] }");
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    // negations is not supported by index
+    //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
+
+    col.find().remove();
+    col.admin().drop();
+  }
+
+  public void testFilter9() throws Exception {
+    for (String columnSqlType : columnSqlTypes) {
+      testFilter9(columnSqlType, false);
+      testFilter9(columnSqlType, true);
+    }
+  }
+
+  private void testFilterWithSkipAndLimit(boolean withIndex) throws Exception {
+
+    OracleCollection col = db.admin().createCollection("testFilterSL" + (withIndex?"Idx":""),
             getClientAssignedKeyMetadata("BLOB"));
 
     OracleDocument d;
@@ -1393,9 +1839,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       col.insert(d);
     }
 
+    if (withIndex)
+      col.admin().createJsonSearchIndex("jsonSearchIndex");
+
     OracleDocument f = db.createDocumentFromString(
                           "{\"num\" : {\"$gte\" : 12}}");
 
+    chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(f).skip(10).limit(10), withIndex);
     OracleCursor c = col.find().filter(f).skip(10).limit(10).getCursor();
 
     OracleDocument r;
@@ -1414,6 +1864,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     c.close();
+    col.admin().drop();
+  }
+
+  public void testFilterWithSkipAndLimit() throws Exception {
+    testFilterWithSkipAndLimit(false);
+    testFilterWithSkipAndLimit(true);
   }
 
   public void testFilterNeg2() throws Exception {
