@@ -59,6 +59,7 @@
             use="true"
             author="false"
             failonerror="true"
+            executable="${javac.java.home}/bin/javadoc"
             />
     </target>
 
