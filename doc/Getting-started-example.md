@@ -165,7 +165,7 @@ To compile and run SODA Java applications, you need the following jars:
 
 *    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/soda-for-java/releases).
 
-Compile and run testSODA.java, making sure the necessary jars are in the classpath. For example, assuming you're in the directory where the jars are located, do:
+Compile and run testSODA.java, making sure the necessary jars are in the classpath. JDK 6 or above is required. For example, assuming you're in the directory where the jars are located, do:
 
     javac -classpath "orajsoda.jar" testSODA.java
     java -classpath "orajsoda-version.jar:ojdbc6.jar:javax.json-1.0.4.jar:." testSODA
