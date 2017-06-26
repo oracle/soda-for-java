@@ -16,10 +16,7 @@
 
     <property environment="env"/>
 
-    <!-- Compiles with JDK6 to be compatible with an 12.1.0.2 RDBMS deployment -->
-    <property name="javac.java.home" value="${env.JAVA6HOME}"/>
-    <property name="ojdbc6.jar" value="${env.SODA_OJDBC6_JAR}"/>
-    <property name="jsr353.jar" value="${env.SODA_JSR353_JAR}"/>
+    <property name="javac.java.home" value="${env.JAVA_HOME}"/>
     
     <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
     <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.0.4.jar"/>
@@ -36,8 +33,6 @@
     <property name="resources.dir" value="${basedir}/resources"/>  
 
     <path id="xdk.json.lib.import">
-        <pathelement location="${ojdbc6.jar}"/>
-        <pathelement location="${jsr353.jar}"/>
         <fileset dir="${xdk.lib.dir}" includes="*.jar"/>
     </path>
         
