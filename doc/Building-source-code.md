@@ -25,7 +25,7 @@ option to not use Ivy, and to download the dependencies manually (see "Building 
 
 The following instructions require setting various environment variables. They assume you're on Linux, and using the C Shell (csh). On other OSes, you would set environment variables analogously, using a mechanism appropriate for your specific operating system.
  
-Set the JAVA_HOME environment variable to the JDK install directory. At a minimum, JDK 6 is required. For example, assuming JDK 8 is installed under /jdk8, and you're using the C Shell (csh) on Linux, do:
+Set the JAVA_HOME environment variable to the JDK install directory. At a minimum, JDK 6 is required. For example, assuming you are using JDK 8 installed under /jdk8, and you're using the C Shell (csh) on Linux, do:
 
     setenv JAVA_HOME /jdk8 
 
