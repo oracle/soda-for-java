@@ -14,7 +14,7 @@ JDBC jars for use with JDK 6, 7, and 8 ship with Oracle Database 12.1.0.2 and ca
 Make sure you pick either ojdbc6.jar (for use with JDK 6), or ojdbc7.jar (for use with JDK 7 and 8),
 out of the different flavors available. 
 
-If you are using JDK 8 and Oracle Database 12.2.0.1, you can alternatively download ojdbc8.jar from here:
+If you are using JDK 8 and planning to run SODA with Oracle Database 12.2.0.1, you can alternatively download ojdbc8.jar from here:
 
 http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html
 
