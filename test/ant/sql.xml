@@ -21,7 +21,6 @@
       <sequential>
           <echo message="Running @{infile}  See @{outfile}"/>        
           <exec 
-            dir="@{sqlplus.dir}" 
             executable="@{sqlplus.dir}/sqlplus" 
             output="@{outfile}"
             inputstring="exit">
