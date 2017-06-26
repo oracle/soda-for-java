@@ -15,6 +15,7 @@ Make sure you pick either ojdbc6.jar (for use with JDK 6), or ojdbc7.jar (for us
 out of the different flavors available. 
 
 If you are using JDK 8 and Oracle Database 12.2.0.1, you can alternatively use ojdbc8.jar from here:
+
 http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html
 
 Copy the downloaded JDBC jar to the /lib directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file).
