@@ -76,15 +76,15 @@ public class testSODA {
         // users and the number of friends they have
         OracleDocument doc1 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Alex\", \"friends\" : \"50\" }");
+            "{ \"name\" : \"Alex\", \"friends\" : 50 }");
 
         OracleDocument doc2 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Mia\", \"friends\" : \"300\" }");
+            "{ \"name\" : \"Mia\", \"friends\" : 300 }");
 
         OracleDocument doc3 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Gloria\", \"friends\" : \"399\" }");
+            "{ \"name\" : \"Gloria\", \"friends\" : 399 }");
 
         // Insert the documents into a collection, one-by-one.
         // The result documents contain auto-generated 
@@ -174,12 +174,12 @@ You should see the following output:
 
     * Retrieving the first document by its key *
 
-    { "name" : "Alex", "friends" : "50" }
+    { "name" : "Alex", "friends" : 50 }
 
     * Retrieving documents representing users with at least 300 friends *
 
-    { "name" : "Mia", "friends" : "300" }
-    { "name" : "Gloria", "friends" : "399" }
+    { "name" : "Mia", "friends" : 300 }
+    { "name" : "Gloria", "friends" : 399 }
 
 This example illustrates two ways of retrieving documents from the collection: by using unique document keys, or by using QBEs. To find all users with at least 300 friends, the following QBE was used in the code above:
 
