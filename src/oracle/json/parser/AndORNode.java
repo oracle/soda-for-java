@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -406,6 +406,13 @@ class AndORNode
       {
         // We only allow the $id clause at the outermost level
         QueryException.throwSyntaxException(QueryMessage.EX_ID_MISPLACED);
+      }
+
+      if (tree.hasKeys())
+      {
+        // Disallow multiple $id conditions
+        QueryException.throwSyntaxException(
+                       QueryMessage.EX_MULTIPLE_ID_CLAUSES);
       }
 
       // Special processing for $ID since it is a separate where clause

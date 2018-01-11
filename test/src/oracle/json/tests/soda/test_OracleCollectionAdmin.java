@@ -1584,7 +1584,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
                                         "\"dataguiDE\" : \"On\"," +
                                         "\"sEARch_on\" : \"tEXt\"," +
-                                        "\"languagE\" : \"simP-chinese\"}");
+                                        "\"languagE\" : \"simPlified_chinese\"}");
     col.admin().createIndex(index);
     col.admin().dropIndex("jsonSearchIndex1");
 

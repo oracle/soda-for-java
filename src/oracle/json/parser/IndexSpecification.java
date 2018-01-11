@@ -270,7 +270,6 @@ public class IndexSpecification
                     "fields.datatype", "STRING", ftype.toString());
 
                 dtype = ((JsonString)fval).getString();
-                  System.out.println ("DTYPE IS " + dtype);
               }
               else if (fkey.equalsIgnoreCase("maxLength"))
               {
@@ -600,9 +599,9 @@ public class IndexSpecification
       lexer = "ROMANIAN";
     else if (language.equalsIgnoreCase("german"))
       lexer = "GERMAN";
-    else if (language.equalsIgnoreCase("simp-chinese"))
+    else if (language.equalsIgnoreCase("simplified_chinese"))
       lexer = "SIMPLIFIED_CHINESE";
-    else if (language.equalsIgnoreCase("trad-chinese"))
+    else if (language.equalsIgnoreCase("traditional_chinese"))
       lexer = "TRADITIONAL_CHINESE";
     else if (language.equalsIgnoreCase("korean"))
       lexer = "KOREAN";
@@ -610,7 +609,7 @@ public class IndexSpecification
       lexer = "SWEDISH";
     else if (language.equalsIgnoreCase("japanese"))
       lexer = "JAPANESE";
-    else if (language.equalsIgnoreCase("german-din"))
+    else if (language.equalsIgnoreCase("german_din"))
       lexer = "GERMAN_DIN";
     else if (language.equalsIgnoreCase("norwegian"))
       lexer = "NORWEGIAN";
@@ -622,13 +621,13 @@ public class IndexSpecification
       lexer = "SPANISH";
     else if (language.equalsIgnoreCase("italian"))
       lexer = "ITALIAN";
-    else if (language.equalsIgnoreCase("brazilian-portuguese"))
+    else if (language.equalsIgnoreCase("brazilian_portuguese"))
       lexer = "BRAZILIAN_PORTUGUESE";
-    else if (language.equalsIgnoreCase("french-canadian"))
+    else if (language.equalsIgnoreCase("french_canadian"))
       lexer = "FRENCH_CANADIAN";
-    else if (language.equalsIgnoreCase("latin-american-spanish"))
+    else if (language.equalsIgnoreCase("latin_american_spanish"))
       lexer = "LATIN_AMERICAN_SPANISH";
-    else if (language.equalsIgnoreCase("mexican-spanish"))
+    else if (language.equalsIgnoreCase("mexican_spanish"))
       lexer = "MEXICAN_SPANISH";
 
     /* Not supported with new lexer: arabic, nynorsk, bokmal, persian, croatian,

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,6 +19,7 @@ import oracle.soda.OracleCollection;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleOperationBuilder;
 
+import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
 import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 import oracle.soda.rdbms.impl.OracleDocumentImpl;
 
@@ -1291,4 +1292,71 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
   }
 
+  private void testKeyLikeWithColumnType(String columnType) throws Exception {
+    OracleDocument mDoc = client.createMetadataBuilder()
+      .keyColumnAssignmentMethod("CLIENT").keyColumnType(columnType).build();
+
+    OracleCollection col = dbAdmin.createCollection("testKeyLike" + columnType, mDoc);
+
+    OracleDocument doc = db.createDocumentFromString("1mykeyA", "{\"name\" : \"Alex\"}");
+    col.insert(doc);
+
+    doc = db.createDocumentFromString("2mykeyB", "{\"name\" : \"Mark\"}");
+    col.insert(doc);
+
+    assertEquals(col.find().keyLike("_mykey_", null).count(), 2);
+
+    assertEquals(col.find().keyLike("_mykeyA", null).count(), 1);
+
+    doc = col.find().keyLike("_mykeyA", null).getOne();
+
+    assertEquals(doc.getContentAsString(), "{\"name\" : \"Alex\"}");
+
+    doc = db.createDocumentFromString("3mykey_C", "{\"name\" : \"Zev\"}");
+    col.insert(doc);
+
+    assertEquals(col.find().keyLike("3mykey!_C", "!").count(), 1);
+
+    doc = col.find().keyLike("3mykey!_C", "!").getOne();
+
+    assertEquals(doc.getContentAsString(), "{\"name\" : \"Zev\"}");
+  }
+
+  public void testKeyLike() throws Exception {
+    testKeyLikeWithColumnType("VARCHAR2");
+    testKeyLikeWithColumnType("NVARCHAR2");
+  }
+
+  private void testKeyLikeWithColumnTypeNeg(String assignMethod,
+                                            String columnType) throws Exception {
+    OracleRDBMSMetadataBuilder b = client.createMetadataBuilder()
+      .keyColumnAssignmentMethod(assignMethod).keyColumnType(columnType);
+
+    if (assignMethod.equals("SEQUENCE"))
+    {
+      b.keyColumnSequenceName("testKeyLike" + assignMethod + columnType + "Seq");
+    }
+
+    OracleDocument mDoc = b.build();
+    OracleCollection col = dbAdmin.createCollection("testKeyLike" + assignMethod + columnType, 
+                                                     mDoc);
+
+    try {
+      col.find().keyLike("_mykey_", null).getCursor();
+      fail("No exception for unsupported kyeLike");
+    }
+    catch(OracleException e) {
+      assertEquals(e.getMessage(), "keyLike() can only be specified" +
+        " for a collection with client-assigned keys and a varchar2 key column type.");
+    }
+  }
+
+  public void testKeyLikeNeg() throws Exception {
+    testKeyLikeWithColumnTypeNeg("UUID", "RAW");
+    testKeyLikeWithColumnTypeNeg("UUID", "NUMBER");
+    testKeyLikeWithColumnTypeNeg("GUID", "RAW");
+    testKeyLikeWithColumnTypeNeg("GUID", "NUMBER");
+    testKeyLikeWithColumnTypeNeg("SEQUENCE", "RAW");
+    testKeyLikeWithColumnTypeNeg("SEQUENCE", "NUMBER");
+  }
 }

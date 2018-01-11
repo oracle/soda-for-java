@@ -10,9 +10,9 @@ the patch, including the post-installation step.
 The test framework is located in the /test directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file). It's built with JUnit and driven by Ant. The actual Java test files are in /test/src/oracle/json/tests/soda. To configure the database instance and the test framework, follow these steps (note that some of them require sysdba access).
 
 **(1)** Build the source code (which includes downloading SODA dependencies), as described
-in [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA6HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
+in [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA_HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
 
-* ojdbc6.jar (the JDBC jar that ships with Oracle database version 12.1.0.2)
+* JDBC jar
 * javax.json-1.0.4.jar (JSR353 jar)
 * junit-3.8.1.jar (JUnit jar)
 * orajsoda.jar (SODA Java jar)

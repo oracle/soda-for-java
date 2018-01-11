@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -15,8 +15,8 @@ import java.util.Set;
  * {@link OracleCollection#find()}.
  * <p>
  *
- * <code>OracleOperationBuilder</code> provides two types of methods: terminal and
- * non-terminal.
+ * <code>OracleOperationBuilder</code> provides two types of methods: terminal 
+ * and non-terminal.
  *
  * <p>
  * Non-terminal methods are used to build up the operation in a chainable
@@ -35,12 +35,13 @@ import java.util.Set;
  *     OracleCollection ocollection = ...;
  *     OracleCursor ocursor = ocollection.find().keys(keys).skip(25).limit(25).getCursor();
  * </pre>
- * In this example, {@link #keys(Set)}, {@link #skip(long)}, and {@link #limit(int)}
- * are non-terminal methods that specify parts of the operation.
- * More concretely, they specify that documents matching provided keys
- * should be returned, the first 25 of these results should be skipped, and the number of results
- * should be limited to 25. The {@link #getCursor()} method is a terminal, so it
- * builds the operation from the specified parts and executes it.
+ * In this example, {@link #keys(Set)}, {@link #skip(long)},
+ * and {@link #limit(int)} are non-terminal methods that specify parts
+ * of the operation. More concretely, they specify that documents matching
+ * provided keys should be returned, the first 25 of these results should be
+ * skipped,and the number of results should be limited to 25. The
+ * {@link #getCursor()} method is a terminal, so it builds the operation
+ * from the specified parts and executes it.
  */
 public interface OracleOperationBuilder
 {
@@ -50,8 +51,19 @@ public interface OracleOperationBuilder
    * This is a non-terminal method, and, as such, it does
    * not cause operation execution.
    * <p>
-   * If this method is specified in conjunction with {@link #key(String)},
-   * the last one specified will win, and the other will be ignored.
+   * If this method is invoked in conjunction with {@link #key(String)}
+   * or {@link #keyLike(String, String)} on the same {@code OracleOperationBuilder}
+   * object, then only the method specified last will be honored,
+   * and the preceding ones will be ignored.
+   * <p>
+   *
+   * Example:
+   * <pre>
+   * {@code
+   * // key(...) is ignored, because keys(...) is set last.
+   * col.find().key(...).keys(...).getCursor();
+   * }
+   * </pre>
    *
    * @param keys                   a set of keys. Cannot be <code>null</code>
    * @return                       <code>OracleOperationBuilder</code>
@@ -61,21 +73,88 @@ public interface OracleOperationBuilder
   public OracleOperationBuilder keys(Set<String> keys)
     throws OracleException;
 
-
   /**
    * Finds a document with a specific key.
    * <p>
    * This is a non-terminal method, and, as such, it does
    * not cause operation execution.
    * <p>
-   * If this method is specified in conjunction with {@link #keys(Set)}, the
-   * last one specified will win, and the other will be ignored.
+   * If this method is invoked in conjunction with {@link #keys(Set)}
+   * or {@link #keyLike(String, String)} on the same {@code OracleOperationBuilder}
+   * object, then only the method specified last will be honored,
+   * and the preceding ones will be ignored.
+   * <p>
+   * Example:
+   * <pre>
+   * {@code
+   * // keys(...) is ignored, because key(...) is set last.
+   * col.find().keys(...).key(...).getOne();
+   * }
+   * </pre>
    *
    * @param key                    the key. Cannot be <code>null</code>
    * @return                       <code>OracleOperationBuilder</code>
    * @throws OracleException       if the key is <code>null</code>
    */
   public OracleOperationBuilder key(String key)
+    throws OracleException;
+
+  /**
+   * Finds documents with keys matching a supplied {@code pattern}.
+   * <p>
+   * This method is only supported on collections with client-assigned
+   * keys, and a key column of type varchar2.
+   * <p>
+   * The {@code pattern} can contain special pattern matching characters _ (which
+   * matches any single character), or % (which matches zero or more characters).
+   * The {@code escape} parameter allows specifying an optional escape character, which
+   * is used to test for literal occurences of the special pattern matching characters
+   * _ and %. 
+   * <p>
+   * Example 1: passing "%mykey%" for {@code pattern}, and {@code null} for {@code escape}
+   * will match documents with keys containing the string "mykey", e.g "mykey20" or "20mykey".
+   * <p>
+   * Example 2: passing "key_1" for {@code pattern}, and {@code null} for {@code escape}
+   * will match documents with keys that start with the string "key" followed by any single
+   * character, followed by "1", e.g. "keyA1" or "keyB1".
+   * <p>
+   * Example 3: passing "mykey!_1" for {@code pattern}, and ! for {@code escape}
+   * will match a document with key "mykey_1". Since the _ is escaped in the supplied
+   * pattern, it is matched literally.
+   * <p>
+   * The {@code pattern} and {@code escape} character parameters correspond
+   * to the pattern and escape of the Oracle SQL 
+   * <a href="https://docs.oracle.com/database/121/SQLRF/conditions007.htm#SQLRF52141">LIKE condition.</a>
+   * <p>
+   * This is a non-terminal method, and, as such, it does
+   * not cause operation execution.
+   * <p>
+   * If this method is invoked in conjunction with {@link #key(String)}
+   * or {@link #keys(Set)} on the same {@code OracleOperationBuilder}
+   * object, then only the method specified last will be honored,
+   * and the preceding ones will be ignored.
+   * <p>
+   * Example:
+   * <pre>
+   * {@code
+   * // keys(...) is ignored, because keyLike(...) is set last.
+   * col.find().keys(...).keyLike(...).getCursor();
+   * }
+   * </pre>
+   *
+   * @param pattern                pattern. Can contain special pattern matching characters
+   *                               _ and %. Cannot be <code>null</code>
+   * @param escape                 escape character. Can be <code>null</code>,
+   *                               which means no escape character will be used
+   * @return                       <code>OracleOperationBuilder</code>
+   * @throws OracleException       if pattern is <code>null</code>, or if
+   *                               this method cannot be invoked on a particular
+   *                               collection, because the latter doesn't have client-assigned
+   *                               keys of type varchar2.
+   *
+   * @see <a href="https://docs.oracle.com/database/121/SQLRF/conditions007.htm#SQLRF52141">LIKE Condition</a>
+   */
+  public OracleOperationBuilder keyLike(String pattern, String escape)
     throws OracleException;
 
   /**

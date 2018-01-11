@@ -76,15 +76,15 @@ public class testSODA {
         // users and the number of friends they have
         OracleDocument doc1 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Alex\", \"friends\" : \"50\" }");
+            "{ \"name\" : \"Alex\", \"friends\" : 50 }");
 
         OracleDocument doc2 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Mia\", \"friends\" : \"300\" }");
+            "{ \"name\" : \"Mia\", \"friends\" : 300 }");
 
         OracleDocument doc3 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Gloria\", \"friends\" : \"399\" }");
+            "{ \"name\" : \"Gloria\", \"friends\" : 399 }");
 
         // Insert the documents into a collection, one-by-one.
         // The result documents contain auto-generated 
@@ -159,27 +159,27 @@ Copy and paste this code into a file called testSODA.java. Then modify the "url"
 
 To compile and run SODA Java applications, you need the following jars:
 
-*    ojdbc6.jar that ships with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
+*    ojdbc6.jar (for use with JDK 6) or ojdbc7.jar (for use with JDK 7 or 8) that ship with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html). These jars will work with Oracle Database 12.1.0.2 and above. Alternatively, if you are using JDK 8 and Oracle Database 12.2.0.1 and above, you can use ojdbc8.jar from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html). 
 
 *    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
 *    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/soda-for-java/releases).
 
-Compile and run testSODA.java, making sure the necessary jars are in the classpath. For example, assuming you're in the directory where the jars are located, do:
+Compile and run testSODA.java, making sure the necessary jars are in the classpath. JDK 6 or above is required. For example, assuming you're in the directory where the jars are located, and you are using ojdbc7.jar, do:
 
     javac -classpath "orajsoda.jar" testSODA.java
-    java -classpath "orajsoda-version.jar:ojdbc6.jar:javax.json-1.0.4.jar:." testSODA
+    java -classpath "orajsoda-version.jar:ojdbc7.jar:javax.json-1.0.4.jar:." testSODA
 
 You should see the following output:
 
     * Retrieving the first document by its key *
 
-    { "name" : "Alex", "friends" : "50" }
+    { "name" : "Alex", "friends" : 50 }
 
     * Retrieving documents representing users with at least 300 friends *
 
-    { "name" : "Mia", "friends" : "300" }
-    { "name" : "Gloria", "friends" : "399" }
+    { "name" : "Mia", "friends" : 300 }
+    { "name" : "Gloria", "friends" : 399 }
 
 This example illustrates two ways of retrieving documents from the collection: by using unique document keys, or by using QBEs. To find all users with at least 300 friends, the following QBE was used in the code above:
 

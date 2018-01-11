@@ -87,6 +87,7 @@ public final class QueryMessage extends Message
   static final QueryMessage EX_BAD_SEARCH_ON_VALUE           = create(5061);
   static final QueryMessage EX_MUST_NOT_BE_LITERAL           = create(5062);
   static final QueryMessage EX_SQL_JSON_MISPLACED            = create(5063);
+  static final QueryMessage EX_MULTIPLE_ID_CLAUSES           = create(5064);
 
   /************************************************************************/
   /* Note: 5500 to 5999 range is reserved for SQL phase "runtime" errors */

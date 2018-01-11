@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -91,6 +91,7 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_NULL_ON_EMPTY_NOT_SUPPORTED        = create(2049);
   static final SODAMessage EX_INVALID_PARAM_121_INDEX            = create(2050);
   static final SODAMessage EX_OPERATION_REQUIRES_TXN_MANAGEMENT  = create(2051);
+  static final SODAMessage EX_KEY_LIKE_CANNOT_BE_USED = create(2052);
 
 
   /****************************************************************************/

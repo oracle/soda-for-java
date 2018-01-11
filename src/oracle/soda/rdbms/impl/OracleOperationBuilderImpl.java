@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -62,6 +62,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
     Logger.getLogger(OracleOperationBuilderImpl.class.getName());
 
   private String key;
+
+  private String likePattern;
+  private String likeEscape;
 
   // If isStartKey is true, the value of the key
   // will be stored in the 'key' variable above
@@ -214,6 +217,39 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
       return_sql_json.appendValue(key);
   }
 
+  public OracleOperationBuilder keyLike(String pattern, String escape) 
+    throws OracleException
+  {
+    if (pattern == null)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
+                                    "pattern");
+    }
+
+    if ((options.keyAssignmentMethod != CollectionDescriptor.KEY_ASSIGN_CLIENT) ||
+        ((options.keyDataType != CollectionDescriptor.STRING_KEY) &&
+         (options.keyDataType != CollectionDescriptor.NCHAR_KEY)))
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_KEY_LIKE_CANNOT_BE_USED);
+    }
+
+    likePattern = pattern;
+    likeEscape = escape;
+
+    // Override key(), keys(), and startKey() settings
+    key = null;
+
+    keys = null;
+
+    isStartKey = false;
+
+    ascending = true;
+
+    startKeyInclusive = true;
+
+    return this;
+  }
+
   public OracleOperationBuilder key(String key) throws OracleException
   {
     this.key = key;
@@ -226,7 +262,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
 
     maxNumberOfKeysCheck();
 
-    // Override keys() and startKey() settings
+    // Override keyLike(), keys() and startKey() settings
+    likePattern = null;
+
+    likeEscape = null;
+
     keys = null;
 
     isStartKey = false;
@@ -262,7 +302,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
 
     maxNumberOfKeysCheck();
 
-    // Override key() and startKey() settings
+    // Override key(), keyLike(), and startKey() settings
+    likePattern = null;
+
+    likeEscape = null;
+
     key = null;
 
     isStartKey = false;
@@ -654,6 +698,19 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
                                                         canonicalKey);
         if (return_query)
           recordNamedBind("key", canonicalKey);
+      }
+      else if (likePattern != null)
+      {
+        ((TableCollectionImpl)collection).bindKeyColumn(stmt,
+          ++parameterIndex,
+          likePattern);
+
+        if (likeEscape != null)
+        {
+          ((TableCollectionImpl)collection).bindKeyColumn(stmt,
+            ++parameterIndex,
+            likeEscape);
+        }
       }
       else if (keys != null)
       {
@@ -1401,6 +1458,21 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
 
       append = true;
     }
+    else if (likePattern != null)
+    {
+      sb.append("(");
+      appendColumn(sb, options.keyColumnName);
+
+      sb.append(" LIKE ?");
+
+      if (likeEscape != null)
+      {
+        sb.append(" ESCAPE ?");
+      }
+
+      append = true;
+
+    }
     else if (keys != null)
     {
       sb.append(" (");
@@ -1545,6 +1617,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder
   {
     if (key != null ||
         keys != null ||
+        likePattern != null ||
         since != null ||
         until != null ||
         version != null ||

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <!-- 
- Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2014, 2015, 2016, 2017 Oracle and/or its affiliates. All rights reserved.
 
    DESCRIPTION
      The main ant build for json.
@@ -59,6 +59,7 @@
             use="true"
             author="false"
             failonerror="true"
+            executable="${javac.java.home}/bin/javadoc"
             />
     </target>
 
@@ -76,7 +77,7 @@
             <fileset dir="${classes.dir}"/>
             <fileset dir="${resources.dir}"/>
             <manifest>
-                <attribute name="Repository-Id" value="XDK_SODA1.0.4A_LINUX.X64_RELEASE GITHUB"/>
+                <attribute name="Repository-Id" value="XDK_SODA1.0.5A_LINUX.X64_RELEASE GITHUB"/>
             </manifest>
         </jar>
     </target>

@@ -1,30 +1,33 @@
 # Building the source code
 
-SODA is built using Ant with Ivy. Make sure you have ant installed and configured.
+SODA is built using Ant with Ivy. Make sure you have Ant 1.9 or above installed and configured.
 It's not required that Ivy is installed - as long as you have an internet connection, 
 the build process will download Ivy and use it to download SODA dependencies. 
 
 The only SODA dependency that must be manually downloaded is the Oracle JDBC jar that ships with 
-the 12.1.0.2 release of the Oracle database.
+the Oracle database.
 
-The JDBC jar can be downloaded from here:
+JDBC jars for use with JDK 6, 7, and 8 ship with Oracle Database 12.1.0.2 and can be downloaded from here:
 
 [http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html)
 
-Make sure you pick ojdbc6.jar, out of the different flavors available. 
+Make sure you pick either ojdbc6.jar (for use with JDK 6), or ojdbc7.jar (for use with JDK 7 and 8),
+out of the different flavors available. 
 
-Copy the downloaded ojdbc6.jar to the /lib directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file).
+If you are using JDK 8 and planning to run SODA with Oracle Database 12.2.0.1, you can alternatively download ojdbc8.jar from here:
+
+http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html
+
+Copy the downloaded JDBC jar to the /lib directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file).
 
 Other dependencies will be automatically downloaded by Ivy. You also have the
 option to not use Ivy, and to download the dependencies manually (see "Building without Ivy" below).
 
 The following instructions require setting various environment variables. They assume you're on Linux, and using the C Shell (csh). On other OSes, you would set environment variables analogously, using a mechanism appropriate for your specific operating system.
  
-SODA builds using Java 6. Set the JAVA6HOME environment
-variable to the JDK install directory. For example, assuming JDK6 is installed
-under /jdk6, and you're using the C Shell (csh) on Linux, do:
+Set the JAVA_HOME environment variable to the JDK install directory. At a minimum, JDK 6 is required. For example, assuming you are using JDK 8 installed under /jdk8, and you're using the C Shell (csh) on Linux, do:
 
-    setenv JAVA6HOME /jdk6 
+    setenv JAVA_HOME /jdk8 
 
 ### Building with Ivy
 
