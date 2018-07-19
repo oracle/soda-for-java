@@ -54,13 +54,13 @@ Note: do not use a quoted (case-sensitive) account name.
 **(5)** Provide the database instance connection info to the SODA test framework. Edit datasource.properties
 located in /test/datasource.properties, under the top level SODA directory. The file has the following contents:
 
-    UserName=myaccount
-    Password=mypassword
-    Server=myoraclehost
-    Port=myoracleport
-    DBName=mysid
+    UserName=account
+    Password=password
+    Server=oracleHost
+    Port=oraclePort
+    DBName=oracleServiceName
 
-Replace myaccount and mypassword with the account name and password created in step 3. Replace myoraclehost and myoracleport with the host name and port on which the Oracle instance is running/listening. Replace mydbname with the Oracle SID.
+Replace myaccount and mypassword with the account name and password created in step 3. Replace myoraclehost and myoracleport with the host name and port on which the Oracle instance is running/listening. Replace mydbname with the Oracle Service Name.
 
 **(6)** Supply the directory where sqlplus is located to the test framework by setting the SODA_SQLPLUS environment variable. For example, assume sqlplus is located in /oracle/software/bin. Then, assuming you're on Linux and using the C shell (csh) do:
 
