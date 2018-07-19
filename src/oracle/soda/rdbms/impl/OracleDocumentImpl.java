@@ -1,3 +1,5 @@
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/OracleDocumentImpl.java /main/21 2015/12/24 12:19:36 morgiyan Exp $ */
+
 /* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
 All rights reserved.*/
 
@@ -38,8 +40,10 @@ import javax.activation.MimeType;
 import javax.activation.MimeTypeParseException;
 
 import oracle.json.logging.OracleLog;
+
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
+
 import oracle.json.util.ByteArray;
 import oracle.json.util.JsonByteArray;
 import oracle.json.util.LimitedInputStream;
@@ -269,6 +273,11 @@ public class OracleDocumentImpl implements OracleDocument
     }
   }
 
+  void setContent(byte[] content)
+  {
+     payload = content;
+  }
+
   private boolean isJSON(String ctype)
   {
     if (ctype == null)
@@ -310,6 +319,11 @@ public class OracleDocumentImpl implements OracleDocument
   void setContentType(String contentType)
   {
     this.ctype = contentType;
+  }
+
+  void setContentTypeJson()
+  {
+    setContentType(APPLICATION_JSON);
   }
 
   void setCreatedOn(String createdOn)

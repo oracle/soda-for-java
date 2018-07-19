@@ -77,7 +77,7 @@
             <fileset dir="${classes.dir}"/>
             <fileset dir="${resources.dir}"/>
             <manifest>
-                <attribute name="Repository-Id" value="XDK_SODA1.0.5A_LINUX.X64_RELEASE GITHUB"/>
+                <attribute name="Repository-Id" value="XDK_SODA1.1.0_LINUX.X64_RELEASE"/>
             </manifest>
         </jar>
     </target>

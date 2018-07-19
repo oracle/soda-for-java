@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -159,4 +159,39 @@ public interface OracleDatabaseAdmin
    */
   public Connection getConnection();
 
+  /**
+   * Drop all collections associated with this {@link OracleDatabase}.
+   * <p>
+   * Caution: using the force option (i.e. setting the force parameter
+   * to true), will delete all collection metadata for the given
+   * {@link OracleDatabase}. In the case of Oracle RDBMS, an {@link OracleDatabase}
+   * is associated with a schema (i.e. user), so all collection metadata
+   * for that schema will be deleted. However, the underlying tables or
+   * views of these collections might not be deleted (if, for
+   * example, they have uncommitted writes). This intended use
+   * of the force option is to clear collection metadadata for the
+   * given schema, in preparation for dropping the whole schema.
+   * Otherwise, the <code>force</code> parameter should be set
+   * to <code>false</code>. With this option, collections will
+   * not be dropped if they have underlying tables or views which
+   * could not be dropped.
+   * 
+   * @param force                  if set to <code>true</code> all collection
+   *                               metadata will be erased, even if some of the
+   *                               collections could not be dropped. Normally
+   *                               this parameter should be set to <code>false</code>,
+   *                               so that no danling tables or views backing
+   *                               collections are left in the database.
+   *                               The intended use of this option is to clear
+   *                               the collection metadata in preparation for
+   *                               dropping the whole schema.
+   * @return                       A list of {@link OracleDropResult}. Each of 
+   *                               these results contains the name of a 
+   *                               collection that could not be dropped and 
+   *                               a corresponding encountered error
+   *                               message. 
+   * @throws OracleException       if fatal error is encountered.
+   */
+  public List<OracleDropResult> dropCollections(boolean force)
+    throws OracleException;
 }

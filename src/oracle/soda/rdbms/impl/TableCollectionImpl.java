@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -38,8 +38,10 @@ import java.util.List;
 import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OraclePreparedStatement;
 import oracle.jdbc.OracleTypes;
+import oracle.jdbc.OracleConnection;
 
 import oracle.json.logging.OracleLog;
+
 import oracle.sql.Datum;
 
 import oracle.json.common.LobInputStream;
@@ -587,7 +589,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
       catch (IOException e)
       {
-        nbytes = -1L; // ### Will never actually occur
+        nbytes = -1L; // Will never actually occur
       }
     }
 
@@ -597,8 +599,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
     else if (nbytes > 0)
       stmt.setBlob(num, dataStream, nbytes);
     // ### Not clear what kind of binding this will use under the covers:
-    //     LOB or stream. If it uses LOB, is stream binding (i.e. setBinaryStream())
-    //     a better option?
+    //     LOB or stream. If it uses LOB, is stream binding
+    //     (i.e. setBinaryStream()) a better option?
     else // Total length is unknown
       stmt.setBlob(num, dataStream);
   }
@@ -644,6 +646,13 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     switch (options.keyAssignmentMethod)
     {
+    case CollectionDescriptor.KEY_ASSIGN_IDENTITY:
+      if (disableReturning)
+      {
+        // We can't support IDENTITY columns if RETURNING doesn't work
+        throw SODAUtils.makeException(SODAMessage.EX_IDENTITY_ASSIGN_RETURNING);
+      }
+      break;
     case CollectionDescriptor.KEY_ASSIGN_SEQUENCE:
       // Forced to select the key immediately
       if (disableReturning)
@@ -880,6 +889,114 @@ public class TableCollectionImpl extends OracleCollectionImpl
   }
 
   /**
+   * Insert a set of rows into a collection one row at a time
+   * This code is for any conditions for which we cannot use JDBC batching.
+   *  - IDENTITY key assignment method (because we have to use RETURNING)
+   */
+  private List<OracleDocument> insertRows(Iterator<OracleDocument> documents)
+    throws OracleBatchException
+  {
+    int rowCount = 0;
+
+    if (!documents.hasNext())
+      return(EMPTY_LIST);
+
+    ArrayList<OracleDocument> results = new ArrayList<OracleDocument>();
+
+    boolean manageTransaction = false;
+
+    try
+    {
+      // If the connection is in auto-commit mode,
+      // turn it off and take over transaction management
+      // (we will commit if all statements succeed,
+      // or rollback if any fail, and finally
+      // restore the auto-commit mode).
+      if (conn.getAutoCommit() == true)
+      {
+        if (avoidTxnManagement)
+        {
+          throw SODAUtils.makeBatchException(SODAMessage.EX_OPERATION_REQUIRES_TXN_MANAGEMENT,
+            rowCount,
+            "insertAndGet");
+        }
+
+        conn.setAutoCommit(false);
+        manageTransaction = true;
+      }
+
+      while (documents.hasNext())
+      {
+        OracleDocument document = documents.next();
+
+        if (document == null)
+        {
+          OracleBatchException bE = SODAUtils.makeBatchException(
+              SODAMessage.EX_ITERATOR_RETURNED_NULL_ELEMENT,
+              rowCount,
+              "documents",
+              rowCount);
+
+          throw bE;
+        }
+
+        if (document.getKey() != null &&
+            options.keyAssignmentMethod != CollectionDescriptor.KEY_ASSIGN_CLIENT)
+        {
+          OracleBatchException bE = SODAUtils.makeBatchException(
+              SODAMessage.EX_ITERATOR_RETURNED_DOC_WITH_KEY,
+              rowCount,
+              "documents",
+              rowCount);
+
+          throw bE;
+        }
+
+        document = insertAndGet(document);
+
+        if (document == null)
+        {
+          throw SODAUtils.makeBatchException(SODAMessage.EX_INSERT_FAILED,
+                                             rowCount, options.uriName);
+        }
+
+        results.add(document);
+
+        ++rowCount;
+      }
+    }
+    catch (OracleException e)
+    {
+      OracleBatchException bE = convertToOracleBatchException(e,
+                                                              rowCount,
+                                                              null);
+
+      bE.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                          manageTransaction,
+                                                          false));
+
+      throw bE;
+    }
+    catch (SQLException e)
+    {
+      OracleBatchException bE = SODAUtils.makeBatchExceptionWithSQLText(e,
+                                                                        rowCount,
+                                                                        null);
+
+      bE.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                          manageTransaction,
+                                                          false));
+
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.toString());
+
+      throw bE;
+    }
+
+    return(results);
+  }
+
+  /**
    * Insert a set of rows into a collection.
    */
   public List<OracleDocument> insertAndGet(Iterator<OracleDocument> documents)
@@ -912,6 +1029,15 @@ public class TableCollectionImpl extends OracleCollectionImpl
     if (!documents.hasNext())
       return(EMPTY_LIST);
 
+    //
+    // Any conditions incompatible with batching need to use the
+    // row-at-a-time method. The IDENTITY key assignment method
+    // requires use of the RETURNING clause, we can't pre-fetch
+    // sequence values and drive them in from JDBC.
+    //
+    if (options.keyAssignmentMethod == CollectionDescriptor.KEY_ASSIGN_IDENTITY)
+      return(insertRows(documents));
+
     ArrayList<OracleDocument> results = new ArrayList<OracleDocument>();
 
     OraclePreparedStatement stmt = null;
@@ -935,6 +1061,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
             rowCount,
             "insertAndGet");
         }
+
         conn.setAutoCommit(false);
         manageTransaction = true;
       }
@@ -983,7 +1110,16 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         switch (options.keyAssignmentMethod)
         {
+        case CollectionDescriptor.KEY_ASSIGN_IDENTITY:
+          // ### We can't support IDENTITY columns with JDBC batching
+          // ### In theory this code is now unreachable?
+          throw SODAUtils.makeException(SODAMessage.EX_IDENTITY_ASSIGN_RETURNING);
         case CollectionDescriptor.KEY_ASSIGN_SEQUENCE:
+          // ### Ideally if we knew it was a large batch we could
+          // ### pass a quantity hint to nextSequenceValue() to
+          // ### reduce the number of round trips. Unfortunately we
+          // ### don't have a good way to know that from the Iterator
+          // ### interface.
           key = Long.toString(this.nextSequenceValue());
           break;
         case CollectionDescriptor.KEY_ASSIGN_GUID:
@@ -1091,7 +1227,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                                               rowCount,
                                                               sqltext);
 
-      bE.setNextException(completeTxnAndRestoreAutoCommit(manageTransaction,
+      bE.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                          manageTransaction,
                                                           false));
       throw bE;
     }
@@ -1122,7 +1259,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                                                         count,
                                                                         sqltext);
 
-      bE.setNextException(completeTxnAndRestoreAutoCommit(manageTransaction,
+      bE.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                          manageTransaction,
                                                           false));
 
       if (OracleLog.isLoggingEnabled())
@@ -1131,14 +1269,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
     catch (RuntimeException e)
     {
-      completeTxnAndRestoreAutoCommit(manageTransaction, false);
+      completeTxnAndRestoreAutoCommit(conn, manageTransaction, false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
       throw e;
     }
     catch (Error e)
     {
-      completeTxnAndRestoreAutoCommit(manageTransaction, false);
+      completeTxnAndRestoreAutoCommit(conn, manageTransaction, false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
       throw e;
@@ -1152,7 +1290,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
     }
 
-    OracleException e = completeTxnAndRestoreAutoCommit(manageTransaction, true);
+    OracleException e = completeTxnAndRestoreAutoCommit(conn, manageTransaction, true);
 
     if (e != null)
     {
@@ -1177,6 +1315,9 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     if (cause != null && cause instanceof SQLException)
     {
+      // ### What if sqlText is null?
+      // ### Internally this creates an object that implements SQLTextCarrier
+      // ### which may be wrong if the caller doesn't have any sqlText.
       batchException = SODAUtils.makeBatchExceptionWithSQLText(cause,
                                                                processedRowCount,
                                                                sqlText);
@@ -1189,8 +1330,9 @@ public class TableCollectionImpl extends OracleCollectionImpl
     return batchException;
   }
 
-  private OracleException completeTxnAndRestoreAutoCommit(boolean manageTransaction,
-                                                          boolean commit)
+  static OracleException completeTxnAndRestoreAutoCommit(OracleConnection conn,
+                                                         boolean manageTransaction,
+                                                         boolean commit)
   {
     OracleException oe = null;
 
@@ -1272,6 +1414,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
           throw SODAUtils.makeException(SODAMessage.EX_OPERATION_REQUIRES_TXN_MANAGEMENT,
                                         "save");
         }
+
         conn.setAutoCommit(false);
         manageTransaction = true;
       }
@@ -1302,7 +1445,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         case CollectionDescriptor.CLOB_CONTENT:
           sdata = stringFromBytes(data);
-          setPayloadClob(stmt, ++num, sdata);
+          setPayloadClobWorkaround(stmt, ++num, sdata);
           break;
 
         case CollectionDescriptor.NCHAR_CONTENT:
@@ -1320,14 +1463,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
           break;
 
         case CollectionDescriptor.BLOB_CONTENT:
-          // ### There's a bug in JDBC when merge statement is used with setBytes()
-          //     and BLOB column. This work-around uses LOB binding which is slow
-          //     (is streaming binding a better alternative?)
-          ((OraclePreparedStatement)stmt).setBytesForBlob(++num, data);
-
-          // ### Another version of the work-around.
-          // stmt.setBlob(++num, new ByteArrayInputStream(data), (long)data.length);
-
+          setPayloadBlobWorkaround(stmt, ++num, data);
           break;
 
         default:
@@ -1374,7 +1510,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
           break;
 
         case CollectionDescriptor.CLOB_CONTENT:
-          setPayloadClob(stmt, ++num, sdata);
+          setPayloadClobWorkaround(stmt, ++num, sdata);
           break;
 
         case CollectionDescriptor.NCHAR_CONTENT:
@@ -1390,14 +1526,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
           break;
 
         case CollectionDescriptor.BLOB_CONTENT:
-          // ### There's a bug in JDBC when merge statement is used with setBytes()
-          //     and BLOB column. This work-around uses LOB binding which is slow
-          //     (is streaming binding a better alternative?)
-          ((OraclePreparedStatement)stmt).setBytesForBlob(++num, data);
-
-          // ### Another version of the work-around.
-          // stmt.setBlob(++num, new ByteArrayInputStream(data), (long)data.length);
-
+          setPayloadBlobWorkaround(stmt, ++num, data);
           break;
 
         default:
@@ -1495,15 +1624,17 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
     catch (OracleException e)
     {
-      e.setNextException(completeTxnAndRestoreAutoCommit(manageTransaction,
-              false));
+      e.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                         manageTransaction,
+                                                         false));
       throw(e);
     }
     catch (SQLException e)
     {
       OracleException oE = SODAUtils.makeExceptionWithSQLText(e, sqltext);
 
-      oE.setNextException(completeTxnAndRestoreAutoCommit(manageTransaction,
+      oE.setNextException(completeTxnAndRestoreAutoCommit(conn,
+                                                          manageTransaction,
                                                           false));
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
@@ -1511,14 +1642,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
     catch (RuntimeException e)
     {
-      completeTxnAndRestoreAutoCommit(manageTransaction, false);
+      completeTxnAndRestoreAutoCommit(conn, manageTransaction, false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
       throw(e);
     }
     catch (Error e)
     {
-      completeTxnAndRestoreAutoCommit(manageTransaction, false);
+      completeTxnAndRestoreAutoCommit(conn, manageTransaction, false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
       throw(e);
@@ -1532,7 +1663,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
     }
 
-    OracleException e = completeTxnAndRestoreAutoCommit(manageTransaction, true);
+    OracleException e = completeTxnAndRestoreAutoCommit(conn, manageTransaction, true);
 
     if (e != null)
     {
@@ -1764,24 +1895,38 @@ public class TableCollectionImpl extends OracleCollectionImpl
   ** in a memory cache. When the cache is exhausted, a new set of
   ** IDs is fetched from the database in a single round trip.
   */
-
   private static final int SEQUENCE_BATCH_SIZE = 10;
-  private final long[] seqCache = new long[SEQUENCE_BATCH_SIZE];
-  private       int    seqCachePos = SEQUENCE_BATCH_SIZE;
+
+  private final long[] seqCache = new long[BATCH_MAX_SIZE];
+  private       int    seqCacheAvail = 0;
+  private       int    seqCachePos = 0;
+
+  private long nextSequenceValue(int quantity)
+    throws OracleException
+  {
+    if (seqCacheAvail == 0)
+      fetchSequence(quantity);
+    --seqCacheAvail;
+    return(seqCache[seqCachePos++]);
+  }
 
   private long nextSequenceValue()
     throws OracleException
   {
-    if (seqCachePos >= seqCache.length)
-      fetchSequence();
-    return(seqCache[seqCachePos++]);
+    return(nextSequenceValue(SEQUENCE_BATCH_SIZE));
   }
 
   private String buildSequenceFetch()
   {
-    // ### This builds a PL/SQL call to fill the batch.
-    //     Might it be more efficient to build a SELECT
-    //     statement along the lines of:
+    // This builds a PL/SQL call to fill the batch.
+    // This allows a flexible number of sequence values to
+    // be returned in a single round-trip. However, it does
+    // involve the extra cost of going through the PL/SQL
+    // layer, and it requires a correct-sized array bind
+    // for the return.
+    //
+    // It might be more efficient to build a SELECT statement
+    // along these lines:
     //
     //    select SEQ.NEXTVAL from DUAL
     //    union all
@@ -1789,6 +1934,12 @@ public class TableCollectionImpl extends OracleCollectionImpl
     //    union all
     //    select SEQ.NEXTVAL from DUAL
     //     ...
+    //
+    // This would bypass PL/SQL, and allow the caller to
+    // array-fetch the results in whatever sized chunks are
+    // appropriate. One drawback: it would probably defeat
+    // server-side cursor sharing.
+    // 
 
     sb.setLength(0);
     sb.append("declare\n");
@@ -1809,13 +1960,23 @@ public class TableCollectionImpl extends OracleCollectionImpl
     return(sb.toString());
   }
 
-  private void fetchSequence()
+  private void fetchSequence(int quantity)
     throws OracleException
   {
     OracleCallableStatement stmt = null;
     String sqltext = buildSequenceFetch();
 
-    int count = SEQUENCE_BATCH_SIZE;
+    //
+    // <quantity> is a hint about how many are likely to be needed
+    // We will fetch no fewer than SEQUENCE_BATCH_SIZE nor more than
+    // the size of the cache array (currently == BATCH_MAX_SIZE).
+    //
+    int count = quantity;
+
+    if (count > seqCache.length)
+      count = seqCache.length;
+    else if (count < SEQUENCE_BATCH_SIZE)
+      count = SEQUENCE_BATCH_SIZE;
 
     try
     {
@@ -1832,12 +1993,12 @@ public class TableCollectionImpl extends OracleCollectionImpl
       vcarr = stmt.getOraclePlsqlIndexTable(2);
 
       count = vcarr.length;
-      if (count > 0)
-      {
-        for (int i = 0; i < count; ++i)
-          seqCache[i] = vcarr[i].longValue();
-      }
-      seqCachePos -= count;
+
+      for (int i = 0; i < count; ++i)
+        seqCache[i] = vcarr[i].longValue();
+
+      seqCachePos = 0;
+      seqCacheAvail = count;
 
       stmt.close();
       stmt = null;
@@ -1920,11 +2081,59 @@ public class TableCollectionImpl extends OracleCollectionImpl
     throws SQLException
   {
     if (internalDriver)
-      stmt.setBlob(parameterIndex,
-                   new ByteArrayInputStream(data),
-                   (long)data.length);
+      // Previously we used setBlob, but setBytesForBlob(...) appears to be 
+      // faster, especially for data  under 32k. According to JDBC folks, 
+      // this is because direct bind path is used in that case (despite the
+      // fact the jdbc 12c doc says that setBytesForBlob always uses the lob
+      // binding path, see
+      // https://docs.oracle.com/database/121/JJDBC/oralob.htm#JJDBC28537).
+      // For larger data (tried up to and including 80k), it's still slightly
+      // faster (the fact that it doesn't require ByteArrayInputStream(...)
+      // wrapper might contribute).
+      //
+      //stmt.setBlob(parameterIndex,
+      //             new ByteArrayInputStream(data),
+      //             (long)data.length);
+      //
+      ((OraclePreparedStatement)stmt).setBytesForBlob(parameterIndex, data);
     else
       stmt.setBytes(parameterIndex, data);
+  }
+
+  // ### There's a JDBC bug (23053015) which manifests when 
+  //     merge statement is used with setBytes() and BLOB column,
+  //     and data length exceeds 32767. This method uses
+  //     the alternative setBytesForBlob(...).
+  //
+  //     If the bug is fixed and this workaround is removed in the future,
+  //     make sure setBytesForBlob is still used with internal driver,
+  //     at least when data.length exceeds 32767. The internal driver 
+  //     doesn't support setBytes(...) for data exceeding 32767 bytes. 
+  private void setPayloadBlobWorkaround(PreparedStatement stmt,
+                                        int parameterIndex,
+                                        byte[] data)
+    throws SQLException
+  {
+    ((OraclePreparedStatement)stmt).setBytesForBlob(parameterIndex, data);
+  }
+
+  // setStringForClob(...) appears to be faster for smaller sizes of data,
+  // especially for data under 32k. According to JDBC folks, this is because
+  // direct bind path is used in that case (despite the fact the jdbc 12c 
+  // doc says that setStringForClob always uses the lob binding path,
+  // see https://docs.oracle.com/database/121/JJDBC/oralob.htm#JJDBC28537).
+  //
+  // ### For some of the larger cases, i.e. 80k, setClob() performs much better 
+  // than setStringForClob (reason is not clear). This anamoly is specific to
+  // internal driver.
+  private void setClobInternalDriver(PreparedStatement stmt,
+                                        int parameterIndex,
+                                        String str) throws SQLException
+  {
+    if (str.length() < 32767)
+      ((OraclePreparedStatement)stmt).setStringForClob(parameterIndex, str);
+    else
+      stmt.setClob(parameterIndex, new StringReader(str));
   }
 
   private void setPayloadClob(PreparedStatement stmt,
@@ -1933,9 +2142,33 @@ public class TableCollectionImpl extends OracleCollectionImpl
     throws SQLException
   {
     if (internalDriver)
-      stmt.setClob(parameterIndex, new StringReader(str));
+      setClobInternalDriver(stmt, parameterIndex, str);
     else
       stmt.setString(parameterIndex, str);
+  }
+
+  // ### There's a JDBC bug (23053015) which occurs when 
+  //     merge statement is used with setString() and CLOB column,
+  //     and string length exceeds 32767. This method uses
+  //     the alternative setStringForClob(...).
+  //
+  //     If the bug is fixed and this workaround is removed in the future,
+  //     make sure that setStringForClob/setClob are used with internal 
+  //     driver, when string length exceeds 32767. The internal driver 
+  //     doesn't support setString(...) for data exceeding 32767
+  //     characters (note: JDBC doc is not clear whether this internal
+  //     driver limitation of setString(...) is 32767 bytes or characters.
+  //     Experimentally, however, it seems to be characters).
+  private void setPayloadClobWorkaround(PreparedStatement stmt,
+                                        int parameterIndex,
+                                        String str)
+    throws SQLException
+  {
+     
+    if (internalDriver) 
+       setClobInternalDriver(stmt, parameterIndex, str);
+    else
+      ((OraclePreparedStatement)stmt).setStringForClob(parameterIndex, str);
   }
 
   private void setPayloadNclob(PreparedStatement stmt,

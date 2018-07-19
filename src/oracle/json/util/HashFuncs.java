@@ -16,7 +16,7 @@ All rights reserved.*/
  */
 
 // ### Other functions may be added in the future
-//     In particular it may be useful to produce etags via java.util.zip.CRC32
+//    In particular it may be useful to produce etags via java.util.zip.CRC32
 
 package oracle.json.util;
 

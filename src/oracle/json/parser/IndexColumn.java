@@ -122,7 +122,7 @@ public class IndexColumn extends JsonPath
         sqlType = SQLTYPE_TIMESTAMP;
       else if ((str.equalsIgnoreCase("STRING")) ||
                (str.equalsIgnoreCase("VARCHAR")) ||
-               (str.equalsIgnoreCase("VARCHAR2")))
+               (str.equalsIgnoreCase("VARCHAR2")) )
         sqlType = SQLTYPE_CHAR;
     }
     // Set the SQL type only if a valid type was detected

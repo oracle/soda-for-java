@@ -1,6 +1,7 @@
-/* $Header: xdk/src/java/json/src/oracle/json/parser/FindSpecification.java /main/1 2014/09/25 17:43:15 dmcmahon Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/json/parser/FindSpecification.java /main/7 2017/11/08 18:23:40 dmcmahon Exp $ */
 
-/* Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.*/
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -18,7 +19,7 @@
  */
 
 /**
- *  @version $Header: xdk/src/java/json/src/oracle/json/parser/FindSpecification.java /main/1 2014/09/25 17:43:15 dmcmahon Exp $
+ *  @version $Header: xdk/src/java/json/src/oracle/json/parser/FindSpecification.java /main/7 2017/11/08 18:23:40 dmcmahon Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -48,10 +49,16 @@ import javax.json.stream.JsonParsingException;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 
+import oracle.json.parser.Evaluator;
+import oracle.json.parser.Evaluator.EvaluatorCode;
+
 public class FindSpecification
 {
   private boolean         is_filter  = true;
+  private boolean         need_12_2  = false;
   private String          projection = null;
+  private String          jsonpatch  = null;
+  private String          jsonmerge  = null;
   private HashSet<String> idList     = null;
 
   public FindSpecification(InputStream inp)
@@ -136,12 +143,15 @@ public class FindSpecification
       this.idList.add(key);
   }
 
-  private void findProjection(JsonParser jParser)
+  private void splitDocuments(JsonParser jParser)
     throws QueryException, JsonParsingException, JsonGenerationException
   {
     String        key       = null;
     StringWriter  strWriter = null;
     JsonGenerator generator = null;
+    boolean       isProjection = false;
+    boolean       isPatch = false;
+    boolean       isMerge = false;
 
     int level = 0;
 
@@ -152,11 +162,57 @@ public class FindSpecification
       if (event == JsonParser.Event.KEY_NAME)
       {
         key = jParser.getString();
-        if ((level == 0) && key.equals("$project"))
+
+        if (Evaluator.requires_12_2(key))
+          need_12_2 = true;
+
+        if (level == 0)
         {
-          // This key's decendants form a projection
-          strWriter = new StringWriter();
-          generator = Json.createGenerator(strWriter);
+          if (key.equals("$project"))
+          {
+            // This key's decendants form a projection
+            strWriter = new StringWriter();
+            generator = Json.createGenerator(strWriter);
+            isProjection = true;
+
+            // Cannot combine a projection with a patch or merge
+            if ((jsonpatch != null) || (jsonmerge != null))
+              makeException(QueryMessage.EX_INVALID_PROJECTION);
+
+            key = null;
+          }
+          else if (key.equals("$patch"))
+          {
+            // This key's decendants form a JSON-Patch
+            strWriter = new StringWriter();
+            generator = Json.createGenerator(strWriter);
+            isPatch = true;
+
+            // Cannot combine a patch and merge
+            if (jsonmerge != null)
+              makeException(QueryMessage.EX_INVALID_PATCH);
+            // Cannot combine a projection with a patch
+            if (projection != null)
+              makeException(QueryMessage.EX_INVALID_PROJECTION);
+
+            key = null;
+          }
+          else if (key.equals("$merge"))
+          {
+            // This key's decendants form a JSON-MergePatch
+            strWriter = new StringWriter();
+            generator = Json.createGenerator(strWriter);
+            isMerge = true;
+
+            // Cannot combine a merge and patch
+            if (jsonpatch != null)
+              makeException(QueryMessage.EX_INVALID_PATCH);
+            // Cannot combine a projection with a merge
+            if (projection != null)
+              makeException(QueryMessage.EX_INVALID_PROJECTION);
+
+            key = null;
+          }
         }
         continue;
       }
@@ -175,10 +231,16 @@ public class FindSpecification
       }
 
       //
-      // The $project must be an object
+      // $project must be an object
+      // $patch must be an array
+      // $merge can be an object or array
       //
+
       if (event == JsonParser.Event.START_OBJECT)
       {
+        if ((isPatch) && (level == 0))
+          makeException(QueryMessage.EX_INVALID_PATCH);
+
         if ((key == null) || (level == 0))
           generator.writeStartObject();
         else
@@ -190,11 +252,35 @@ public class FindSpecification
         continue;
       }
 
-      if (level == 0)
-        makeException(QueryMessage.EX_INVALID_PROJECTION);
+      if (event == JsonParser.Event.START_ARRAY)
+      {
+        if ((isProjection) && (level == 0))
+          makeException(QueryMessage.EX_INVALID_PROJECTION);
+
+        if (key == null)
+          generator.writeStartArray();
+        else
+          generator.writeStartArray(key);
+
+        ++level;
+
+        key = null;
+        continue;
+      }
 
       //
-      // These events are part of the $project key
+      // $project, $patch, $merge cannot be scalars
+      //
+      if (level == 0)
+      {
+        if (isProjection)
+          makeException(QueryMessage.EX_INVALID_PROJECTION);
+        else if (isPatch || isMerge)
+          makeException(QueryMessage.EX_INVALID_PATCH);
+      }
+
+      //
+      // These events are part of the $project or $patch or $merge key
       //
 
       if (event == JsonParser.Event.VALUE_STRING) 
@@ -243,14 +329,6 @@ public class FindSpecification
         else
           generator.writeNull();
       }
-      else if (event == JsonParser.Event.START_ARRAY)
-      {
-        ++level;
-        if (key == null)
-          generator.writeStartArray();
-        else
-          generator.writeStartArray(key);
-      }
       else if (event == JsonParser.Event.END_OBJECT)
       {
         --level;
@@ -259,22 +337,35 @@ public class FindSpecification
       else if (event == JsonParser.Event.END_ARRAY)
       {
         --level;
-        generator.writeEnd();  
+        generator.writeEnd();
       }
 
       key = null;
 
-      // If we're back to level 0 this is the end of the projection
+      // If we're back to level 0 this is the end of the projection/patch
       if (level == 0)
       {
         generator.flush();
         generator.close();
 
-        this.projection = strWriter.toString();
+        if (strWriter != null)
+        {
+          if (isProjection)
+            this.projection = strWriter.toString();
+          else if (isPatch)
+            this.jsonpatch  = strWriter.toString();
+          else if (isMerge)
+            this.jsonmerge  = strWriter.toString();
+
+          isProjection = isPatch = isMerge = false;
+        }
+
+        strWriter = null;
+        generator = null;
       }
     }
 
-    // Projection not found
+    // Projection or Patch not found
   }
 
   /**
@@ -285,60 +376,84 @@ public class FindSpecification
   private void parse(InputStream source)
     throws QueryException
   {
-    JsonParser jParser = null;
-    boolean    silent = true;
+    JsonParser     jParser = null;
+    boolean        silent = true;
+    QueryException ex = null;
 
     if (source == null)
-      makeException(QueryMessage.EX_SYNTAX_ERROR); // ### Need better than this
-
-    try
     {
-      jParser = Json.createParser(source);
-
-      // Peek at the first event
-      Event firstEvent = jParser.next();
-
-      if (firstEvent == JsonParser.Event.START_OBJECT)
-      {
-        // See if there is a projection associated with it and if so extract it
-        findProjection(jParser);
-      }
-      else if (firstEvent == JsonParser.Event.START_ARRAY)
-      {
-        // This is a list of keys, extract them
-        findKeys(jParser);
-        is_filter = false;
-      }
-      else
-      {
-        makeException(QueryMessage.EX_SYNTAX_ERROR); // ### Need better than this
-      }
-
-      // Allow an IO exception to be thrown on close
-      silent = false;
+      // ### Need a better error message than this
+      makeException(QueryMessage.EX_SYNTAX_ERROR);
     }
-    catch (JsonException e)
-    {
-      throw new QueryException(QueryMessage.EX_SYNTAX_ERROR.get(), e);
-    }
-    finally
+    else
     {
       try
       {
-        jParser.close();
-        source.close();
+        jParser = Json.createParser(source);
+
+        // Peek at the first event
+        Event firstEvent = jParser.next();
+
+        if (firstEvent == JsonParser.Event.START_OBJECT)
+        {
+          // See if there is a projection or update associated with it
+          // and if so extract them
+          splitDocuments(jParser);
+        }
+        else if (firstEvent == JsonParser.Event.START_ARRAY)
+        {
+          // This is a list of keys, extract them
+          findKeys(jParser);
+          is_filter = false;
+        }
+        else
+        {
+          // ### Need a better error message than this
+          makeException(QueryMessage.EX_SYNTAX_ERROR);
+        }
+
+        // Allow an IO exception to be thrown on close
+        silent = false;
       }
-      catch (IOException e)
+      catch (JsonException e)
       {
-        if (!silent)
-          throw(new QueryException(QueryMessage.EX_SYNTAX_ERROR.get(), e));
+        ex = new QueryException(QueryMessage.EX_SYNTAX_ERROR.get(), e);
+      }
+      finally
+      {
+        try
+        {
+          jParser.close();
+          source.close();
+        }
+        catch (IOException e)
+        {
+          if (!silent)
+            ex = new QueryException(QueryMessage.EX_SYNTAX_ERROR.get(), e);
+        }
       }
     }
+
+    if (ex != null)
+      throw ex;
   }
 
+  /**
+   * Returns true if this specification is a QBE,
+   * false otherwise (e.g. an array of keys).
+   */
   public boolean isFilter()
   {
     return(is_filter);
+  }
+
+  /**
+   * Returns false if this is a QBE that uses 12.2 operators,
+   * otherwise returns true.
+   */
+  public boolean requires_12_2()
+  {
+    return(need_12_2);
   }
 
   public HashSet<String> getKeys()
@@ -349,5 +464,15 @@ public class FindSpecification
   public String getProjection()
   {
     return(projection);
+  }
+
+  public String getPatch()
+  {
+    return(jsonpatch);
+  }
+
+  public String getMerge()
+  {
+    return(jsonmerge);
   }
 }

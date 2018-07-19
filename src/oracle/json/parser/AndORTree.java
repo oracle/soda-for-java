@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -21,16 +21,18 @@ package oracle.json.parser;
 import java.io.InputStream;
 import java.lang.NumberFormatException;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.*;
 import java.util.Map.Entry;
 
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.json.JsonNumber;
 import javax.json.JsonObject;
+import javax.json.JsonArray;
 import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
+
+import oracle.json.parser.Evaluator.EvaluatorCode;
 
 public class AndORTree
 {
@@ -42,6 +44,23 @@ public class AndORTree
   private String predChar = "@";
 
   private StringBuilder jsonExists;
+
+  private boolean need_12_2  = false;
+
+  private static final boolean WRAP_TEMPORAL = false;
+
+  // Constant to match fields array under $orderby
+  private static final String FIELDS_ARRAY = "$fields";
+  // Constants to match $orderby flags that control
+  // json_value error clause
+  private static final String LAX = "$lax";
+  private static final String SCALAR_REQ = "$scalarRequired";
+
+  // Error clause constants
+  public static final String ERROR_ON_ERROR = "error on error";
+  public static final String ERROR_ON_ERROR_NULL_ON_EMPTY =
+    "error on error null on empty";
+  public static final String NULL_ON_ERROR = "null on error";
 
   // Private. Use createTree(...) to create AndORTrees.
   private AndORTree()
@@ -84,7 +103,7 @@ public class AndORTree
     return(predChar);
   }
 
-  void addToOrderByArray(Predicate pred)
+  private void addToOrderByArray(Predicate pred)
   {
     orderByArray.add(pred);
   }
@@ -92,6 +111,12 @@ public class AndORTree
   void addToKeys(String item)
   {
     keysSet.add(item);
+  }
+
+  void checkCompatibility(EvaluatorCode code)
+  {
+    if (Evaluator.requires_12_2(code))
+      need_12_2 = true;
   }
 
   String getScalarKey(JsonValue item) throws QueryException
@@ -108,7 +133,7 @@ public class AndORTree
     return null;
   }
 
-  boolean isJSONPrimitive(JsonValue item)
+  static boolean isJSONPrimitive(JsonValue item)
   {
     JsonValue.ValueType valueType = item.getValueType();
     
@@ -120,38 +145,43 @@ public class AndORTree
     return true;
   }
 
-  boolean isJSONArray(JsonValue item)
+  static boolean isJSONArray(JsonValue item)
   {
     if (item.getValueType() == JsonValue.ValueType.ARRAY)
       return true;
     return false;
   }
 
-  boolean isJSONObject(JsonValue item)
+  static boolean isJSONObject(JsonValue item)
   {
     if (item.getValueType() == JsonValue.ValueType.OBJECT)
       return true;
     return false;
   }
 
-  ValueTypePair addToValueArray(JsonValue item, String fieldName)
+  static ValueTypePair createBindValue(JsonValue item, String fieldName,
+                                       boolean allowLiterals)
     throws QueryException
   {
     ValueTypePair newValue = null;
+    boolean       isLiteral = false;
 
-    if (isJSONPrimitive(item))
+    if (AndORTree.isJSONPrimitive(item))
     {
       if (item.getValueType() == JsonValue.ValueType.NULL)
       {
         newValue = new ValueTypePair(ValueTypePair.TYPE_NULL);
+        isLiteral = true;
       }
       else if (item.getValueType() == JsonValue.ValueType.TRUE)
       {
         newValue = new ValueTypePair(true, ValueTypePair.TYPE_BOOLEAN);
+        isLiteral = true;
       }
       else if (item.getValueType() == JsonValue.ValueType.FALSE)
       {
         newValue = new ValueTypePair(false, ValueTypePair.TYPE_BOOLEAN);
+        isLiteral = true;
       }
       else if (item.getValueType() == JsonValue.ValueType.NUMBER)
       {
@@ -170,9 +200,76 @@ public class AndORTree
                                           fieldName);
     }
 
+    if (isLiteral && !allowLiterals)
+      QueryException.throwSyntaxException(QueryMessage.EX_MUST_NOT_BE_LITERAL,
+                                          fieldName);
+
+    return(newValue);
+  }
+
+  ValueTypePair addToValueArray(JsonValue item, String fieldName)
+    throws QueryException
+  {
+    ValueTypePair newValue = AndORTree.createBindValue(item, fieldName, true);
+
+    if (newValue != null)
+    {
+      valueArray.add(newValue);
+    }
+
+    return(newValue);
+  }
+
+  ValueTypePair addToValueArray(String value)
+  {
+    ValueTypePair newValue =
+      new ValueTypePair(value, ValueTypePair.TYPE_STRING);
+
     if (newValue != null)
       valueArray.add(newValue);
+
     return(newValue);
+  }
+
+  // These are used to mark ranges of binds with special type info
+  private int                     bookmark_start = -1;
+  private Evaluator.EvaluatorCode bookmarkedModifier = null;
+
+  /*
+   * Set the start of a modifier mark range
+   */
+  void setValBookmark(Evaluator.EvaluatorCode evc)
+  {
+    if (!WRAP_TEMPORAL) return;
+
+    if (evc != null)
+    {
+      bookmarkedModifier = evc;
+      bookmark_start = getNumVals();
+    }
+  }
+
+  /*
+   * End the marked range and mark all the values
+   */
+  void endValBookmark()
+  {
+    if (bookmarkedModifier != null)
+    {
+      boolean isDate = (bookmarkedModifier == EvaluatorCode.$date);
+      boolean isTimestamp = (bookmarkedModifier == EvaluatorCode.$timestamp);
+      if (isDate || isTimestamp)
+      {
+        for (int i = bookmark_start; i < getNumVals(); ++i)
+        {
+          ValueTypePair vpair = valueArray.get(i);
+          vpair = ValueTypePair.makeTemporal(vpair, isTimestamp);
+          valueArray.set(i, vpair);
+        }
+      }
+      bookmarkedModifier = null;
+      bookmark_start = -1;
+    }
   }
 
   private int numBinds;
@@ -197,7 +294,7 @@ public class AndORTree
     numBinds--;
   }
 
-  private int getNumVals()
+  int getNumVals()
   {
     if (getValueArray() != null)
       return valueArray.size();
@@ -222,6 +319,117 @@ public class AndORTree
     }
 
     return createTree(dl);
+  }
+
+  private static void processArrayOrderBy(AndORTree tree, JsonArray ordby, 
+                                          String errorClause)
+    throws QueryException
+  {
+    JsonArray           fields = ordby;
+    Iterator<JsonValue> fldIter = fields.iterator();
+
+    while (fldIter.hasNext())
+    {
+      JsonValue fld = fldIter.next();
+      checkIfValueIsJsonObject(fld, "$orderby");
+      JsonObject fldobj = (JsonObject)fld;
+
+      String  path = null;
+      String  datatype = null;
+      int     maxLength = 0;
+      boolean ascending = true;
+
+      for (Entry<String, JsonValue> item : fldobj.entrySet())
+      {
+        String    key = item.getKey();
+        JsonValue val = item.getValue();
+
+        if (key.equals("path"))
+        {
+          if (!(val instanceof JsonString))
+            QueryException.throwSyntaxException(QueryMessage.EX_BAD_PROP_TYPE,
+              "$orderby", "path", "string");
+
+          path = ((JsonString)val).getString();
+        }
+        else if (key.equals("datatype"))
+        {
+          if (!(val instanceof JsonString))
+            QueryException.throwSyntaxException(QueryMessage.EX_BAD_PROP_TYPE,
+              "$orderby", "datatype", "string");
+
+          datatype = ((JsonString)val).getString();
+        }
+        else if (key.equals("order"))
+        {
+          if (!(val instanceof JsonString))
+            QueryException.throwSyntaxException(QueryMessage.EX_BAD_PROP_TYPE,
+              "$orderby", "order", "string");
+
+          String tmp = ((JsonString)val).getString();
+
+          if (tmp.equals("asc"))
+            ascending = true;
+          else if (tmp.equals("desc"))
+            ascending = false;
+          else
+            QueryException.throwSyntaxException(
+              QueryMessage.EX_ORDERBY_INVALID_PROP,
+              "order", tmp);
+        }
+        else if (key.equals("maxLength"))
+        {
+          if (!(val instanceof JsonNumber))
+            QueryException.throwSyntaxException(QueryMessage.EX_BAD_PROP_TYPE,
+              "$orderby", "maxLength", "number");
+
+          maxLength = ((JsonNumber)val).intValue();
+          if (maxLength <= 0)
+            QueryException.throwSyntaxException(
+              QueryMessage.EX_ORDERBY_INVALID_PROP,
+              "maxLength", Integer.toString(maxLength));
+        }
+        else // Unknown member of field definition
+        {
+          QueryException.throwSyntaxException(
+            QueryMessage.EX_ORDERBY_UNKNOWN_PROP, key);
+        }
+      }
+
+      // Every field definition must give a path
+      if (path == null)
+      {
+        QueryException.throwSyntaxException(
+          QueryMessage.EX_ORDERBY_PATH_REQUIRED);
+      }
+
+      if (datatype != null)
+      {
+        if (datatype.equalsIgnoreCase("number"))
+          datatype = "number";
+        else if (datatype.equalsIgnoreCase("date"))
+          datatype = "date";
+        else if (datatype.equalsIgnoreCase("datetime"))
+          datatype = "timestamp";
+        else if (datatype.equalsIgnoreCase("string") ||
+                 datatype.equalsIgnoreCase("varchar2") ||
+                 datatype.equalsIgnoreCase("varchar"))
+        {
+          datatype = "varchar2";
+          if (maxLength > 0) datatype += ("("+Integer.toString(maxLength)+")");
+        }
+        else
+          QueryException.throwSyntaxException(
+            QueryMessage.EX_ORDERBY_INVALID_PROP,
+            "datatype", datatype);
+      }
+
+      Predicate pred = new Predicate(new JsonQueryPath(path),
+        (ascending) ? "1" : "-1",
+        datatype,
+        errorClause);
+      tree.addToOrderByArray(pred);
+    }
   }
 
   private static AndORTree createTree(FilterLoader loader)
@@ -260,6 +468,7 @@ public class AndORTree
 
     boolean queryOperatorFound = false;
     boolean basicQBEFound = false;
+    boolean envelopeFound = false;
 
     if (jObj != null)
     {
@@ -267,19 +476,23 @@ public class AndORTree
       {
         entryKey = entry.getKey();
 
-        if (entryKey.equalsIgnoreCase("$project"))
+        if (entryKey.equalsIgnoreCase("$project") ||
+            entryKey.equalsIgnoreCase("$patch")   ||
+            entryKey.equalsIgnoreCase("$merge")     )
         {
+          if (basicQBEFound)
+            QueryException.throwSyntaxException(
+              QueryMessage.EX_ENVELOPE_WITH_OTHER_OPS);
+          envelopeFound = true;
+
           // Ignore this because it was parsed by the upper layer
         }
         else if (entryKey.equalsIgnoreCase("$query"))
         {
-          queryOperatorFound = true;
-
           if (basicQBEFound)
-          {
             QueryException.throwSyntaxException(
               QueryMessage.EX_QUERY_WITH_OTHER_OPS);
-          }
+          queryOperatorFound = envelopeFound = true;
 
           JsonValue value = entry.getValue();
 
@@ -293,90 +506,189 @@ public class AndORTree
         }
         else if (entryKey.equalsIgnoreCase("$orderby"))
         {
-          checkIfValueIsJsonObject(entry.getValue(), "$orderby");
+          if (basicQBEFound)
+            QueryException.throwSyntaxException(
+              QueryMessage.EX_ENVELOPE_WITH_OTHER_OPS);
+          envelopeFound = true;
 
-          // The FilterLoader is responsible for keeping
-          // order-by opaths in the order they were specified,
-          // and delivering them here. As a work-around
-          // for customers that need control over the ordering we will
-          // respect a sort based on the absolute value of the integers.
-          // Thus 1, -2, 3, 4, -5 etc.
+          JsonValue ordby = entry.getValue();
 
-          int ipath;
-          int npaths = loader.getOrderCount();
-          if (npaths <= 0) continue; // Nothing to do
-
-          String[] paths = new String[npaths];
-          int[]    posns = new int[npaths];
-
-          for (ipath = 0; ipath < npaths; ++ipath)
+          if (ordby instanceof JsonObject)
           {
-            String pathString = loader.getOrderPath(ipath);
-            String dirString  = loader.getOrderDirection(ipath);
+            // First attempt to process the form of order-by
+            // with a fields array underneath
+            JsonObject ordbyObj = (JsonObject) ordby;
 
-            if (pathString == null) break; // End of array
+            boolean scalarReq = false;
+            boolean lax = false;
+            JsonArray fieldsArray = null;
+            String unknownKey = null;
+            String keyWithNonBooleanValue = null;
 
-            int ival = 0;
-            // A null means one of the keys had a nonsense value
-            if (dirString != null)
+            for (Map.Entry<String,JsonValue> ordbyEntry : ordbyObj.entrySet())
             {
-              // Otherwise try to parse it as an integer
-              try
+              String ordbyEntryKey = ordbyEntry.getKey();
+              if (ordbyEntryKey.equals(FIELDS_ARRAY))
               {
-                ival = Integer.parseInt(dirString);
+                JsonValue ordbyEntryVal = ordbyEntry.getValue();
+                if (ordbyEntryVal.getValueType().equals(JsonValue.ValueType.ARRAY))
+                {
+                  fieldsArray = (JsonArray)ordbyEntryVal;
+                }
               }
-              catch (NumberFormatException e)
+              else if (ordbyEntryKey.equals(SCALAR_REQ))
               {
-                QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE, pathString, dirString);
+                JsonValue ordbyEntryVal = ordbyEntry.getValue();
+                if (ordbyEntryVal.getValueType().equals(JsonValue.ValueType.TRUE))
+                {
+                  scalarReq = true;
+                }
+                else if (!ordbyEntryVal.getValueType().equals(JsonValue.ValueType.FALSE))
+                {
+                  keyWithNonBooleanValue = ordbyEntryKey;
+                }
               }
-
-              // 0 value is not allowed
-              if (ival == 0)
+              else if (ordbyEntryKey.equals(LAX))
               {
-                QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE, pathString, dirString);
+                JsonValue ordbyEntryVal = ordbyEntry.getValue();
+                if(ordbyEntryVal.getValueType().equals(JsonValue.ValueType.TRUE))
+                {
+                  lax = true;
+                }
+                else if (!ordbyEntryVal.getValueType().equals(
+                          JsonValue.ValueType.FALSE))
+                {
+                  keyWithNonBooleanValue = ordbyEntryKey;
+                }
+              }
+              else
+              {
+                unknownKey = ordbyEntryKey;
               }
             }
-            else
+
+            // Process the order-by with a fields clause.
+            if (fieldsArray != null)
             {
-              QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE2, pathString);
+              // If both scalarRequired and lax flags
+              // were set to true, error out
+              if (scalarReq && lax)
+              {
+                QueryException.throwSyntaxException(QueryMessage.EX_SCALAR_AND_LAX);
+              }
+              else if (keyWithNonBooleanValue != null)
+              {
+                QueryException.throwSyntaxException(QueryMessage.EX_BAD_PROP_TYPE,
+                  "$orderby", keyWithNonBooleanValue, "boolean");
+              }
+              else if (unknownKey != null)
+              {
+                QueryException.throwSyntaxException(QueryMessage.EX_ORDERBY_UNKNOWN_PROP,
+                                                    unknownKey);
+              }
+
+              if (scalarReq)
+              {
+                processArrayOrderBy(tree, fieldsArray, ERROR_ON_ERROR);
+              }
+              else if (lax)
+              {
+                processArrayOrderBy(tree, fieldsArray, NULL_ON_ERROR);
+              }
+              else
+                processArrayOrderBy(tree, fieldsArray, ERROR_ON_ERROR_NULL_ON_EMPTY);
             }
+            // If this else is entered, this means we didn't encounter
+            // the form of order-by with a field array underneath.
+            // So just process it as the most basic order-by (map of
+            // JSON fields/integer pairs).
+            else {
 
-            // Compute absolute value of the position
-            int aval = (ival < 0) ? -ival : ival;
+              // The FilterLoader is responsible for keeping
+              // order-by paths in the order they were specified,
+              // and delivering them here. As a work-around
+              // for customers that need control over the ordering we will
+              // respect a sort based on the absolute value of the integers.
+              // Thus 1, -2, 3, 4, -5 etc.
 
-            // Linear search for insertion point
-            // Ties are broken by inserting the most recent value last
-            int ipos;
-            for (ipos = 0; ipos < ipath; ++ipos)
-            {
-              int bval = posns[ipos];
-              if (bval < 0) bval = -bval;
-              if (aval < bval) break; // Insertion point found
+              int ipath;
+              int npaths = loader.getOrderCount();
+              if (npaths <= 0) continue; // Nothing to do
+
+              String[] paths = new String[npaths];
+              int[] posns = new int[npaths];
+
+              for (ipath = 0; ipath < npaths; ++ipath) {
+                String pathString = loader.getOrderPath(ipath);
+                String dirString = loader.getOrderDirection(ipath);
+
+                if (pathString == null) break; // End of array
+
+                int ival = 0;
+                // A null means one of the keys had a nonsense value
+                if (dirString != null) {
+                  // Otherwise try to parse it as an integer
+                  try {
+                    ival = Integer.parseInt(dirString);
+                  } catch (NumberFormatException e) {
+                    QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE, pathString, dirString);
+                  }
+
+                  // 0 value is not allowed
+                  if (ival == 0) {
+                    QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE, pathString, dirString);
+                  }
+                } else {
+                  QueryException.throwSyntaxException(QueryMessage.EX_BAD_ORDERBY_PATH_VALUE2, pathString);
+                }
+
+                // Compute absolute value of the position
+                int aval = (ival < 0) ? -ival : ival;
+
+                // Linear search for insertion point
+                // Ties are broken by inserting the most recent value last
+                int ipos;
+                for (ipos = 0; ipos < ipath; ++ipos) {
+                  int bval = posns[ipos];
+                  if (bval < 0) bval = -bval;
+                  if (aval < bval) break; // Insertion point found
+                }
+
+                // If necessary shift values to make a slot for this entry
+                // This allows clients to use 1, 2, 3, etc. to forcibly order keys
+                if (ipos < ipath) {
+                  System.arraycopy(paths, ipos, paths, ipos + 1, ipath - ipos);
+                  System.arraycopy(posns, ipos, posns, ipos + 1, ipath - ipos);
+                }
+
+                // Insert the value in the position found
+                paths[ipos] = pathString;
+                posns[ipos] = ival;
+              }
+
+              // Reset path count to actual value found during iteration
+              npaths = ipath;
+
+              // Now insert the key/value pairs in the correct order
+              for (ipath = 0; ipath < npaths; ++ipath) {
+                Predicate pred = new Predicate(new JsonQueryPath(paths[ipath]),
+                  (posns[ipath] < 0) ? "-1" : "1", null,
+                  ERROR_ON_ERROR_NULL_ON_EMPTY);
+                tree.addToOrderByArray(pred);
+              }
             }
-
-            // If necessary shift values to make a slot for this entry
-            // This allows clients to use 1, 2, 3, etc. to forcibly order keys
-            if (ipos < ipath)
-            {
-              System.arraycopy(paths, ipos, paths, ipos + 1, ipath - ipos);
-              System.arraycopy(posns, ipos, posns, ipos + 1, ipath - ipos);
-            }
-
-            // Insert the value in the position found
-            paths[ipos] = pathString;
-            posns[ipos] = ival;
+          }
+          else if (ordby instanceof JsonArray)
+          {
+            // The default errorClause is "error on error null on empty"
+            processArrayOrderBy(tree, (JsonArray) ordby, ERROR_ON_ERROR_NULL_ON_EMPTY);
+          }
+          else
+          {
+              QueryException.throwSyntaxException(QueryMessage.EX_BAD_OP_VALUE,
+                      "$orderby");
           }
 
-          // Reset path count to actual value found during iteration
-          npaths = ipath;
-
-          // Now insert the key/value pairs in the correct order
-          for (ipath = 0; ipath < npaths; ++ipath)
-          {
-            Predicate pred = new Predicate(new JsonQueryPath(paths[ipath]),
-                                           (posns[ipath] < 0) ? "-1" : "1");
-            tree.addToOrderByArray(pred);
-          }
         }
         else
         {
@@ -386,6 +698,11 @@ public class AndORTree
           {
             QueryException.throwSyntaxException(
               QueryMessage.EX_QUERY_WITH_OTHER_OPS);
+          }
+          if (envelopeFound)
+          {
+            QueryException.throwSyntaxException(
+              QueryMessage.EX_ENVELOPE_WITH_OTHER_OPS);
           }
 
           // Otherwise pass the entire JsonElement as the QBE
@@ -450,12 +767,160 @@ public class AndORTree
 
       for (int varNum = 0; varNum < numBinds; ++varNum)
       {
+        ValueTypePair vpair = valueArray.get(varNum);
+
         if (varNum > 0)
-          output.append(" , ");
-        output.append(" ? as \"B");
+          output.append(", ");
+
+        if (vpair.isTimestamp())
+          // This format can consume trailing timezones including a "Z"
+          // but only if it's used with TO_TIMESTAMP_TZ.
+          output.append("TO_TIMESTAMP_TZ(?,'SYYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')");
+        else if (vpair.isDate())
+          // This format includes the time component to reliably consume
+          // Oracle date+time values, but should also work if the time is
+          // not present in the bind variable.
+          output.append("TO_DATE(?,'SYYYY-MM-DD\"T\"HH24:MI:SS')");
+        else
+          output.append("?");
+
+        output.append(" as \"B");
         output.append(Integer.toString(varNum));
         output.append("\"");
       }
     }
+  }
+
+  /*
+   * Append a bind variable for a SQL JSON operator,
+   * with an optional format wrapper
+   */
+  public void appendFormattedBind(StringBuilder sb, ValueTypePair vpair,
+                                  SqlJsonClause clause)
+  {
+    if (clause == null)
+    {
+      sb.append("?");
+      return;
+    }
+
+    //
+    // Determine whether type conversion is needed on the SQL side
+    //
+    boolean isDate      = clause.useDateWrapper();
+    boolean isTimestamp = clause.useTimestampWrapper();
+
+    if (vpair.getType() == ValueTypePair.TYPE_NUMBER)
+    {
+      //
+      // For numbers that have to be coerced to date/time values, the
+      // RDBMS offers Julian dates, which are numbered from 1 AD. Our
+      // pseudo-standard in JSON is millisecond tick count
+      // (milliseconds since 1/1/1970). So do arithmetic on the number
+      // to get it to a fractional Julian date.
+      // ### Ideally we'd find a way to preserve the fractional value,
+      // ### but that would require conversion to seconds since midnight
+      // ### and two bindings. It's too much work, so hopefully this
+      // ### conversion was done in Java and we now have a string, so
+      // ### that this conversion never occurs in practice.
+      //
+      if (isDate || isTimestamp)
+      {
+        sb.append("TO_DATE(((?/1000)+2440588),'J')");
+        return;
+      }
+    }
+    //
+    // Use the ISO standard format mask for strings that have to be
+    // converted to timestamps. This should be the common case for
+    // date/time values. Note that it uses TO_TIMESTAMP_TZ because
+    // otherwise trailing zones cannot be consumed (except Z).
+    //
+    else if (vpair.getType() == ValueTypePair.TYPE_STRING)
+    {
+      if (isDate)
+      {
+        sb.append("TO_DATE(?,'YYYY-MM-DD')");
+        return;
+      }
+      if (isTimestamp)
+      {
+        sb.append("TO_TIMESTAMP_TZ(?,'SYYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')");
+        return;
+      }
+    }
+
+    // For numbers and strings, let the default RDBMS conversion occur
+    // since we don't know which direction the RDBMS will want to convert.
+    // ### This is problematic if the radix character isn't forced via
+    // ### ALTER SESSION.
+
+    sb.append("?");
+  }
+
+  private ArrayList<SqlJsonClause> sjClauses = null;
+
+  void addSqlJsonOperator(SqlJsonClause sjClause)
+  {
+    if (sjClauses == null)
+      sjClauses = new ArrayList<SqlJsonClause>();
+    sjClauses.add(sjClause);
+  }
+
+  public boolean hasSqlJsonClause()
+  {
+    return (sjClauses != null);
+  }
+
+  public List<SqlJsonClause> getSqlJsonOperators()
+  {
+    return sjClauses;
+  }
+
+  private ArrayList<SpatialClause> spatialClauses = null;
+
+  void addSpatialOperator(SpatialClause geo)
+  {
+    if (spatialClauses == null)
+      spatialClauses = new ArrayList<SpatialClause>();
+    spatialClauses.add(geo);
+  }
+
+  public List<SpatialClause> getSpatialOperators()
+  {
+    return spatialClauses;
+  }
+
+  public boolean hasSpatialClause()
+  {
+    return (spatialClauses != null);
+  }
+
+  private ArrayList<ContainsClause> containsClauses = null;
+
+  void addContainsClause(ContainsClause clause)
+  {
+    if (containsClauses == null)
+      containsClauses = new ArrayList<ContainsClause>();
+    containsClauses.add(clause);
+  }
+
+  public List<ContainsClause> getContainsOperators()
+  {
+    return containsClauses;
+  }
+
+  public boolean hasContainsClause()
+  {
+    return (containsClauses != null);
+  }
+
+  /**
+   * Returns false if this is a QBE that uses 12.2 operators,
+   * otherwise returns true.
+   */
+  public boolean requires_12_2()
+  {
+    return(need_12_2);
   }
 }

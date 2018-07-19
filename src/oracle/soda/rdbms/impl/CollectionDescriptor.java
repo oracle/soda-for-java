@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -77,6 +77,7 @@ public class CollectionDescriptor
   static final byte KEY_ASSIGN_UUID     = 2; // From Java UUID
   static final byte KEY_ASSIGN_GUID     = 3; // From SYS_OP_GUID
   static final byte KEY_ASSIGN_SEQUENCE = 4; // From DB sequence
+  static final byte KEY_ASSIGN_IDENTITY = 5; // From DB identity column
 
   static final byte VERSION_NONE       = 0; // Application generated
   static final byte VERSION_TIMESTAMP  = 1; // Precise timestamp
@@ -337,8 +338,10 @@ public class CollectionDescriptor
       return "UUID";
     case KEY_ASSIGN_GUID:
       return "GUID";
-    case KEY_ASSIGN_SEQUENCE: 
+    case KEY_ASSIGN_SEQUENCE:
       return "SEQUENCE";
+    case KEY_ASSIGN_IDENTITY:
+      return "IDENTITY";
     default:
       throw new IllegalStateException();
     }
@@ -1068,7 +1071,7 @@ public class CollectionDescriptor
                                          throws OracleException
     {
       validate();
-      
+
       int keyLength = effectiveKeyLength();      
       int contentLength = effectiveContentLength();
       
@@ -1159,10 +1162,12 @@ public class CollectionDescriptor
       if (keyColumnLength > 0 && !keyTypeSupportsLength(keyColumnType))
         throw SODAUtils.makeException(SODAMessage.EX_KEY_TYPE_BAD_LENGTH);
       
-      // When using GUID or UUID to assign character type key values, the key column length must be 32 or greater
-      if (keyColumnLength > 0 && keyColumnLength < 32 &&
-          (keyAssignmentMethod == KEY_ASSIGN_GUID || keyAssignmentMethod == KEY_ASSIGN_UUID) &&
-          (keyColumnType == STRING_KEY || keyColumnType == NCHAR_KEY))
+      // When using GUID or UUID to assign character type key values,
+      // the key column length must be 32 or greater
+      if ((keyColumnLength > 0) && (keyColumnLength < 32) &&
+          ((keyAssignmentMethod == KEY_ASSIGN_GUID) ||
+           (keyAssignmentMethod == KEY_ASSIGN_UUID)) &&
+          ((keyColumnType == STRING_KEY) || (keyColumnType == NCHAR_KEY)))
         throw SODAUtils.makeException(SODAMessage.EX_KEY_TYPE_BAD_LENGTH2);
       
       // SecureFile LOB settings used with non-LOB type
@@ -1177,16 +1182,18 @@ public class CollectionDescriptor
         throw SODAUtils.makeException(SODAMessage.EX_SECURE_FILE_NOT_LOB, 
                                       contentTypeToString(contentColumnType));
       }
-   
-      // If the assignment method is "SEQUENCE", a key column sequence name must be specified. 
+
+      // If the assignment method is "SEQUENCE",
+      // a key column sequence name must be specified. 
       if (keySequenceName == null && keyAssignmentMethod == KEY_ASSIGN_SEQUENCE)
         throw SODAUtils.makeException(SODAMessage.EX_KEY_COL_SEQ);
 
       // Sets the last-modified index but not the column name
       if (timeIndex != null && timestampColumnName == null)
         throw SODAUtils.makeException(SODAMessage.EX_LAST_MODIFIED_COL);
-      
-      // A version method was specified but the version column name is unspecified.
+
+      // A version method was specified
+      // but the version column name is unspecified.
       if (versionColumnName == null && versioningMethod != VERSION_NONE)
         throw SODAUtils.makeException(SODAMessage.EX_VERSION_METHOD);
       
@@ -1418,6 +1425,7 @@ public class CollectionDescriptor
         throw SODAUtils.makeException(SODAMessage.EX_INVALID_ARG_VALUE, ktype);
       
       this.keyColumnType = type;
+      // Reset dependent fields
       if (keyColumnType == INTEGER_KEY || keyColumnType == RAW_KEY) 
       {
         this.keyColumnLength = 0;
@@ -1451,9 +1459,12 @@ public class CollectionDescriptor
         type = KEY_ASSIGN_UUID;
       else if (method.equalsIgnoreCase("client"))
         type = KEY_ASSIGN_CLIENT;
+      else if (method.equalsIgnoreCase("identity"))
+        type = KEY_ASSIGN_IDENTITY;
       else 
         throw SODAUtils.makeException(SODAMessage.EX_INVALID_ARG_VALUE, method);
       
+      // Reset dependent fields
       this.keyAssignmentMethod = type;
       if (keyAssignmentMethod != KEY_ASSIGN_SEQUENCE) 
       {
@@ -1465,6 +1476,7 @@ public class CollectionDescriptor
     @Override
     public Builder keyColumnSequenceName(String sequenceName) 
     {
+      // Reset dependent fields
       if (sequenceName != null)
       {
         this.keyAssignmentMethod = KEY_ASSIGN_SEQUENCE;
@@ -1483,6 +1495,7 @@ public class CollectionDescriptor
     @Override
     public Builder lastModifiedColumnName(String name) 
     {
+      // Reset dependent fields
       if (name == null) 
       {
         this.timeIndex = null;
@@ -1501,6 +1514,7 @@ public class CollectionDescriptor
     @Override
     public Builder versionColumnName(String name) 
     {
+      // Reset dependent fields
       if (name == null) 
       {
         this.versioningMethod = VERSION_NONE;

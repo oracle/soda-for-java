@@ -3,11 +3,11 @@ All rights reserved.*/
 
 /**
  * DESCRIPTION
- *   SodaTestCase - base class for SODA tests 
+ *  Rest Utils
  */
 
 /**
- *  @author  Vincent Liu
+ * @author  Jianye Wang
  */
 
 package oracle.json.testharness;
@@ -27,6 +27,8 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
 
+import junit.framework.Assert;
+
 import oracle.jdbc.OracleConnection;
 
 import oracle.soda.OracleCollectionAdmin;
@@ -35,10 +37,12 @@ import oracle.soda.OracleDatabase;
 import oracle.soda.OracleDatabaseAdmin;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
+import oracle.soda.OracleOperationBuilder;
 
 import oracle.soda.rdbms.OracleRDBMSClient;
 
 import oracle.soda.rdbms.impl.OracleDocumentImpl;
+import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 
 public class SodaTestCase extends DatabaseTestCase {
 
@@ -169,5 +173,115 @@ public class SodaTestCase extends DatabaseTestCase {
     }
     
   } 
+  
+  public enum IndexType {
+    noIndex, textIndex, funcIndex
+  }
+  
+  //to check whether index is picked up by execution plan
+  public static void chkExplainPlan(OracleOperationBuilder builder, 
+      IndexType indextype, String indexName) throws OracleException
+  {
+    chkExplainPlan((OracleOperationBuilderImpl)builder, indextype, indexName);
+  }
+  
+  public static void chkExplainPlan(OracleOperationBuilderImpl builderImpl, 
+      IndexType indextype, String indexName) throws OracleException
+  {
+    String plan = null;
+    final String textIndexKey = "DOMAIN INDEX";
+    final String funcIndexKey = "INDEX RANGE SCAN";
+    
+    switch (indextype) {
+      case textIndex:
+        plan = builderImpl.explainPlan("basic");
+        // Note: (?s) allows matching across return lines
+        if (!plan.matches("(?s).*" + textIndexKey + ".*"))
+        {
+          Assert.fail(textIndexKey + " is not found in explain plan:\n" + plan);
+        }
+        if (!plan.matches("(?s).*" + indexName + ".*"))
+        {
+          Assert.fail(indexName + " is not found in explain plan:\n" + plan);
+        }
+        break;
+      case funcIndex:
+        plan = builderImpl.explainPlan("basic");
+        // Note: (?s) allows matching across return lines
+        if (!plan.matches("(?s).*" + funcIndexKey + ".*"))
+        {
+          Assert.fail(funcIndexKey + " is not found in explain plan:\n" + plan);
+        }
+        if (!plan.matches("(?s).*" + indexName + ".*"))
+        {
+          Assert.fail(indexName + " is not found in explain plan:\n" + plan);
+        }
+        break;
+      default:
+        return;
+    }
+    
+    return;
+    
+  }
+
+  public enum SrearchIndexType {
+    // no index 
+    noIndex,
+    // used for "text" index, "text_value" index && QBE tests text value
+    textIndex,
+    // used for "text_value" index && QBE tests numeric value
+    numberIndex 
+  }
+  
+  // check whether the plan pick up search index correctly
+  public static void chkSearchIndexExplainPlan(OracleOperationBuilder builder, 
+      SrearchIndexType searchIndextype, String indexName) throws OracleException
+  {
+    chkSearchIndexExplainPlan((OracleOperationBuilderImpl)builder, searchIndextype, indexName);
+  }
+  
+  public static void chkSearchIndexExplainPlan(OracleOperationBuilderImpl builderImpl, 
+      SrearchIndexType searchIndextype, String indexName) throws OracleException
+  {
+    String plan = builderImpl.explainPlan("all");
+    final String domainIndexKey = "DOMAIN INDEX";
+    final String textIndexKey1 = "HASPATH";
+    final String textIndexKey2 = "INPATH";
+    final String numberIndexKey = "sdatap";
+    
+    switch (searchIndextype) {
+      case textIndex:
+        // Note: (?s) allows matching across return lines
+        if (!plan.matches("(?s).*" + textIndexKey1 + ".*") 
+            && !plan.matches("(?s).*" + textIndexKey2 + ".*"))
+        {
+          Assert.fail(textIndexKey2 + " and " + textIndexKey2 
+              + " are both not found in explain plan:\n" + plan);
+        }
+        
+        break;
+      case numberIndex:
+        if (!plan.matches("(?s).*" + numberIndexKey + ".*"))
+        {
+          Assert.fail(numberIndexKey + " is not found in explain plan:\n" + plan);
+        }
+        break;
+      default:
+        return;
+    }
+    
+    if (!plan.matches("(?s).*" + domainIndexKey + ".*"))
+    {
+      Assert.fail(domainIndexKey + " is not found in explain plan:\n" + plan);
+    }
+    if (!plan.matches("(?s).*" + indexName + ".*"))
+    {
+      Assert.fail(indexName + " is not found in explain plan:\n" + plan);
+    }
+    
+    return;
+  }
+  
 }
 

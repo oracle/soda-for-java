@@ -1,3 +1,5 @@
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/SODAMessage.java /main/37 2018/06/15 02:15:49 morgiyan Exp $ */
+
 /* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
@@ -79,20 +81,25 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_CANT_CALL_NEXT_ON_CLOSED_CURSOR    = create(2040);
   static final SODAMessage EX_COMMIT_MIGHT_BE_NEEDED             = create(2041);
   static final SODAMessage EX_CANT_DISABLE_AUTOCOMMIT            = create(2042);
-  static final SODAMessage EX_PROJ_SPEC_HAS_NO_CONTENT           = create(2043);
-  static final SODAMessage EX_PATCH_SPEC_HAS_NO_CONTENT          = create(2044);
+  static final SODAMessage EX_SPEC_HAS_NO_CONTENT                = create(2043);
   static final SODAMessage EX_PROJ_SPEC_MIXED                    = create(2045);
   static final SODAMessage EX_ARRAY_STEPS_IN_PATH                = create(2046);
   // Not part of a public API.
   // ### Public for OracleRDBMSClient
   public static final SODAMessage EX_NOT_ORACLE_CONNECTION       = create(2047);
+
   static final SODAMessage EX_LANG_NOT_SUPPORTED_WITH_121_TEXT_INDEX
                                                                  = create(2048);
   static final SODAMessage EX_NULL_ON_EMPTY_NOT_SUPPORTED        = create(2049);
   static final SODAMessage EX_INVALID_PARAM_121_INDEX            = create(2050);
   static final SODAMessage EX_OPERATION_REQUIRES_TXN_MANAGEMENT  = create(2051);
-  static final SODAMessage EX_KEY_LIKE_CANNOT_BE_USED = create(2052);
-
+  static final SODAMessage EX_KEY_LIKE_CANNOT_BE_USED            = create(2052);
+  static final SODAMessage EX_INDEX_ALREADY_EXISTS               = create(2053);
+  static final SODAMessage EX_SKIP_AND_LIMIT_WITH_COUNT          = create(2054);
+  static final SODAMessage EX_TEXT_INDEX_WITH_LANG_NOT_SUPPORTED = create(2055);
+  static final SODAMessage EX_ARRAY_STEPS_NOT_ALLOWED_IN_PROJ    = create(2056);
+  static final SODAMessage EX_OVERLAPPING_PATHS_NOT_ALLOWED_IN_PROJ
+                                                                 = create(2057);
 
   /****************************************************************************/
   /* Note: 2500 to 2999 range is reserved for SODA internal errors. These     */
@@ -121,11 +128,11 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_MD5_NOT_SUPPORTED                  = create(3003);
   static final SODAMessage EX_SHA256_NOT_SUPPORTED               = create(3004);
   static final SODAMessage EX_UNIMPLEMENTED_FEATURE              = create(3005);
-  static final SODAMessage EX_NO_SPATIAL_INDEX_ON_HETERO_COLLECTIONS
+  static final SODAMessage EX_NO_SPATIAL_INDEX_ON_HETERO_COLLECTIONS   
                                                                  = create(3006);
-  static final SODAMessage EX_NO_TEXT_INDEX_ON_HETERO_COLLECTIONS
+  static final SODAMessage EX_NO_TEXT_INDEX_ON_HETERO_COLLECTIONS    
                                                                  = create(3007);
-  static final SODAMessage EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS
+  static final SODAMessage EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS    
                                                                  = create(3008);
   static final SODAMessage EX_NO_QBE_ON_HETERO_COLLECTIONS       = create(3009);
 

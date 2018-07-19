@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,11 +19,16 @@ package oracle.json.parser;
 
 import java.math.BigDecimal;
 
+import oracle.json.util.ComponentTime;
+
 public class ValueTypePair
 {
   private String stringValue;  
   private boolean booleanValue;
   private BigDecimal numberValue;
+
+  private boolean dateFlag      = false;
+  private boolean timestampFlag = false;
 
   private final int type;
   
@@ -90,6 +95,16 @@ public class ValueTypePair
     this.numberValue = value;
   }
 
+  public boolean isTimestamp()
+  {
+    return(timestampFlag);
+  }
+
+  public boolean isDate()
+  {
+    return(dateFlag);
+  }
+
   public static String getStringType(int type) 
   {
     String stringType;
@@ -112,5 +127,31 @@ public class ValueTypePair
         break;
     }
     return stringType;
+  }
+
+  static ValueTypePair makeTemporal(ValueTypePair bval, boolean isTimestamp)
+  {
+    if (bval.getType() == ValueTypePair.TYPE_NUMBER)
+    {
+      BigDecimal dval = bval.getNumberValue();
+      //
+      // ### This conversion assumes we want to treat numeric "dates"
+      // ### as tick counts (milliseconds since 1970).
+      // ### This is inconsistent with Oracle SQL's treatment of
+      // ### them (as floating-point Julian days). For now we will
+      // ### use this approach because Java has facilities for
+      // ### that.
+      //
+      String tsval = ComponentTime.millisToString(dval.longValue());
+      bval = new ValueTypePair(tsval, ValueTypePair.TYPE_STRING);
+    }
+    // Assumes if it's a TYPE_STRING it's in an acceptable format
+
+    if (isTimestamp)
+      bval.timestampFlag = true;
+    else
+      bval.dateFlag = true;
+
+    return(bval);
   }
 }

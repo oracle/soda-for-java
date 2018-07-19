@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -26,9 +26,12 @@ import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.PreparedStatement;
 import java.sql.Blob;
+import java.sql.Clob;
 
 import oracle.json.logging.OracleLog;
+
 import oracle.soda.OracleCursor;
+
 import java.util.logging.Logger;
 
 import oracle.soda.OracleException;
@@ -60,6 +63,14 @@ public class OracleCursorImpl implements OracleCursor
 
   boolean closed;
 
+  // If (projectedContent == true) this is a new-style JSON REDACT-based
+  // projection; the content column will be a String bind instead of the
+  // base SQL data type.
+  //
+  private boolean projectedContent = false;
+
+  private boolean patchedContent = false;
+
   OracleCursorImpl(CollectionDescriptor desc,
                    MetricsCollector metrics,
                    Operation operation,
@@ -73,6 +84,19 @@ public class OracleCursorImpl implements OracleCursor
     stmt = operation.getPreparedStatement();
     this.resultSet = resultSet;
     closed = false;
+  }
+
+  OracleCursorImpl(CollectionDescriptor desc,
+                   MetricsCollector metrics,
+                   Operation operation,
+                   ResultSet resultSet,
+                   boolean projectedContent,
+                   boolean patchedContent)
+                   throws OracleException
+  {
+    this(desc, metrics, operation, resultSet);
+    this.projectedContent = projectedContent;
+    this.patchedContent = patchedContent;
   }
 
   void setElapsedTime(long elapsed)
@@ -100,6 +124,69 @@ public class OracleCursorImpl implements OracleCursor
     return true;
   }
 
+  private byte[] getPatchedOrProjectedPayload()
+    throws SQLException
+  {
+    String str = null;
+
+    //
+    // If this is a projection, the content column is a transformation
+    // of the underlying content and may be a different return type.
+    //
+    switch (desc.contentDataType)
+    {
+      // ### To-do: native BLOB return case when supported by PL/SQL.
+      // ### For now, just fall through to the CLOB case. Note that
+      // ### this might entail a lossy conversion through the CLOB
+      // ### character set on single-byte databases.
+      case CollectionDescriptor.NCLOB_CONTENT:
+        // ### PL/SQL doesn't distinguish this from the CLOB case.
+        // ### That's unfortunate since it means a possible lossy
+        // ### character set conversion (NCLOB is guaranteed to be
+        // ### AL16UTF16). For now, we can't do any better.
+      case CollectionDescriptor.CLOB_CONTENT:
+        // For now, all the LOB cases are returned using the toClob()
+        // method. Since it's a temp LOB we need to access it explicitly
+        // so we can free it.
+        Clob tmp = resultSet.getClob(1);
+
+        if (tmp != null)
+        {
+          str = tmp.getSubString(1L, (int) tmp.length());
+          tmp.free();
+        }
+
+        break;
+      case CollectionDescriptor.BLOB_CONTENT:
+      case CollectionDescriptor.RAW_CONTENT:
+        // RAW content is projected and returned as RAW
+        // ### The underlying PL/SQL does UTL_RAW.CAST_TO_RAW;
+        // ### perhaps it would be easier to just use toString()
+        // ### and run the default case (below)? The reason not
+        // ### to do that is a possible lossy conversion through
+        // ### the VARCHAR2 character set.
+        return resultSet.getBytes(1);
+      /***
+       case CollectionDescriptor.NCHAR_CONTENT:
+       // Get the result as an NVARCHAR2
+       str = resultSet.getNString(++num);
+       break;
+       // ### For now, there is no method to render to NCHAR in PL/SQL.
+       // ### Instead, we use the toString() method. Therefore, for now,
+       // ### use the default case (below).
+       ***/
+      default:
+        // All other projections return VARCHAR2
+        str = resultSet.getString(1);
+        break;
+    }
+
+    if (str != null)
+      return str.getBytes(ByteArray.DEFAULT_CHARSET);
+
+    return null;
+  }
+
   public OracleDocument next() throws OracleException
   {
     if (closed)
@@ -120,147 +207,181 @@ public class OracleCursorImpl implements OracleCursor
 
     try
     {
+      int num = 0;
+
+      String key;
+      byte[] payload = null;
+      String mtime = null;
+      String ctime = null;
+      String version = null;
+      String ctype = null;
+      boolean hasDoctype = (desc.doctypeColumnName != null);
+
       boolean hasNext = resultSet.next();
 
-      if (hasNext)
+      // For projected content, skip documents with null
+      // payload, to omit them from the output.
+      // Null payload is returned by the
+      // underlying PLSQL projection (i.e. json_select) methods,
+      // if an error occurs while attempting to perform
+      // a projection.
+      if (hasNext && projectedContent)
       {
-        int num = 0;
+        payload = getPatchedOrProjectedPayload();
 
-        String key;
-        byte[] payload = null;
-        String mtime = null;
-        String ctime = null;
-        String version = null;
-        String ctype = null;
-        boolean hasDoctype = (desc.doctypeColumnName != null);
-
-        key = resultSet.getString(++num);
-        if (hasDoctype)
-          ctype = resultSet.getString(++num);
-
-        if (!operation.headerOnly())
+        while (payload == null)
         {
-          switch (desc.contentDataType)
+          hasNext = resultSet.next();
+          if (hasNext)
           {
-          case CollectionDescriptor.CLOB_CONTENT:
-          case CollectionDescriptor.CHAR_CONTENT:
-            String str = resultSet.getString(++num);
-            if (str != null)
-              payload = str.getBytes(ByteArray.DEFAULT_CHARSET);
-            break;
-          case CollectionDescriptor.NCLOB_CONTENT:
-          case CollectionDescriptor.NCHAR_CONTENT:
-            String nstr = resultSet.getNString(++num);
-            if (nstr != null)
-              payload = nstr.getBytes(ByteArray.DEFAULT_CHARSET);
-            break;
-          case CollectionDescriptor.BLOB_CONTENT:
-            // For a heterogeneous collection get the LOB locator,
-            // except if the operation involved filter(filterSpec)
-            // (a filterSpec based operation returns only JSON content,
-            // and we try not to stream JSON content, on the assumption
-            // that it's relatively small).
-            boolean stream = hasDoctype && !operation.isFilterSpecBased();
-
-            // ### If the key() operation is involved, we can further
-            //     refine the decision whether or not to stream:
-            //     we will stream only if the ctype != null and is not JSON.
-            //
-            //     Apparently we can only do this additional check
-            //     for a single row fetch, which key() implies.
-            //
-            //     For multiple row fetches JDBC might not be able
-            //     to mix getBytes() and getBlob().getBinaryStream()
-            //     (need to verify this).
-            if (operation.isSingleKeyBased())
-            {
-              //if (OracleLog.isLoggingEnabled())
-              //  log.info("Single key based");
-
-              // ### When media type column is present, but the value
-              //     there is null, we could consider streaming.
-              //     Same situation occurs in getFragment() as well.
-              if (ctype == null)
-              {
-                stream = false;
-              }
-              else if (ctype.equalsIgnoreCase(OracleDocumentImpl.APPLICATION_JSON))
-              {
-                stream = false;
-              }
-            }
-
-            if (stream)
-            {
-              Blob loc = resultSet.getBlob(++num);
-              if (loc != null)
-              {
-                long datalen = loc.length();
-
-                // ### int is used for a limit, so the document
-                //     size is limited to 2G for now. The assumption
-                //     is that this is OK because the types of documents
-                //     we want to target (PDFs, Word documents, mp3s, etc)
-                //     will not be that huge. Huge documents, such as movies,
-                //     are unlikely to fall within our use-cases.
-                if (datalen > Integer.MAX_VALUE)
-                {
-                  loc.free();
-                  throw SODAUtils.makeException(SODAMessage.EX_2G_SIZE_LIMIT_EXCEEDED,
-                                                key,
-                                                datalen);
-                }
-
-                int limit = (int)datalen;
-
-                if (datalen == 0)
-                {
-                  payload = OracleCollectionImpl.EMPTY_DATA;
-                  loc.free();
-                }
-                // ### A possible alternative, using getBytes().
-                //
-                // else if (datalen <= SODAConstants.LOB_PREFETCH_SIZE)
-                // {
-                //   payload = loc.getBytes(1L, limit);
-                // }
-                else
-                {
-                  InputStream inp = loc.getBinaryStream();
-
-                  //if (OracleLog.isLoggingEnabled())
-                  //  log.info("Streaming");
-
-                  if (inp != null)
-                  {
-                    payloadStream = new LobInputStream(loc, inp, limit);
-                    payloadStream.setMetrics(metrics);
-                  }
-                }
-              }
-
-              if ((payloadStream == null) && (payload == null))
-                payloadStream = new LobInputStream();
-              break;
-            }
-            // Otherwise get BLOB data using getBytes,
-            // avoid the LOB descriptor and/or InputStream
-
-            //if (OracleLog.isLoggingEnabled())
-            //  log.info("Non-streaming");
-          case CollectionDescriptor.RAW_CONTENT:
-            payload = resultSet.getBytes(++num);
+            payload = getPatchedOrProjectedPayload();
+          }
+          else
+          {
             break;
           }
         }
+        ++num;
+      }
 
-        if (desc.timestampColumnName != null)
+      if (hasNext)
+      {
+        if (patchedContent)
+        {
+          payload = getPatchedOrProjectedPayload();
+          ++num;
+        }
+        else if (!projectedContent && !operation.headerOnly())
+        {
+          switch (desc.contentDataType)
+          {
+            case CollectionDescriptor.CLOB_CONTENT:
+            case CollectionDescriptor.CHAR_CONTENT:
+              String str = resultSet.getString(++num);
+              if (str != null)
+                payload = str.getBytes(ByteArray.DEFAULT_CHARSET);
+              break;
+            case CollectionDescriptor.NCLOB_CONTENT:
+            case CollectionDescriptor.NCHAR_CONTENT:
+              String nstr = resultSet.getNString(++num);
+              if (nstr != null)
+                payload = nstr.getBytes(ByteArray.DEFAULT_CHARSET);
+              break;
+            case CollectionDescriptor.BLOB_CONTENT:
+              // For a heterogeneous collection get the LOB locator,
+              // except if the operation involved filter(filterSpec)
+              // (a filterSpec based operation returns only JSON content,
+              // and we try not to stream JSON content, on the assumption
+              // that it's relatively small).
+              boolean stream = hasDoctype &&
+                               !operation.isFilterSpecBased();
+
+              // ### If the key() operation is involved, we can further
+              //     refine the decision whether or not to stream:
+              //     we will stream only if the ctype != null and is not JSON.
+              //
+              //     Apparently we can only do this additional check
+              //     for a single row fetch, which key() implies.
+              //
+              //     For multiple row fetches JDBC might not be able
+              //     to mix getBytes() and getBlob().getBinaryStream()
+              //     (need to verify this).
+              if (operation.isSingleKeyBased())
+              {
+                //if (OracleLog.isLoggingEnabled())
+                //  log.info("Single key based");
+
+                // ### When media type column is present, but the value
+                //     there is null, we could consider streaming.
+                //     Same situation occurs in getFragment() as well.
+                if (ctype == null)
+                {
+                  stream = false;
+                }
+                else if (ctype.equalsIgnoreCase(OracleDocumentImpl.APPLICATION_JSON))
+                {
+                  stream = false;
+                }
+              }
+
+              if (stream)
+              {
+                Blob loc = resultSet.getBlob(++num);
+                if (loc != null)
+                {
+                  long datalen = loc.length();
+
+                  // ### int is used for a limit, so the document
+                  //     size is limited to 2G for now. The assumption
+                  //     is that this is OK because the types of documents
+                  //     we want to target (PDFs, Word documents, mp3s, etc)
+                  //     will not be that huge. Huge documents, such as movies,
+                  //     are unlikely to fall within our use-cases.
+                  if (datalen > Integer.MAX_VALUE)
+                  {
+                    loc.free();
+                    key = resultSet.getString(++num);
+                    throw SODAUtils.makeException(SODAMessage.EX_2G_SIZE_LIMIT_EXCEEDED,
+                      key,
+                      datalen);
+                  }
+
+                  int limit = (int)datalen;
+
+                  if (datalen == 0)
+                  {
+                    payload = OracleCollectionImpl.EMPTY_DATA;
+                    loc.free();
+                  }
+                  /***
+                   // ### A possible alternative, using getBytes().
+                   else if (datalen <= SODAConstants.LOB_PREFETCH_SIZE)
+                   {
+                   payload = loc.getBytes(1L, limit);
+                   }
+                   ***/
+                  else
+                  {
+                    InputStream inp = loc.getBinaryStream();
+
+                    //if (OracleLog.isLoggingEnabled())
+                    //  log.info("Streaming");
+
+                    if (inp != null)
+                    {
+                      payloadStream = new LobInputStream(loc, inp, limit);
+                      payloadStream.setMetrics(metrics);
+                    }
+                  }
+                }
+
+                if ((payloadStream == null) && (payload == null))
+                  payloadStream = new LobInputStream();
+                break;
+              }
+              // Otherwise get BLOB data using getBytes,
+              // avoid the LOB descriptor and/or InputStream
+
+              //if (OracleLog.isLoggingEnabled())
+              //  log.info("Non-streaming");
+            case CollectionDescriptor.RAW_CONTENT:
+              payload = resultSet.getBytes(++num);
+              break;
+          }
+        }
+
+        key = resultSet.getString(++num);
+
+        if (hasDoctype)
+          ctype = resultSet.getString(++num);
+
+        if (desc.timestampColumnName != null && !patchedContent)
           mtime = resultSet.getString(++num);
 
-        if (desc.creationColumnName != null)
+        if (desc.creationColumnName != null && !patchedContent)
           ctime = resultSet.getString(++num);
 
-        if (desc.versionColumnName != null)
+        if (desc.versionColumnName != null && !patchedContent)
           version = resultSet.getString(++num);
 
         // If a LOB stream is available, return it
@@ -399,8 +520,8 @@ public class OracleCursorImpl implements OracleCursor
     }
 
     if (OracleLog.isLoggingEnabled())
-      log.fine("Cursor read "+rowCount+
-               " rows in "+metrics.nanosToString(cumTime));
+      log.fine("Cursor read "+rowCount+" rows in "+
+               metrics.nanosToString(cumTime));
 
     // Record the aggregated metrics
     metrics.recordCursorReads(rowCount,

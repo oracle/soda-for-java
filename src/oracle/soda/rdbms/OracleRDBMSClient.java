@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda.rdbms;
@@ -105,10 +105,10 @@ public class OracleRDBMSClient implements OracleClient
     @Override
     public OracleDatabase getDatabase(Connection connection) 
         throws OracleException {
-        return getDatabase(connection, false);
+      return getDatabase(connection, false);   
     }
-
-    /**
+    
+   /**
      * Gets the document collections database. This method serves
      * the same purpose as {@link #getDatabase(Connection)}, except
      * it also provides the <code>avoidTxnManagement</code>

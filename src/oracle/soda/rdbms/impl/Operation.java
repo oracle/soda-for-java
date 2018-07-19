@@ -1,3 +1,5 @@
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/Operation.java /main/10 2015/08/31 12:59:04 dmcmahon Exp $ */
+
 /* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
 All rights reserved.*/
 
@@ -23,10 +25,12 @@ package oracle.soda.rdbms.impl;
 import oracle.soda.OracleCollection;
 
 import java.sql.PreparedStatement;
+import java.sql.CallableStatement;
 
 class Operation
 {
   private final PreparedStatement stmt;
+  private final CallableStatement plsql_stmt;
 
   private final boolean headerOnly;
 
@@ -50,8 +54,24 @@ class Operation
             OracleCollection collection)
   {
     this.stmt = stmt;
+    this.plsql_stmt = null;
     this.sqlText = sqlText;
     this.headerOnly = headerOnly;
+    this.filterSpecBased = filterSpecBased;
+    this.singleKeyBased = singleKeyBased;
+    this.collection = collection;
+  }
+
+  Operation(CallableStatement stmt,
+            String sqlText,
+            boolean filterSpecBased,
+            boolean singleKeyBased,
+            OracleCollection collection)
+  {
+    this.stmt = null;
+    this.plsql_stmt = stmt;
+    this.sqlText = sqlText;
+    this.headerOnly = false;
     this.filterSpecBased = filterSpecBased;
     this.singleKeyBased = singleKeyBased;
     this.collection = collection;
@@ -60,6 +80,11 @@ class Operation
   PreparedStatement getPreparedStatement()
   {
     return stmt;
+  }
+
+  CallableStatement getCallableStatement()
+  {
+    return plsql_stmt;
   }
 
   boolean headerOnly()

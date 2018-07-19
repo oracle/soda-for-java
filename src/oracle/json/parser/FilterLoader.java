@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -125,7 +125,7 @@ public class FilterLoader extends DocumentLoader
       switch (ev)
       {
       case START_OBJECT:
-        if (depth == 0) parseOrderBy = key.equals(ORDERBY);
+        if (depth == 0) parseOrderBy = ORDERBY.equals(key);
         obuilder.add(key, parseObject(depth + 1));
         if (depth == 0) parseOrderBy = false;
         appendOrderBy(depth, key, null); // Signals a "bad" key
@@ -145,7 +145,7 @@ public class FilterLoader extends DocumentLoader
         key = parser.getString();
 
         // If the top-level $orderby was already encountered,
-        // and another top-level $order is seen,
+        // and another top-level $orderby is seen,
         // throw an exception.
         if (orderByParsed)
         {

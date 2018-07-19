@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /* 
@@ -48,6 +48,13 @@ public class Message
   public static final Message EX_INVALID_CONFIG       = create(1016);
   public static final Message EX_UNKNOWN_ACCOUNT      = create(1017);
   public static final Message EX_ILLEGAL_DATE_TIME2   = create(1018);
+  public static final Message EX_DUPLICATE_KEY        = create(1019);
+  public static final Message EX_NO_INPUT_DOCUMENT    = create(1020);
+  public static final Message EX_KEY_PATH_EMPTY       = create(1021);
+  public static final Message EX_DOCUMENT_NOT_CLOSED  = create(1022);
+  public static final Message EX_DOCUMENT_NOT_OBJECT  = create(1023);
+  public static final Message EX_KEY_MUST_BE_STRING   = create(1024);
+  public static final Message EX_KEY_MISMATCH         = create(1025);
 
   /**
    * Load the ResourceBundle using the default Locale.

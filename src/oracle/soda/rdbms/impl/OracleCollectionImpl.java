@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -75,6 +75,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
   private OracleCollectionAdministrationImpl admin;
 
+  private final static int SQL_STATEMENT_SIZE = 1000;
   protected StringBuilder sb = new StringBuilder(SODAConstants.SQL_STATEMENT_SIZE);
 
   private final static int ORA_SQL_OBJECT_EXISTS = 955;
@@ -107,10 +108,6 @@ public abstract class OracleCollectionImpl implements OracleCollection
     setAvoid();
   }
 
-  void setAvoidTxnManagement(boolean avoidTxnManagement) {
-    this.avoidTxnManagement = avoidTxnManagement;
-  }
-
   public void setAvoid()
   {
     if (System.getProperty("oracle.jserver.version") != null)
@@ -119,6 +116,11 @@ public abstract class OracleCollectionImpl implements OracleCollection
       if (OracleLog.isLoggingEnabled())
         log.fine("Avoid returning clauses for internal connections");
     }
+  }
+
+  void setAvoidTxnManagement(boolean avoidTxnManagement) 
+  {
+    this.avoidTxnManagement = avoidTxnManagement;
   }
 
   /**
@@ -334,7 +336,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       if (len < xlen)
       {
         String zeros = "00000000000000000000000000000000";
-        key = zeros.substring(1, xlen - len) + key;
+        key = zeros.substring(0, xlen - len) + key;
       }
       else if (len > xlen)
       {
@@ -357,9 +359,11 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                       key,
                                       options.getKeyDataType());
     }
-    // For sequence-assigned keys
-    else if (options.keyAssignmentMethod ==
-            CollectionDescriptor.KEY_ASSIGN_SEQUENCE)
+    // For sequence-assigned keys (includes the IDENTITY column case)
+    else if ((options.keyAssignmentMethod ==
+              CollectionDescriptor.KEY_ASSIGN_SEQUENCE) ||
+             (options.keyAssignmentMethod ==
+              CollectionDescriptor.KEY_ASSIGN_IDENTITY))
     {
       key = zeroStrip(key);
       if (!isInteger(key))
@@ -545,9 +549,48 @@ public abstract class OracleCollectionImpl implements OracleCollection
       sb.append(" format json");
   }
 
+  private String buildSpatialIndexDDL(String indexName, JsonQueryPath spatial,
+                                      boolean scalarRequired, boolean lax)
+  {
+    sb.setLength(0);
+
+    sb.append("create index \"");
+    sb.append(indexName);
+    sb.append("\" on ");
+    appendTable(sb);
+    sb.append(" (JSON_VALUE(\"");
+    sb.append(options.contentColumnName);
+    sb.append("\", '");
+    spatial.toSingletonString(sb);
+    sb.append("' returning SDO_GEOMETRY");
+
+    if (!lax)
+    {
+      if (scalarRequired)
+        sb.append(" ERROR ON ERROR))");
+      else
+        sb.append(" ERROR ON ERROR NULL ON EMPTY))");
+    }
+    else
+    {
+      sb.append("))");
+    }
+
+    sb.append(" indextype is MDSYS.SPATIAL_INDEX");
+
+    // ### Left for reference since 1000 is the default
+    // ### Other parameters may be of interest here
+    // sb.append(" parameters('SDO_DML_BATCH_SIZE=1000')");
+
+    // ### Should we have this on by default?
+    sb.append(" parallel 8");
+
+    return (sb.toString());
+  }
+
   private String buildCTXIndexDDL(String indexName, String language,
                                   boolean is121TextIndexWithLang)
-    throws OracleException
+          throws OracleException
   {
     if (!is121TextIndexWithLang)
     {
@@ -609,6 +652,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
       sb.append("')");                // END PARAMETERS
 
+      // ### Should we have this and "memory 100M" on by default?
       sb.append(" parallel 8");
     }
 
@@ -698,8 +742,9 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                boolean unique,
                                boolean scalarRequired,
                                boolean lax,
-                               JsonPath[] columns)
-    throws OracleException
+                               JsonPath[] columns,
+                               boolean indexNulls)
+          throws OracleException
   {
     sb.setLength(0);
     sb.append("create ");
@@ -748,7 +793,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       sb.append("\"");
       addFormat(sb);
       sb.append(",\'");
-      
+
       // Use JsonQueryPath to centralize the singleton string builder
       JsonQueryPath jqp = new JsonQueryPath(steps);
       jqp.toSingletonString(sb);
@@ -784,7 +829,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
         }
       }
 
-      if (!lax)
+      if (!lax) 
       {
         if (scalarRequired)
           sb.append(" ERROR ON ERROR");
@@ -797,7 +842,12 @@ public abstract class OracleCollectionImpl implements OracleCollection
       if (sqlOrder != null)
         sb.append(sqlOrder);
     }
-    sb.append(")");
+
+    if (indexNulls)
+      sb.append(",1)");
+    else
+      sb.append(")");
+
     String str = sb.toString();
 
     if (numCharCols > 0)
@@ -864,25 +914,20 @@ public abstract class OracleCollectionImpl implements OracleCollection
   /**
    * Create an index
    */
-  // ### 
-  //
-  // 1) If index with provided name exists already,check
-  // that it has an equivalent specification (otherwise throw an
-  // error). Current behavior simply ignores the error if
-  // an index with the same name exists already.
-  //
-  // 2) Consider alternative (or additional) functionality, where
+  // ### Consider alternative (or additional) functionality, where
   // the unique name is automatically generated.
   private void createIndex(String indexName, 
                            boolean unique,
                            boolean scalarRequired,
                            boolean lax,
+                           boolean indexNulls,
                            JsonPath[] columns,
+                           JsonQueryPath spatial,
                            String language,
                            String search_on,
                            String dataguide,
                            boolean is121TextIndexWithLang)
-    throws OracleException
+          throws OracleException
   {
     PreparedStatement stmt = null;
 
@@ -894,7 +939,21 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     String sqltext = null;
 
-    if (columns == null || columns.length == 0)
+    if (spatial != null)
+    {
+      if (isHeterogeneous())
+      {
+        throw SODAUtils.makeException(SODAMessage.EX_NO_SPATIAL_INDEX_ON_HETERO_COLLECTIONS);
+      }
+
+      if (spatial.hasArraySteps())
+      {
+        throw SODAUtils.makeException(SODAMessage.EX_ARRAY_STEPS_IN_PATH);
+      }
+
+      sqltext = buildSpatialIndexDDL(indexName, spatial, scalarRequired, lax);
+    }
+    else if (columns == null || columns.length == 0)
     {
       checkAllowedTextIndexContentAndKeyTypes();
 
@@ -903,7 +962,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
         throw SODAUtils.makeException(SODAMessage.EX_NO_TEXT_INDEX_ON_HETERO_COLLECTIONS);
       }
 
-      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxLevel(conn, sqlSyntaxLevel);
 
       // Field cross-validation is performed in IndexSpecification class,
       // after parsing. However, IndexSpecification class is not aware of db release
@@ -921,6 +980,13 @@ public abstract class OracleCollectionImpl implements OracleCollection
           throw SODAUtils.makeException(SODAMessage.EX_INVALID_PARAM_121_INDEX, "language");
       }
 
+      // Old text index with languages, which requires a special textIndex121WithLang
+      // flag to be set to true in the index spec, is not supported on 12.2 and above.
+      // Note that even on 12.1.0.2, it's not to be used for production!!!
+      // (see IndexSpecification.java for more info).
+      if (is121TextIndexWithLang && !SODAUtils.sqlSyntaxBelow_12_2((sqlSyntaxLevel)))
+        throw SODAUtils.makeException(SODAMessage.EX_TEXT_INDEX_WITH_LANG_NOT_SUPPORTED);
+
       if (is121TextIndexWithLang || SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       {
         sqltext = buildCTXIndexDDL(indexName, language, is121TextIndexWithLang);
@@ -929,6 +995,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       {
         sqltext = buildDGIndexDDL(indexName, language, search_on, dataguide);
       }
+
     }
     else
     {
@@ -936,15 +1003,14 @@ public abstract class OracleCollectionImpl implements OracleCollection
       {
         throw SODAUtils.makeException(SODAMessage.EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS);
       }
-
-      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+      sqlSyntaxLevel = SODAUtils.getSQLSyntaxLevel(conn, sqlSyntaxLevel);
 
       if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel) && !scalarRequired && !lax)
       {
         throw SODAUtils.makeException(SODAMessage.EX_NULL_ON_EMPTY_NOT_SUPPORTED);
       }
 
-      sqltext = buildIndexDDL(indexName, unique, scalarRequired, lax, columns);
+      sqltext = buildIndexDDL(indexName, unique, scalarRequired, lax, columns, indexNulls);
     }
 
     try
@@ -968,17 +1034,15 @@ public abstract class OracleCollectionImpl implements OracleCollection
     }
     catch (SQLException e)
     {
+      if (OracleLog.isLoggingEnabled())
+        log.warning(e.toString());
+
       if (e.getErrorCode() == ORA_SQL_OBJECT_EXISTS)
       {
-        // Index already exists - ignore the error.
-        if (OracleLog.isLoggingEnabled())
-          log.warning(e.toString());
+        throw SODAUtils.makeException(SODAMessage.EX_INDEX_ALREADY_EXISTS);
       }
       else
       {
-        if (OracleLog.isLoggingEnabled())
-          log.warning(e.toString());
-
         throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
       }
     }
@@ -995,7 +1059,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
   /**
    * Drop the named index
    */
-  private void dropIndex(String indexName) throws OracleException
+  private void dropIndex(String indexName, boolean force) throws OracleException
   {
     PreparedStatement stmt = null;
 
@@ -1005,8 +1069,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
     indexName = CollectionDescriptor.stringToIdentifier(indexName);
 
-    boolean forceFlag = false; // ### Add for spatial and CTX indexes?
-    String sqltext = dropIndexDDL(indexName, forceFlag);
+    String sqltext = dropIndexDDL(indexName, force);
 
     try
     {
@@ -1019,8 +1082,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
         log.info("Dropped index "+indexName);
       stmt.close();
       stmt = null;
-    
-      metrics.recordDDL(); 
+
+      metrics.recordDDL();
     }
     catch (SQLException e)
     {
@@ -1075,12 +1138,12 @@ public abstract class OracleCollectionImpl implements OracleCollection
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_INDEX_DROP, e);
     }
 
-    OracleCollectionImpl.this.dropIndex(idxName);
+    OracleCollectionImpl.this.dropIndex(idxName, ispec.force());
   }
-
+  
   private OracleDocument getDataGuide() throws OracleException
   {
-    OracleDocument    doc = null;
+    OracleDocument    doc  = null;
     PreparedStatement stmt = null;
     ResultSet         rows = null;
 
@@ -1093,7 +1156,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       stmt = conn.prepareStatement(sqltext);
 
       // get_index_dataguide requires double quotes
-      // inside the table name string literal, in order to
+      // inside the table name string literal, in order to 
       // interpret the table name literally. Otherwise,
       // it's interpreted as an unquoted identifier,
       // e.g. might get upper-cased.
@@ -1115,13 +1178,15 @@ public abstract class OracleCollectionImpl implements OracleCollection
       {
         // We get it as a CLOB because it's a temp LOB and we want to free it
         Clob tmp = rows.getClob(1);
-        String tmpStr = tmp.getSubString(1L, (int) tmp.length());
+        String tmpStr = tmp.getSubString(1L, (int)tmp.length());
 
         doc = new OracleDocumentImpl(tmpStr);
 
         tmp.free();
       }
 
+      rows.close();
+      rows = null;
 
       stmt.close();
       stmt = null;
@@ -1152,9 +1217,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
     }
 
     return(doc);
-
   }
-
 
   /**
    * OracleCollectionAdministrationImpl
@@ -1214,27 +1277,15 @@ public abstract class OracleCollectionImpl implements OracleCollection
     public void createJsonSearchIndex(String indexName) throws OracleException
     {
       OracleCollectionImpl.this.createIndex(indexName, false, false, false,
-        null, null, null, null, false);
-    }
-
-    public void createJsonSearchIndex(String indexName, String language)
-      throws OracleException
-    {
-
-      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
-
-      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel) && language != null)
-        throw SODAUtils.makeException(SODAMessage.EX_LANG_NOT_SUPPORTED_WITH_121_TEXT_INDEX);
-
-      OracleCollectionImpl.this.createIndex(indexName, false, false, false,
-        null, language, null, null, false);
+                                            false, null, null, null, null,
+                                            null, false);
     }
 
     public void createIndex(OracleDocument indexSpecification)
       throws OracleException
     {
       String idxName = null;
-       
+
       if (indexSpecification == null)
         throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
                                       "indexSpecification");
@@ -1254,20 +1305,28 @@ public abstract class OracleCollectionImpl implements OracleCollection
       }
 
       OracleCollectionImpl.this.createIndex(idxName,
-                                            ispec.isUnique(),
-                                            ispec.isScalarRequired(),
-                                            ispec.isLax(),
-                                            ispec.getColumns(),
-                                            ispec.getLanguage(),
-                                            ispec.getSearchOn(),
-                                            ispec.getDataGuide(),
-                                            ispec.is121TextIndexWithLang());
+        ispec.isUnique(),
+        ispec.isScalarRequired(),
+        ispec.isLax(),
+        ispec.indexNulls(),
+        ispec.getColumns(),
+        ispec.getSpatialPath(),
+        ispec.getLanguage(),
+        ispec.getSearchOn(),
+        ispec.getDataGuide(),
+        ispec.is121TextIndexWithLang());
     }
 
     public void dropIndex(String indexName)
       throws OracleException
     {
-      OracleCollectionImpl.this.dropIndex(indexName);
+      OracleCollectionImpl.this.dropIndex(indexName, false);
+    }
+
+    public void dropIndex(String indexName, boolean force)
+            throws OracleException
+    {
+      OracleCollectionImpl.this.dropIndex(indexName, force);
     }
   }
 }

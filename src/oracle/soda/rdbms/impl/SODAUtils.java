@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -38,8 +38,9 @@ public final class SODAUtils
   public enum SQLSyntaxLevel {SQL_SYNTAX_UNKNOWN,
                               SQL_SYNTAX_12_1,
                               SQL_SYNTAX_12_2_0_1,
-                              SQL_SYNTAX_12_2_0_2,
-                              SQL_SYNTAX_13_1};
+                              SQL_SYNTAX_18,
+                              SQL_SYNTAX_19,
+                              SQL_SYNTAX_20};
 
   private static final Logger log =
     Logger.getLogger(SODAUtils.class.getName());
@@ -179,7 +180,7 @@ public final class SODAUtils
     return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_12_1);
   }
 
-  public static boolean sqlSyntaxBelow_12_2_0_2(SQLSyntaxLevel sqlSyntaxLevel)
+  public static boolean sqlSyntaxBelow_18(SQLSyntaxLevel sqlSyntaxLevel)
   {
     if (sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
       return true;
@@ -191,9 +192,9 @@ public final class SODAUtils
     return false;
   }
 
-  public static boolean sqlSyntax_12_2_0_2(SQLSyntaxLevel sqlSyntaxLevel)
+  public static boolean sqlSyntax_18(SQLSyntaxLevel sqlSyntaxLevel)
   {
-    return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_12_2_0_2);
+    return (sqlSyntaxLevel == SQLSyntaxLevel.SQL_SYNTAX_18);
   }
 
   public static boolean sqlSyntax_12_2_0_1(SQLSyntaxLevel sqlSyntaxLevel)
@@ -210,29 +211,34 @@ public final class SODAUtils
     int dbMajor = dbmd.getDatabaseMajorVersion();
     int dbMinor = dbmd.getDatabaseMinorVersion();
 
-    if (dbMajor > 12)
+    // ### Anything below 12 is not supported, so we return 'UNKNOWN'.
+    // Should we throw an exception instead?
+    if (dbMajor == 12)
     {
-      return SQLSyntaxLevel.SQL_SYNTAX_13_1;
-    }
-    else if (dbMajor > 11)
-    {
-      if (dbMinor > 1) {
-        String version = dbmd.getDatabaseProductVersion();
-        if (version.contains("12.2.0.2")) {
-          return SQLSyntaxLevel.SQL_SYNTAX_12_2_0_2;
-        }
-        else {
-          return SQLSyntaxLevel.SQL_SYNTAX_12_2_0_1;
-        }
+      if (dbMinor > 1)
+      {
+        return SQLSyntaxLevel.SQL_SYNTAX_12_2_0_1;
       }
       else
         return SQLSyntaxLevel.SQL_SYNTAX_12_1;
+    }
+    else if (dbMajor == 18)
+    {
+      return SQLSyntaxLevel.SQL_SYNTAX_18;
+    }
+    else if (dbMajor == 19)
+    {
+      return SQLSyntaxLevel.SQL_SYNTAX_19;
+    }
+    else if (dbMajor == 20)
+    {
+      return SQLSyntaxLevel.SQL_SYNTAX_20;
     }
 
     return SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
   }
 
-  public static SQLSyntaxLevel getSQLSyntaxlevel(Connection conn,
+  public static SQLSyntaxLevel getSQLSyntaxLevel(Connection conn,
                                                  SQLSyntaxLevel sqlSyntaxLevel)
     throws OracleException
   {

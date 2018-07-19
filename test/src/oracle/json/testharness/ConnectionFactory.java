@@ -42,7 +42,7 @@ public final class ConnectionFactory {
   public static final String PASSWORD = System.getProperty("Password");
   public static final String SERVER = System.getProperty("Server");
   public static final String PORT = System.getProperty("Port");
-  public static final String ServiceName = System.getProperty("DBName");
+  public static final String DBNAME = System.getProperty("DBName");
 
   public static OracleConnection createConnection() throws SQLException {
     return createConnection(USER_NAME, PASSWORD);
@@ -59,7 +59,8 @@ public final class ConnectionFactory {
     builder.append(pass).append("@//");
     builder.append(SERVER).append(":");
     builder.append(PORT).append("/");
-    builder.append(ServiceName);
+    builder.append(DBNAME);
+
     return builder.toString();
   }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,11 +19,10 @@ All rights reserved.*/
  *
  *  @author  Doug McMahon
  *  @author  Rahul Kadwe
+ *  @author  Maxim Orgiyan
  */
 
 package oracle.json.parser;
-
-import oracle.soda.rdbms.impl.SODAUtils;
 
 import java.io.InputStream;
 import java.io.IOException;
@@ -44,18 +43,20 @@ public class IndexSpecification
 {
   private final InputStream source;
 
-  private boolean is_parsed = false;
+  private boolean       is_parsed = false;
 
-  private String idxName   = null;
-  private String language  = null;
-
-  private IndexColumn[] columns = new IndexColumn[0];
-  private boolean is_unique = false;
-  private boolean is_scalarRequired = false;
-  private boolean is_lax = false;
-  private String search_on = null;
-  private boolean is_121_text_index_with_lang = false;
-  private String dataguide = null;
+  private String        idxName = null;
+  private String        language = null;
+  private IndexColumn[] columns = new IndexColumn[0]; // Empty list
+  private boolean       is_unique = false;
+  private boolean       is_scalarRequired = false;
+  private boolean       is_lax = false;
+  private JsonQueryPath spatial = null;
+  private String        search_on = null;
+  private boolean       is_121_text_index_with_lang = false;
+  private String        dataguide = null;
+  private boolean       indexNulls = false;
+  private boolean       force = false;
 
   public IndexSpecification(InputStream inp)
   {
@@ -86,12 +87,13 @@ public class IndexSpecification
    * Returns the index name string, if any. If a name is required, pass true
    * for nameRequired and an exception will be thrown if a name isn't found.
    */
-  public String parse(boolean nameRequired)
+  public String parse(boolean nameRequired, boolean dropSpec)
     throws QueryException
   {
     boolean hasUnique = false;
     boolean hasScalarRequired = false;
     boolean hasLax = false;
+    boolean hasIndexNULLS = false;
     QueryException ex = null;
 
     try
@@ -118,7 +120,7 @@ public class IndexSpecification
         {
           if (vtype != JsonValue.ValueType.STRING)
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "index name",
-              "STRING", vtype.toString());
+                    "STRING", vtype.toString());
 
           idxName = ((JsonString)entryVal).getString();
         }
@@ -130,7 +132,7 @@ public class IndexSpecification
             is_unique = false;
           else
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "unique",
-              "BOOLEAN", vtype.toString());
+                    "BOOLEAN", vtype.toString());
 
           hasUnique = true;
         }
@@ -142,9 +144,9 @@ public class IndexSpecification
             is_scalarRequired = false;
           else
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "scalarRequired",
-              "BOOLEAN", vtype.toString());
+                    "BOOLEAN", vtype.toString());
 
-          if (is_scalarRequired && is_lax)
+          if (is_lax && is_scalarRequired)
             makeAndThrowException(QueryMessage.EX_SCALAR_AND_LAX);
 
           hasScalarRequired = true;
@@ -157,18 +159,30 @@ public class IndexSpecification
             is_lax = false;
           else
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "lax",
-              "BOOLEAN", vtype.toString());
+                    "BOOLEAN", vtype.toString());
 
-          if (is_scalarRequired && is_lax)
+          if (is_lax && is_scalarRequired)
             makeAndThrowException(QueryMessage.EX_SCALAR_AND_LAX);
 
           hasLax = true;
+        }
+        else if (entryKey.equalsIgnoreCase("indexNulls"))
+        {
+          if (vtype == JsonValue.ValueType.TRUE)
+            indexNulls = true;
+          else if (vtype == JsonValue.ValueType.FALSE)
+            indexNulls = false;
+          else
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "indexNulls", "BOOLEAN", vtype.toString());
+
+          hasIndexNULLS = true;
         }
         else if (entryKey.equalsIgnoreCase("language"))
         {
           if (vtype != JsonValue.ValueType.STRING)
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "language",
-              "STRING", vtype.toString());
+                    "STRING", vtype.toString());
 
           language = ((JsonString)entryVal).getString();
         }
@@ -181,7 +195,7 @@ public class IndexSpecification
           dataguide = ((JsonString)entryVal).getString();
 
           if (!dataguide.equalsIgnoreCase("on") &&
-            !dataguide.equalsIgnoreCase("off"))
+              !dataguide.equalsIgnoreCase("off"))
             makeAndThrowException(QueryMessage.EX_BAD_DATAGUIDE_VALUE, dataguide);
         }
         else if (entryKey.equalsIgnoreCase("search_on"))
@@ -199,17 +213,24 @@ public class IndexSpecification
           if (!search_on.equalsIgnoreCase("text") &&
               !search_on.equalsIgnoreCase("text_value") &&
               !search_on.equalsIgnoreCase("none"))
-              makeAndThrowException(QueryMessage.EX_BAD_SEARCH_ON_VALUE, search_on);
+            makeAndThrowException(QueryMessage.EX_BAD_SEARCH_ON_VALUE, search_on);
         }
-        // Note: old text index with languages is not officially supported
-        // on 12.1. We are allowing it here, just to continue
-        // running tests that we have written for it, in case
-        // it needs to be revived. Although we can run the
-        // tests, it's not usable in production for multiple reasons:
-        // 12.1.0.2->12.2.0.1 and above upgrade is broken,
-        // this index uses a slow auto lexer, etc.
+        // Setting this flag (textIndex121WithLang) to true
+        // will allow old text index with languages to be specified on 12.1.
         //
-        // DO NOT USE TEXT INDEX WITH LANGUAGE SUPPORT IN PRODUCTION ON 12.1!!!
+        // But note that old text index with languages is not officially supported
+        // on 12.1. We are allowing it here with this flag as an extra precaution,
+        // just to continue running tests that we have written for it, in case
+        // it needs to be revived. Although we can run the
+        // tests, it's not usable in production for two reasons:
+        //
+        // (1) 12.1.0.2->12.2.0.1 and above upgrade is broken,
+        // because preferences used by the lexer for languages are missing
+        // on 12.2.0.1 and above. 
+        //
+        // (2) The index uses a slow auto lexer for languages
+        //
+        // DO NOT USE TEXT INDEX WITH LANGUAGES IN PRODUCTION ON 12.1!!!
         else if (entryKey.equalsIgnoreCase("textIndex121WithLang"))
         {
           if (vtype == JsonValue.ValueType.TRUE)
@@ -218,13 +239,37 @@ public class IndexSpecification
             is_121_text_index_with_lang = false;
           else
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "textIndex121WithLang",
-              "BOOLEAN", vtype.toString());
+                    "BOOLEAN", vtype.toString());
+        }
+        // This is only for internal use from SODA REST, since
+        // the latter requires an index spec for dropping the index.
+        // This provides a way to set the force option when dropping
+        // the index.
+        else if (entryKey.equalsIgnoreCase("force") && dropSpec)
+        {
+          if (vtype == JsonValue.ValueType.TRUE)
+            force = true;
+          else if (vtype == JsonValue.ValueType.FALSE)
+            force = false;
+          else
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
+                    "force", "BOOLEAN", vtype.toString());
+        }
+        else if (entryKey.equalsIgnoreCase("spatial"))
+        {
+          if (vtype != JsonValue.ValueType.STRING)
+            makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "spatial",
+                    "STRING", vtype.toString());
+
+          String geoPath = ((JsonString)entryVal).getString();
+
+          spatial = new JsonQueryPath(geoPath);
         }
         else if (entryKey.equalsIgnoreCase("fields"))
         {
           if (vtype != JsonValue.ValueType.ARRAY)
             makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "fields",
-              "ARRAY", vtype.toString());
+                    "ARRAY", vtype.toString());
 
           JsonArray jArr = (JsonArray)entryVal;
           Iterator<JsonValue> iter = jArr.iterator();
@@ -237,7 +282,7 @@ public class IndexSpecification
             JsonValue arrElem = iter.next();
             if (arrElem.getValueType() != JsonValue.ValueType.OBJECT)
               makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE, "field",
-                "OBJECT", arrElem.getValueType().toString());
+                      "OBJECT", arrElem.getValueType().toString());
 
             JsonObject  obj  = (JsonObject)arrElem;
             IndexColumn idx  = new IndexColumn();
@@ -259,7 +304,7 @@ public class IndexSpecification
               {
                 if (ftype != JsonValue.ValueType.STRING)
                   makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                    "fields.path", "STRING", ftype.toString());
+                          "fields.path", "STRING", ftype.toString());
 
                 path = ((JsonString)fval).getString();
               }
@@ -267,7 +312,7 @@ public class IndexSpecification
               {
                 if (ftype != JsonValue.ValueType.STRING)
                   makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                    "fields.datatype", "STRING", ftype.toString());
+                          "fields.datatype", "STRING", ftype.toString());
 
                 dtype = ((JsonString)fval).getString();
               }
@@ -277,12 +322,12 @@ public class IndexSpecification
 
                 if (ftype != JsonValue.ValueType.NUMBER)
                   makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                    "fields.maxLength", "NUMBER", ftype.toString());
+                          "fields.maxLength", "NUMBER", ftype.toString());
 
                 JsonNumber ival = (JsonNumber)fval;
                 if (!ival.isIntegral())
                     makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                      "fields.maxLength", "integer", "decimal");
+                            "fields.maxLength", "integer", "decimal");
 
                 maxLength = ival.intValue();
               }
@@ -303,7 +348,7 @@ public class IndexSpecification
                 }
                 else 
                   makeAndThrowException(QueryMessage.EX_INDEX_PROP_WRONG_TYPE,
-                    "fields.order", "STRING", ftype.toString());
+                          "fields.order", "STRING", ftype.toString());
               }
             }
 
@@ -335,7 +380,7 @@ public class IndexSpecification
             else if (maxLength < 0)
             {
               makeAndThrowException(QueryMessage.EX_INVALID_INDEX_DLEN,
-                Integer.toString(maxLength));
+                      Integer.toString(maxLength));
             }
             idx.setOrder(order);
             columnList.add(idx);
@@ -357,12 +402,23 @@ public class IndexSpecification
       }
       else if (sz == 0)
       {
-        if (hasUnique)
-          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "unique");
-        else if (hasScalarRequired)
-          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "scalarRequired");
-        else if (hasLax)
-          makeAndThrowException(QueryMessage.EX_FIELDS_EXPECTED, "lax");
+          if (hasUnique)
+              makeAndThrowException(QueryMessage.EX_FIELDS_REQUIRED,
+                                    "unique");
+
+          if (hasIndexNULLS)
+              makeAndThrowException(QueryMessage.EX_FIELDS_REQUIRED,
+                                    "indexNulls");
+
+        if (spatial == null)
+        {
+          if (hasScalarRequired)
+            makeAndThrowException(QueryMessage.EX_FIELDS_OR_SPATIAL_REQUIRED,
+                                  "scalarRequired");
+          else if (hasLax)
+            makeAndThrowException(QueryMessage.EX_FIELDS_OR_SPATIAL_REQUIRED,
+                                  "lax");
+        }
       }
     }
     catch (IllegalArgumentException e)
@@ -400,6 +456,8 @@ public class IndexSpecification
     //
     if (columns.length > 0)
     {
+      if (spatial != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "spatial");
       if (language != null)
         makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "language");
       if (search_on != null)
@@ -409,21 +467,24 @@ public class IndexSpecification
       if (is_121_text_index_with_lang)
         makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "fields", "textIndex121WithLang");
     }
-    else {
-
-      if (search_on != null && is_121_text_index_with_lang)
-      {
-          makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS,
-                                "search_on",
-                                "textIndex121WithLang");
-      }
-
-      if (dataguide != null && is_121_text_index_with_lang)
-      {
-          makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS,
-                                "dataguide",
-                                "textIndex121WithLang");
-      }
+    else if (spatial != null)
+    {
+      if (language != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "spatial", "language");
+      if (search_on != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "spatial", "search_on");
+      if (dataguide != null)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "spatial", "dataguide");
+      if (is_121_text_index_with_lang)
+        makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "spatial", "textIndex121WithLang");
+    }
+    else if (search_on != null && is_121_text_index_with_lang)
+    {
+      makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "search_on", "textIndex121WithLang");
+    }
+    else if (dataguide != null && is_121_text_index_with_lang)
+    {
+      makeAndThrowException(QueryMessage.EX_INCOMPATIBLE_FIELDS, "dataguide", "textIndex121WithLang");
     }
 
     if ((nameRequired) && (idxName == null))
@@ -441,7 +502,7 @@ public class IndexSpecification
   public String parse()
     throws QueryException
   {
-    return(parse(true));
+    return(parse(true, false));
   }
 
   public String getName()
@@ -462,22 +523,10 @@ public class IndexSpecification
     return(is_unique);
   }
 
-  public boolean isScalarRequired()
+  public JsonQueryPath getSpatialPath()
   {
     if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(is_scalarRequired);
-  }
-
-  public boolean isLax()
-  {
-    if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(is_lax);
-  }
-
-  public IndexColumn[] getColumns()
-  {
-    if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(columns);
+    return(spatial);
   }
 
   public String getSearchOn()
@@ -490,6 +539,36 @@ public class IndexSpecification
   {
     if (!is_parsed) throw new IllegalStateException("Not parsed");
     return (dataguide);
+  }
+
+  public boolean isScalarRequired()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(is_scalarRequired);
+  }
+
+  public boolean isLax()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(is_lax);
+  }
+
+  public boolean indexNulls()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(indexNulls);
+  }
+
+  public boolean force()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(force);
+  }
+
+  public IndexColumn[] getColumns()
+  {
+    if (!is_parsed) throw new IllegalStateException("Not parsed");
+    return(columns);
   }
 
   public boolean is121TextIndexWithLang()
@@ -639,5 +718,4 @@ public class IndexSpecification
         language);
     return(lexer);
   }
-
 }

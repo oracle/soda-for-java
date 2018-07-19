@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -36,6 +36,8 @@ import oracle.soda.rdbms.impl.OracleDatabaseImpl;
 import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
 
 import oracle.json.testharness.SodaTestCase;
+import oracle.json.testharness.SodaUtils;
+import oracle.soda.rdbms.impl.SODAUtils;
 
 import javax.json.JsonString;
 
@@ -217,32 +219,36 @@ public class test_OracleDocument2 extends SodaTestCase {
     testGetVersion("MD5", "testGetVersion5");
 
     String sName = schemaName.toUpperCase();
-    // Test with VERSION_METHOD = "NONE"
-    // VERSION_METHOD="NONE" means the user's code/table is expected to set the version, 
-    // i.e. via a SQL default or trigger
-    // so we need access existing table to test it;
-    OracleRDBMSMetadataBuilder mBuilder = client.createMetadataBuilder().schemaName(sName)
-        .keyColumnAssignmentMethod("CLIENT")
-        .versionColumnMethod("NONE");
-    OracleDocument metaDoc = mBuilder.tableName("SODATBL").build();
+    if (!isJDCSMode()) {
+      // the creation of "SODATBL" table(see sodatestsetup.sql) is blocked by jdcs lockdown.
+      
+      // Test with VERSION_METHOD = "NONE"
+      // VERSION_METHOD="NONE" means the user's code/table is expected to set the version, 
+      // i.e. via a SQL default or trigger
+      // so we need access existing table to test it;
+      OracleRDBMSMetadataBuilder mBuilder = client.createMetadataBuilder().schemaName(sName)
+          .keyColumnAssignmentMethod("CLIENT")
+          .versionColumnMethod("NONE");
+      OracleDocument metaDoc = mBuilder.tableName("SODATBL").build();
     
-    OracleCollection col = dbAdmin.createCollection("testGetVersion6", metaDoc);
+      OracleCollection col = dbAdmin.createCollection("testGetVersion6", metaDoc);
     
-    String insertSql = "insert into sodatbl values('id-1', 'application/json', SYSTIMESTAMP, SYSTIMESTAMP, null, c2b('{ \"value\" : \"a\" }'))";
-    PreparedStatement stmt = conn.prepareStatement(insertSql);
-    stmt.execute();
-    // auto-commit set on
-    //conn.commit();
+      String insertSql = "insert into sodatbl values('id-1', 'application/json', SYSTIMESTAMP, SYSTIMESTAMP, null, c2b('{ \"value\" : \"a\" }'))";
+      PreparedStatement stmt = conn.prepareStatement(insertSql);
+      stmt.execute();
+      // auto-commit set on
+      //conn.commit();
     
-    OracleDocument doc = db.createDocumentFromString("id-x", "{ \"value\" : \"b\" }", "application/json");
-    doc = col.insertAndGet(doc);
-    assertNotNull(doc.getVersion());
-    doc = col.find().key("id-x").getOne();
-    assertEquals("{ \"value\" : \"b\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+      OracleDocument doc = db.createDocumentFromString("id-x", "{ \"value\" : \"b\" }", "application/json");
+      doc = col.insertAndGet(doc);
+      assertNotNull(doc.getVersion());
+      doc = col.find().key("id-x").getOne();
+      assertEquals("{ \"value\" : \"b\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
     
-    // clean up the created row data
-    assertEquals(2, col.find().remove());
-    assertEquals(0, col.find().count());
+      // clean up the created row data
+      assertEquals(2, col.find().remove());
+      assertEquals(0, col.find().count());
+    }
 
     // Negative tests
     // Test when there is no version column for the collection
@@ -367,24 +373,45 @@ public class test_OracleDocument2 extends SodaTestCase {
     
     OracleDocument filterDoc = null;
     // should match doc1
-    String filter1 = "{ \"employee.address.domestic\" : true,  \"employee.salary\" : {\"$lt\" : 9000, \"$gte\" : 8000}} ";
+    String filter1 = "{ \"employee.address.domestic\" : true, "+
+                      " \"employee.salary\" : {\"$lt\" : 9000, \"$gte\" : 8000}} ";
     filterDoc = db.createDocumentFromString(filter1);
     doc = col.find().filter(filterDoc).getOne();
     assertEquals(1, col.find().filter(filterDoc).count());
     assertEquals("id-1", doc.getKey());
     
     // should match doc1 and doc3
+    String orderby = null;
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      orderby = "\"$orderby\" : {\"$lax\" : true, \"$fields\" :" +
+                "[ {\"path\" : \"employee.employeeId\", \"order\" : \"asc\"} ]}}";
+    }
+    else {
+      orderby = "\"$orderby\" : {\"employee.employeeId\":1}}";
+    }
+
     filterDoc = db.createDocumentFromString(
-        "{\"employee.salary\" : {\"$lt\" : 9000, \"$gte\" : 8000}, \"$orderby\" : {\"employee.employeeId\":1} } ");
+        "{\"$query\":{\"employee.salary\" : {\"$lt\" : 9000, \"$gte\" : 8000}}," +
+        orderby);
     OracleCursor cursor = col.find().filter(filterDoc).getCursor();
     assertEquals(true, cursor.hasNext());
     assertEquals("id-1", cursor.next().getKey());
     assertEquals("id-3", cursor.next().getKey());
     cursor.close();
 
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      orderby = "\"$orderby\" : {\"$lax\" : true, \"$fields\" :" +
+              "[ {\"path\" : \"employee.employeeId\", \"order\" : \"desc\"} ]}}";
+    }
+    else {
+      orderby = "\"$orderby\" : {\"employee.employeeId\": -1}}";
+    }
+
     // should match doc2 and doc1
     filterDoc = db.createDocumentFromString(
-        "{\"employee.address.domestic\" : true, \"$orderby\" : {\"employee.employeeId\": -1} } ");
+        "{\"$query\":{\"employee.address.domestic\" : true}," +
+        orderby);
     cursor = col.find().filter(filterDoc).getCursor();
     assertEquals(true, cursor.hasNext());
     assertEquals("id-2", cursor.next().getKey());
@@ -444,8 +471,17 @@ public class test_OracleDocument2 extends SodaTestCase {
     doc = col.find().filter(filterDoc).getOne();
     assertEquals("id-3", doc.getKey());
 
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      orderby = "\"$orderby\" : {\"$lax\" : true, \"$fields\" :" +
+                "[ {\"path\" : \"employee.employeeId\", \"order\" : \"asc\"} ]}}";
+    }
+    else {
+      orderby = "\"$orderby\" : {\"employee.employeeId\": 1}}";
+    }
+
     // should match doc2 and doc3
-    filterDoc = db.createDocumentFromString("{\"employee.address.street\" : {\"$exists\" : true }, \"$orderby\" : {\"employee.employeeId\":1} }");
+    filterDoc = db.createDocumentFromString("{\"$query\":{\"employee.address.street\" : {\"$exists\" : true }},"+
+                                            orderby);
     cursor = col.find().filter(filterDoc).getCursor();
     assertEquals(true, cursor.hasNext());
     assertEquals("id-2", cursor.next().getKey());
@@ -454,7 +490,8 @@ public class test_OracleDocument2 extends SodaTestCase {
 
     // should match doc1 and doc3
     filterDoc = db.createDocumentFromString(
-        "{ \"employee.employeeId\" : {\"$in\" : [\"EMP0002\", \"EMP0004\"]}, \"$orderby\" : {\"employee.employeeId\":1} }");
+        "{\"$query\":{\"employee.employeeId\" : {\"$in\" : [\"EMP0002\", \"EMP0004\"]}},"+
+        orderby);
     assertEquals(2, col.find().filter(filterDoc).count());
     cursor = col.find().filter(filterDoc).getCursor();
     assertEquals(true, cursor.hasNext());
@@ -491,8 +528,17 @@ public class test_OracleDocument2 extends SodaTestCase {
     for (int i = 1; i <= 10; i++) {
       col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"dataValue\" : " + i + " }", null));
     }
-    
-    String fStr = "{ \"$query\" : {\"dataValue\" : {\"$gt\" : 9 }}, \"$orderby\" : {\"d\" : -1} }";
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      orderby = "\"$orderby\" : {\"$lax\" : true, \"$fields\" :" +
+                "[ {\"path\" : \"d\", \"order\" : \"desc\"} ]}}";
+    }
+    else {
+      orderby = "\"$orderby\" : {\"d\": -1}}";
+    }
+
+    String fStr = "{ \"$query\" : {\"dataValue\" : {\"$gt\" : 9 }},"+
+                  orderby;
     filterDoc = db.createDocumentFromString(fStr);
     assertEquals(1, col.find().filter(filterDoc).count());
     doc =  col.find().filter(filterDoc).getOne();
@@ -500,8 +546,9 @@ public class test_OracleDocument2 extends SodaTestCase {
     OracleCollectionAdmin colAdmin = col.admin();
     String contentSqlType = ((JsonString) getValue(colAdmin.getMetadata(), path("contentColumn", "sqlType"))).getString();
     // Test to create index
-    if( !(contentSqlType.equalsIgnoreCase("NVARCHAR2") || contentSqlType.equalsIgnoreCase("NCLOB"))) {
-      colAdmin.createJsonSearchIndex("indexForEncodingTests");
+    if( !(contentSqlType.equalsIgnoreCase("NVARCHAR2") || contentSqlType.equalsIgnoreCase("NCLOB")) ) {
+      String textIndex = createTextIndexSpec("indexForEncodingTests");
+      col.admin().createIndex(db.createDocumentFromString(textIndex));
       colAdmin.dropIndex("indexForEncodingTests");
     }
  
@@ -525,7 +572,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     OracleDocument meta = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .contentColumnType("BLOB")
-        .build();
+         .build();
     OracleDocument mDoc = db.createDocumentFromByteArray(null, meta.getContentAsString().getBytes(UTF8), null);
     OracleCollection col = dbAdmin.createCollection("testDocumentEncoding", mDoc);
     for (Charset c : CHARSETS) {
@@ -553,15 +600,15 @@ public class test_OracleDocument2 extends SodaTestCase {
     // Test with VARCHAR2
     OracleDocument meta3 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("VARCHAR2").build();
-    OracleDocument mDoc3 = db.createDocumentFromByteArray(null, 
-        meta3.getContentAsString().getBytes(UTF32), null);
-    OracleCollection col3 = dbAdmin.createCollection("testDocumentEncoding3",mDoc3);
+    OracleDocument mDoc3 = db.createDocumentFromByteArray(null,
+            meta3.getContentAsString().getBytes(UTF32), null);
+    OracleCollection col3 = dbAdmin.createCollection("testDocumentEncoding3", mDoc3);
     for (Charset c : CHARSETS) {
       basicTestForEncoding(c, col3);
     }
     
     // Test with NVARCHAR2
-    /* ### Oracle Database does not support NVARCHAR2 storage for JSON
+    /* ### Oracle Database does not support NVARCHAR2 storage for JSON  
     OracleDocument meta4 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("NVARCHAR2").build();
     OracleDocument mDoc4 = db.createDocumentFromByteArray(null, 
@@ -575,15 +622,15 @@ public class test_OracleDocument2 extends SodaTestCase {
     // Test with CLOB
     OracleDocument meta5 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("CLOB").build();
-    OracleDocument mDoc5 = db.createDocumentFromByteArray(null, 
-        meta5.getContentAsString().getBytes(UTF16BE), null);
-    OracleCollection col5 = dbAdmin.createCollection("testDocumentEncoding5",mDoc5);
+    OracleDocument mDoc5 = db.createDocumentFromByteArray(null,
+            meta5.getContentAsString().getBytes(UTF16BE), null);
+    OracleCollection col5 = dbAdmin.createCollection("testDocumentEncoding5", mDoc5);
     for (Charset c : CHARSETS) {
       basicTestForEncoding(c, col5);
     }
     
     // Test with NCLOB
-    /* ### Oracle Database does not support NCLOB storage for JSON
+    /* ### Oracle Database does not support NCLOB storage for JSON 
     OracleDocument meta6 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType("NCLOB").build();
     OracleDocument mDoc6 = db.createDocumentFromByteArray(null, 
@@ -593,6 +640,7 @@ public class test_OracleDocument2 extends SodaTestCase {
       basicTestForEncoding(c, col6);
     }
     */
+    
   }
 
   private void testLargeContentWithCol(OracleCollection col) throws Exception {
@@ -636,6 +684,44 @@ public class test_OracleDocument2 extends SodaTestCase {
     doc = col.findOne(key1);
     assertEquals(jsonFileString, doc.getContentAsString());
     assertEquals("application/json", doc.getMediaType());
+    
+    // test more big size json documents
+    // test data32k.json
+    String key2 = "id2";
+    in = new FileInputStream(new File("data/data32k.json"));
+    jsonFileString = inputStream2String(in);
+    in.close();
+    doc = db.createDocumentFromString(key2, jsonFileString, "application/json");
+    col.insert(doc);
+    
+    doc = col.findOne(key2);
+    in = new FileInputStream(new File("data/data32k.json"));
+    assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
+    in.close();
+
+    // test data256k.json
+    in = new FileInputStream(new File("data/data256k.json"));
+    jsonFileString = inputStream2String(in);
+    in.close();
+    col.find().key(key2).replaceOne(db.createDocumentFromString(key2, jsonFileString, "application/json"));
+    
+    doc = col.findOne(key2);
+    in = new FileInputStream(new File("data/data256k.json"));
+    assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
+    in.close();
+    
+    // test data1m.json
+    // blocked by bug22586001
+    // saving large JSON document(whose size is more than 32k) caused ORA-00600 in server log
+    /*in = new FileInputStream(new File("data/data1m.json"));
+    jsonFileString = inputStream2String(in);
+    in.close();
+    col.save(db.createDocumentFromString("id3", jsonFileString, "application/json"));
+    
+    doc = col.findOne(key2);
+    in = new FileInputStream(new File("data/data1m.json"));
+    assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
+    in.close();*/
     
     if(colAdmin.isHeterogeneous()) {
       OracleDocument descDoc = colAdmin.getMetadata();
@@ -686,7 +772,23 @@ public class test_OracleDocument2 extends SodaTestCase {
         */
       }
     }
-    
+    else { 
+      // Tests bug 22586001 (i.e. merge problem with clob,
+      // input length exceeds 32767).
+      String poJson = SodaUtils.slurpFile("data/PurchaseOrders.json");
+
+      assertTrue("PurchaseOrders length needs to be greater than 32767.",
+                  poJson.length() > 32767);
+
+      doc = db.createDocumentFromString(key1, 
+                                        poJson,
+                                        "application/json");
+      col.save(doc);
+
+      doc = col.findOne(key1);
+      assertEquals(poJson, doc.getContentAsString());
+    }
+
     colAdmin.truncate();
     
   }

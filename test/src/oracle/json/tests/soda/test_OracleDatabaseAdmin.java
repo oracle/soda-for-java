@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -30,6 +30,7 @@ import oracle.soda.OracleException;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleCollectionAdmin;
 import oracle.soda.OracleDocument;
+import oracle.soda.OracleDropResult;
 
 import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
 
@@ -665,14 +666,8 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
         fail("No exception when the specified view does not exist");
       } catch (OracleException e) {
         // Expect an OracleException
-        // ORA-01403: no data found
         Throwable t = e.getCause();
-        if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-          assertTrue(t.getMessage().contains("ORA-01403"));
-        }
-        else {
-          assertTrue(t.getMessage().contains("The view intended to back the collection does not exist."));
-        }
+        assertTrue(t.getMessage().contains("The view intended to back the collection does not exist."));
       }
     }
     
@@ -691,15 +686,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-        // ORA-01403: no data found
-        assertTrue(t.getMessage().contains("ORA-01403"));
-      }
-      else {
-        String obj = testView ? "view" : "table";
-        assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
-                                           "collection do not match collection metadata."));
-      }
+      String obj = testView ? "view" : "table";
+      assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
+                                         "collection do not match collection metadata."));
     }
     
     try {
@@ -720,15 +709,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-        // ORA-01403: no data found
-        assertTrue(t.getMessage().contains("ORA-01403"));
-      }
-      else {
-        String obj = testView ? "view" : "table";
-        assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
-                                           "collection do not match collection metadata."));
-      }
+      String obj = testView ? "view" : "table";
+      assertTrue(t.getMessage().contains("Columns of the mapped " + obj + " backing the " +
+                                         "collection do not match collection metadata."));
     }
 
     // Insert an row data with null media type
@@ -781,10 +764,16 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testExistingView() throws Exception {
+    if (isJDCSMode())
+      return;
+
     testExistingViewOrTable(true);
   }
   
   public void testExistingTable() throws Exception {
+    if (isJDCSMode())
+      return;
+
     testExistingViewOrTable(false);
   }
  
@@ -884,14 +873,13 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     testContColType("VARCHAR2");
     
     testContColType("BLOB");
-
+    
     testContColType("CLOB");
-
     /* ### Oracle Database does not support NVARCHAR2, NCLOB, or RAW storage for JSON
     testContColType("NVARCHAR2");
     
     testContColType("RAW");
-    
+
     testContColType("NCLOB");
     */
 
@@ -1093,7 +1081,6 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   public void testContentMaxLength() throws Exception {
     
     testContentMaxLength("VARCHAR2");
-
     /* ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
     testContentMaxLength("NVARCHAR2");
     testContentMaxLength("RAW");
@@ -1397,7 +1384,6 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
 
     // ### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
     //final String[] sqlTypes = { "BLOB", "CLOB", "NCLOB"};
-    
     final String[] sqlTypes = { "BLOB", "CLOB"};
     final String[] compressions = { "NONE", "HIGH", "MEDIUM", "LOW"};
     final boolean[] cachings = {true, false};
@@ -1531,6 +1517,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals("{ \"key\": \"val2\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
     if(version)
       assertNotNull(doc.getVersion());
+   
     if(createdOn) {
       assertNotNull(doc.getCreatedOn());
       if (clientAssignedKey) {
@@ -1549,6 +1536,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals("{ \"key\": \"val3\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
     if(version)
       assertNotNull(doc.getVersion());
+    
     if(createdOn) {
       assertNotNull(doc.getCreatedOn());
       assertEquals(createdOn1, doc.getCreatedOn());
@@ -1659,9 +1647,8 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleDocument mDoc8 = db.createDocumentFromString(mData8);
     OracleCollection col8 = dbAdmin.createCollection("testMiniCol8", mDoc8);
     basicTestforMiniCol(col8, true, false, true, true);
- 
-  } 
 
+  }
   // Test method for collection specification check 
   public void testMetadataCheck() throws Exception {
     OracleDocument descDoc = null;
@@ -1914,5 +1901,65 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       assertEquals("Invalid value for \"readOnly\" in the collection metadata.", e.getMessage());
     }
 
+  }
+
+  public void testDropCollection() throws Exception {
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    OracleCollection col1 = dbAdmin.createCollection("col1");
+    OracleCollection col2 = dbAdmin.createCollection("col2");
+    Connection conn1 = dbAdmin.getConnection();
+    conn1.setAutoCommit(false);
+    col1.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
+    col2.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
+    List<OracleDropResult> l = dbAdmin.dropCollections(false);
+    OracleDropResult r = l.get(0);
+    assertEquals(r.getName(), "col1");
+    assertTrue(r.getError().contains("ORA-40626: The table or view underlying the collection cannot be dropped."));
+    r = l.get(1);
+    assertEquals(r.getName(), "col2");
+    assertTrue(r.getError().contains("ORA-40626: The table or view underlying the collection cannot be dropped."));
+    conn1.commit();
+    conn1.setAutoCommit(true);
+    l = dbAdmin.dropCollections(false);
+    assertTrue(l.isEmpty());
+
+  }
+
+  public void testDropCollectionForce() throws Exception {
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    if (isJDCSMode())
+      return;
+
+    OracleCollection col1 = dbAdmin.createCollection("col1");
+    OracleCollection col2 = dbAdmin.createCollection("col2");
+    Connection conn1 = dbAdmin.getConnection();
+    conn1.setAutoCommit(false);
+    col1.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
+    col2.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
+    List<OracleDropResult> l = dbAdmin.dropCollections(false);
+    OracleDropResult r = l.get(0);
+    assertEquals(r.getName(), "col1");
+    assertTrue(r.getError().contains("ORA-40626: The table or view underlying the collection cannot be dropped."));
+    r = l.get(1);
+    assertEquals(r.getName(), "col2");
+    assertTrue(r.getError().contains("ORA-40626: The table or view underlying the collection cannot be dropped."));
+    l = dbAdmin.dropCollections(true);
+    List<String> colls = dbAdmin.getCollectionNames();
+    assertTrue(colls.isEmpty());
+    conn1.setAutoCommit(true);
+
+    PreparedStatement stmt = conn.prepareStatement("drop table col1");
+    stmt.execute();
+    stmt.close();
+
+    stmt = conn.prepareStatement("drop table col2");
+    stmt.execute();
+    stmt.close();
   }
 }

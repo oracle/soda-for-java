@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -17,6 +17,8 @@ All rights reserved.*/
  */
 
 package oracle.soda.rdbms.impl;
+
+import java.lang.NumberFormatException;
 
 import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleConnection;
@@ -37,6 +39,7 @@ import oracle.soda.OracleCollection;
 import oracle.soda.OracleException;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleDatabaseAdmin;
+import oracle.soda.OracleDropResult;
 
 import oracle.sql.Datum;
 
@@ -49,6 +52,9 @@ import java.sql.ResultSet;
 import java.sql.PreparedStatement;
 import java.sql.Types;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.Array;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +62,12 @@ import java.util.List;
 public class OracleDatabaseImpl implements OracleDatabase
 {
   static ArrayList<String> EMPTY_LIST = new ArrayList<String>();
+
+  //
+  // Oracle internal character-set IDs for Unicode character sets
+  //
+  private static final short DBCS_AL32UTF8 = 873;
+  private static final short DBCS_UTF8     = 871;
 
   private static final String SELECT_GUID =
     "select SYS_GUID() from SYS.DUAL";
@@ -75,6 +87,9 @@ public class OracleDatabaseImpl implements OracleDatabase
     "  ? := K;\n"+
     "end;";
 
+  private static final String SELECT_SCN =
+    "begin\n  DBMS_SODA_ADMIN.GET_SCN(?);\nend;";
+
   private static final String COLLECTION_CREATION_MODE = "DDL";
   
   private static final Logger log =
@@ -92,6 +107,12 @@ public class OracleDatabaseImpl implements OracleDatabase
   private final HashMap<String, OracleCollectionImpl> localCollectionCache;
 
   private MetricsCollector metrics;
+
+  // Maximum column lengths
+  private int rawMaxLength = -1;       // Unknown (default 2000)
+  private int nvarcharMaxLength = -1;  // Unknown (default 2000)
+  private int varcharMaxLength = -1;   // Unknown (default 4000)
+  private boolean dbIsUnicode = false; // Unknown (default false)
 
   private boolean metadataTableExists = true;
 
@@ -113,7 +134,7 @@ public class OracleDatabaseImpl implements OracleDatabase
 
   private SODAUtils.SQLSyntaxLevel sqlSyntaxLevel =
     SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
-
+ 
   private boolean avoidTxnManagement;
 
   /**
@@ -136,6 +157,26 @@ public class OracleDatabaseImpl implements OracleDatabase
     this.metrics = metrics;
     this.avoidTxnManagement = avoidTxnManagement;
 
+    //
+    // This is a back-handed method of getting the DB character set
+    //
+    try
+    {
+      short dbcsid = conn.getStructAttrCsId();
+      if ((dbcsid == DBCS_AL32UTF8) || (dbcsid == DBCS_UTF8))
+        dbIsUnicode = true;
+    }
+    catch (SQLException e)
+    {
+      if (OracleLog.isLoggingEnabled())
+        log.warning(e.toString());
+    }
+
+/***
+    // ### This may or may not be necessary
+    setDateTimeNumFormats();
+***/
+
     if (localCaching)
     {
       localDescriptorCache = new HashMap<String, CollectionDescriptor>();
@@ -156,7 +197,7 @@ public class OracleDatabaseImpl implements OracleDatabase
     {
       localDescriptorCache.put(collectionName, desc);
       if (OracleLog.isLoggingEnabled())
-        log.fine("Put " + collectionName + " descriptor into local cache");
+        log.fine("Put "+collectionName+" descriptor into local cache");
     }
 
     if (sharedDescriptorCache != null)
@@ -172,7 +213,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       if (existingDesc != null)
       {
         if (OracleLog.isLoggingEnabled())
-          log.fine(collectionName + " descriptor already exists in shared cache");
+          log.fine(collectionName+" descriptor already exists in shared cache");
 
         // If local descriptor cache is not used,
         // return the descriptor existing in the shared cache.
@@ -184,7 +225,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       else
       {
         if (OracleLog.isLoggingEnabled())
-          log.fine("Put " + collectionName +" descriptor into shared cache");
+          log.fine("Put "+collectionName+" descriptor into shared cache");
       }
     }
 
@@ -202,7 +243,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       if (result != null)
       {
         if (OracleLog.isLoggingEnabled())
-          log.fine("Got " + collectionName + " descriptor from local cache");
+          log.fine("Got "+collectionName+" descriptor from local cache");
         
         if (sharedDescriptorCache != null &&
             !sharedDescriptorCache.containsDescriptor(collectionName))
@@ -223,7 +264,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       if (result != null)
       {
         if (OracleLog.isLoggingEnabled())
-          log.fine("Got " + collectionName + " descriptor from shared cache");
+          log.fine("Got "+collectionName+" descriptor from shared cache");
 
         // Since the descriptor can get evicted from
         // from the shared cache, store it in the local cache.
@@ -303,8 +344,8 @@ public class OracleDatabaseImpl implements OracleDatabase
                                              String collectionCreateMode)
       throws OracleException
     {
-      OracleCollection result = openCollection(collectionName,
-                                               options);
+
+      OracleCollection result = openCollection(collectionName, options);
       if (result != null)
         return(result);
 
@@ -387,6 +428,9 @@ public class OracleDatabaseImpl implements OracleDatabase
         {
           if (desc.dbObjectType == CollectionDescriptor.DBOBJECT_PACKAGE)
           {
+/***
+            coll = new PlsqlCollectionImpl(this, collectionName, desc);
+***/
             throw new IllegalStateException();
           }
           else // TableCollectionImpl is used for views and tables
@@ -400,7 +444,7 @@ public class OracleDatabaseImpl implements OracleDatabase
           }
         }
 
-        if (coll != null) 
+        if (coll != null)
         {
           coll.setAvoidTxnManagement(avoidTxnManagement);
         }
@@ -457,7 +501,8 @@ public class OracleDatabaseImpl implements OracleDatabase
   {
     if (collectionName == null)
     {
-      throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL, "collectionName");
+      throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
+                                    "collectionName");
     }
 
     callDropPLSQL(collectionName);
@@ -675,7 +720,7 @@ public class OracleDatabaseImpl implements OracleDatabase
   // Note: no time zone on the format, string is consumed/parsed internally
   private static String SELECT_DB_TIMESTAMP =
     "select to_char(sys_extract_utc(SYSTIMESTAMP)," +
-                   "'YYYY-MM-DD\"T\"HH24:MI:SS.FF' ) from SYS.DUAL";
+                   "'YYYY-MM-DD\"T\"HH24:MI:SS.FF') from SYS.DUAL";
 
   // Current time in component-long format
   private long   currentTimestamp = 0L;
@@ -691,6 +736,12 @@ public class OracleDatabaseImpl implements OracleDatabase
   long getDatabaseTime()
     throws SQLException
   {
+    return(getDatabaseTime(false));
+  }
+
+  long getDatabaseTime(boolean forceFlag)
+    throws SQLException
+  {
     long currentNanos = System.nanoTime();
     long deltaNanos;
 
@@ -700,7 +751,7 @@ public class OracleDatabaseImpl implements OracleDatabase
       deltaNanos = currentNanos - updateNanos;
 
     // If too much time has elapsed or the local clock rolled over
-    if ((deltaNanos > TIME_REFRESH_INTERVAL) || (deltaNanos < 0L))
+    if (forceFlag || (deltaNanos > TIME_REFRESH_INTERVAL) || (deltaNanos < 0L))
     {
       // Refresh with a real SQL operation
       refreshDatabaseTime(currentNanos);
@@ -790,7 +841,74 @@ public class OracleDatabaseImpl implements OracleDatabase
     }
   }
 
+  long getDatabaseScn()
+    throws OracleException
+  {
+    OracleCallableStatement stmt = null;
+    String sqltext = SELECT_SCN;
+    long   scn = -1L;
+
+    try
+    {
+      metrics.startTiming();
+
+      stmt = (OracleCallableStatement)conn.prepareCall(sqltext);
+      stmt.registerOutParameter(1, OracleTypes.NUMBER);
+
+      stmt.execute();
+
+      scn = stmt.getLong(1);
+
+      stmt.close();
+      stmt = null;
+
+      metrics.recordReads(1, 1);
+    }
+    catch (SQLException e)
+    {
+      throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
+    }
+    finally
+    {
+      for (String message : SODAUtils.closeCursor(stmt, null))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
+
+    return(scn);
+  }
+
   /**
+   * This gets a timestamp in the database native time zone.
+   * This appears to be the only valid way to express a flashback query.
+   */
+  public String getAsOfTimestamp()
+    throws OracleException
+  {
+    String result = null;
+
+    try
+    {
+      long tstamp = getDatabaseTime(true);
+      result = ComponentTime.stampToString(tstamp);
+    }
+    catch (SQLException e)
+    {
+      throw SODAUtils.makeExceptionWithSQLText(e, SELECT_DB_TIMESTAMP);
+    }
+
+    return(result);
+  }
+
+  public long getAsOfScn()
+    throws OracleException
+  {
+    return(getDatabaseScn());
+  }
+
+  /*
    * Internal GUID cache
    * This keeps a small block of GUIDs assigned by the database
    * in a memory cache. When the cache is exhausted, a new set of
@@ -956,8 +1074,8 @@ public class OracleDatabaseImpl implements OracleDatabase
   {
     OracleCallableStatement stmt = null;
     String sqltext = "begin\n"+
-            " DBMS_SODA_ADMIN.DROP_COLLECTION(P_URI_NAME => ?);\n"+
-            "end;";
+                     " DBMS_SODA_ADMIN.DROP_COLLECTION(P_URI_NAME => ?);\n"+
+                     "end;";
 
     try
     {
@@ -978,7 +1096,6 @@ public class OracleDatabaseImpl implements OracleDatabase
     }
     catch (SQLException e)
     {
-
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
 
@@ -991,27 +1108,44 @@ public class OracleDatabaseImpl implements OracleDatabase
       // telling the user to commit. In 12.2, DBMS_SODA_ADMIN has been modified 
       // to output a custom 40626 exception instead of the ORA-00054. For 
       // consistency, we wrap it in the same OracleException.
+      try
+      {
+        if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
+          sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
+      }
+      catch (SQLException se)
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(se.getMessage());
 
-      sqlSyntaxLevel = SODAUtils.getSQLSyntaxlevel(conn, sqlSyntaxLevel);
+        throw new OracleException(se);
+      }
 
       if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       {
-        if (e.getErrorCode() == 40626) 
+        if (e.getErrorCode() == 40626)
         {
           commitNeeded = true;
-        } 
+        }
       }
       else if (e.getErrorCode() == 54)
       {
-          commitNeeded = true; 
+          commitNeeded = true;
       }
-     
+
       if (commitNeeded)
         throw SODAUtils.makeExceptionWithSQLText(SODAMessage.EX_COMMIT_MIGHT_BE_NEEDED,
                                                  e,
                                                  sqltext);
 
-      throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
+      // ### Error when collection doesn't exist,
+      // don't throw an exception in this case
+      // (this error was added in PLSQL API in 12.2.0.2,
+      // for new SODA PLSQL and C implementations,
+      // but to preserve the original SODA Java behavior we
+      // don't throw it in Java).
+      if (e.getErrorCode() != 40671)
+        throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
     {
@@ -1041,6 +1175,8 @@ public class OracleDatabaseImpl implements OracleDatabase
     if (OracleLog.isLoggingEnabled())
       log.info("Create collection:\n" + jsonDescriptor);
     CollectionDescriptor newDescriptor = null;
+
+    String sqlddl = null;
 
     try
     {
@@ -1074,12 +1210,22 @@ public class OracleDatabaseImpl implements OracleDatabase
         Builder builder = CollectionDescriptor.jsonToBuilder(jsonDescriptor);
         newDescriptor = builder.buildDescriptor(collectionName);
       }
+
+      // See if we can get the DDL operation actually run by PL/SQL
+      sqlddl = callGetDDL();
+      if (sqlddl != null && OracleLog.isLoggingEnabled())
+        log.info(sqlddl);
     }
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
-      throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
+
+      sqlddl = callGetDDL();
+      if (sqlddl != null)
+        throw SODAUtils.makeExceptionWithSQLText(e, sqlddl);
+      else
+        throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
     {
@@ -1091,6 +1237,50 @@ public class OracleDatabaseImpl implements OracleDatabase
     }
 
     return(newDescriptor);
+  }
+
+  private String callGetDDL()
+  {
+    String sqlddl = null;
+    OracleCallableStatement stmt = null;
+    String sqltext = "begin\n  DBMS_SODA_ADMIN.GET_SQL_TEXT(?);\nend;";
+
+    try
+    {
+      metrics.startTiming();
+
+      stmt = (OracleCallableStatement)conn.prepareCall(sqltext);
+
+      // SQL text (returned)
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR, 4000);
+
+      stmt.execute();
+
+      sqlddl = stmt.getString(1);
+
+      stmt.close();
+      stmt = null;
+
+      metrics.recordCall();
+    }
+    catch (SQLException e)
+    { 
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.toString());
+      // ### For now ignore the exception
+      // ### It's possible we're calling an older version of the
+      // ### PL/SQL interface that lacks the new API.
+    }
+    finally
+    {
+      for (String message : SODAUtils.closeCursor(stmt, null))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
+
+    return(sqlddl);
   }
 
   /**
@@ -1270,7 +1460,7 @@ public class OracleDatabaseImpl implements OracleDatabase
   static void addToTimestamp(String operation, StringBuilder sb)
   {
     if (operation != null) sb.append(operation);
-    sb.append("to_timestamp(?,'YYYY-MM-DD\"T\"HH24:MI:SS.FF TZH:TZM')");
+    sb.append("to_timestamp(?,'SYYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')");
   }
 
   /**
@@ -1303,16 +1493,291 @@ public class OracleDatabaseImpl implements OracleDatabase
   // Use for fetching timestamp, with JDBC workaround if required
   static String getTimestamp(String tstamp)
   {
-      // If necessary replace two dots with the colons we should have used
-      if (JDBC_WORKAROUND)
+    // If necessary replace two dots with the colons we should have used
+    if (JDBC_WORKAROUND)
+    {
+      char[] tarray = tstamp.toCharArray();
+      tarray[13] = ':';
+      tarray[16] = ':';
+      tstamp = new String(tarray);
+    }
+
+    return tstamp;
+  }
+
+  /**
+   * Returns TRUE if the database is Unicode-based
+   */
+  boolean isUnicode()
+  {
+    return dbIsUnicode;
+  }
+
+  int getMaxRawLength()
+  {
+    return rawMaxLength;
+  }
+
+  int getMaxVarcharLength()
+  {
+    return varcharMaxLength;
+  }
+
+  int getMaxNvarcharLength()
+  {
+    return nvarcharMaxLength;
+  }
+
+  /**
+   * Interrogate database for maximum non-LOB column length limits
+   */
+  // ### This code is no longer used but may be restored in future
+  private void getMaxLengths()
+  {
+    if (!metadataTableExists) return;
+
+    OracleCallableStatement stmt = null;
+    String sqltext = "begin\n"                              +
+                     "  DBMS_SODA_ADMIN.GET_PARAMETERS(\n"  +
+                     "                   P_KEY   => ?,\n"   +
+                     "                   P_VALUE => ?);\n"  +
+                     "end;";
+
+    try
+    {
+      int     nparams = 4;
+      Datum[] pkeys   = null;
+      Datum[] pvals   = null;
+
+      metrics.startTiming();
+
+      stmt = (OracleCallableStatement)conn.prepareCall(sqltext);
+
+      // Register two table-of-strings parameters as outputs
+      stmt.registerIndexTableOutParameter(1, nparams, OracleTypes.VARCHAR, 60);
+      stmt.registerIndexTableOutParameter(2, nparams, OracleTypes.VARCHAR, 60);
+
+      stmt.execute();
+
+      pkeys = stmt.getOraclePlsqlIndexTable(1);
+      pvals = stmt.getOraclePlsqlIndexTable(2);
+
+      nparams = pkeys.length;
+      if (nparams > pvals.length) nparams = pvals.length;
+      for (int i = 0; i < nparams; ++i)
       {
-          char[] tarray = tstamp.toCharArray();
-          tarray[13] = ':';
-          tarray[16] = ':';
-          tstamp = new String(tarray);
+        String pkey = pkeys[i].stringValue();
+        String pval = pvals[i].stringValue();
+
+        try
+        {
+          if (pkey.equalsIgnoreCase("VARCHAR2_MAX"))
+            varcharMaxLength = Integer.parseInt(pval);
+          else if (pkey.equalsIgnoreCase("NVARCHAR2_MAX"))
+            nvarcharMaxLength = Integer.parseInt(pval);
+          else if (pkey.equalsIgnoreCase("RAW_MAX"))
+            rawMaxLength = Integer.parseInt(pval);
+          else if (pkey.equalsIgnoreCase("DB_IS_UNICODE"))
+          {
+            if (!dbIsUnicode)
+              dbIsUnicode = pval.equalsIgnoreCase("true");
+          }
+          // ### Else unrecognized parameter, ignored for now
+        }
+        catch (NumberFormatException e)
+        {
+          // ### Just ignore non-numeric junk responses
+          if (OracleLog.isLoggingEnabled())
+            log.warning(e.toString());
+        }
       }
 
-      return tstamp;
+      stmt.close();
+      stmt = null;
+
+      metrics.recordCall();
+    }
+    catch (SQLException e)
+    {
+      // Can't throw SQL exceptions to the constructor
+      // So max lengths remain unknown
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.toString());
+
+      // TODO: exception ignored?
+    }
+    finally
+    {
+      for (String message : SODAUtils.closeCursor(stmt, null))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
+  }
+
+  /**
+   * Drop collections
+   */
+  public List<OracleDropResult> dropCollections(boolean force)
+    throws OracleException
+  {
+    if (!metadataTableExists)
+      return new ArrayList<OracleDropResult>();
+
+    List<OracleDropResult> res = new ArrayList<OracleDropResult>();
+
+    OracleCallableStatement stmt = null;
+    String sqltext = "begin\n"                  +
+      "  DBMS_SODA_ADMIN.DROP_COLLECTIONS(\n"   +
+      "                  P_COLLECTIONS => ?,\n" +
+      "                  P_ERRORS => ?,\n"      + 
+      "                  P_FORCE => ?);\n"      +
+      "end;";
+
+    try
+    {
+
+      metrics.startTiming();
+
+      stmt = (OracleCallableStatement)conn.prepareCall(sqltext);
+
+      stmt.registerOutParameter(1, OracleTypes.ARRAY, "XDB.DBMS_SODA_ADMIN.NVCNTAB");
+      stmt.registerOutParameter(2, OracleTypes.ARRAY, "XDB.DBMS_SODA_ADMIN.VCNTAB");
+
+      if (force)
+        stmt.setString(3, "true");
+      else
+        stmt.setString(3, "false");
+
+      stmt.execute();
+
+      Array cnames = stmt.getARRAY(1);
+      Array errors = stmt.getARRAY(2);
+
+      final String[] cnameStrs  = (String[])cnames.getArray();
+      final String[] errorStrs  = (String[])errors.getArray();
+
+      stmt.close();
+      stmt = null;
+
+      metrics.recordDDL();
+
+      for (int i=0; i < cnameStrs.length; i++) {
+        // Copy to final index so that we can
+        // pass it into the anonymous OracleDropResult()
+        // class. Anon class can only access final
+        // local vars.
+        final int index = i;
+
+        res.add(new OracleDropResult() {
+
+          String collName = cnameStrs[index];
+          String error = errorStrs[index];
+
+          public String getName()
+          {
+            return collName;
+          }
+ 
+          public String getError()
+          {
+            return error;
+          }
+        });
+      }
+
+      if (sharedDescriptorCache != null)
+      {
+        String name;
+        try {
+            name = conn.getCurrentSchema();
+        }
+        catch (SQLException e) {
+            throw new OracleException(e);
+        }
+
+        if (name == null)
+            throw SODAUtils.makeException(SODAMessage.EX_SCHEMA_NAME_IS_NULL);
+
+        sharedDescriptorCache.remove(name);
+      }
+
+      if (localDescriptorCache != null)
+      {
+        localDescriptorCache.clear();
+      }
+ 
+      if (localCollectionCache != null)
+      {
+        localCollectionCache.clear();
+      }
+
+      return res;
+    }
+    catch (SQLException e)
+    {
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.toString());
+
+      throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
+    }
+    finally
+    {
+      for (String message : SODAUtils.closeCursor(stmt, null))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
+  }
+
+  /**
+   * Force the NLS DATE and TIMESTAMP formats to be ISO-friendly
+   * Force numbers to use . for the radix
+   */
+  private void setDateTimeNumFormats()
+  {
+    PreparedStatement stmt = null;
+
+    String sqltext;
+
+    try
+    {
+      sqltext = "alter session set NLS_DATE_FORMAT='YYYY-MM-DD\"T\"HH24:MI:SS'";
+      stmt = conn.prepareStatement(sqltext);
+      stmt.execute();
+      stmt.close();
+
+      sqltext = "alter session set NLS_TIMESTAMP_FORMAT='YYYY-MM-DD\"T\"HH24:MI:SS.FF'";
+      stmt = conn.prepareStatement(sqltext);
+      stmt.execute();
+      stmt.close();
+
+      sqltext = "alter session set NLS_NUMERIC_CHARACTERS='.,'";
+      stmt = conn.prepareStatement(sqltext);
+      stmt.execute();
+      stmt.close();
+
+      stmt = null;
+    }
+    catch (SQLException e)
+    {
+      // Any exception means it doesn't work (and the old $ should be used)
+      // or it failed during the close() operations (but the @ sign works).
+      if (OracleLog.isLoggingEnabled())
+        log.info(e.toString());
+    }
+    finally
+    {
+      // Exceptions aren't thrown inside a finally block
+      // These close operations are just to clean up from an exception
+      for (String message : SODAUtils.closeCursor(stmt, null))
+      {
+        if (OracleLog.isLoggingEnabled())
+          log.severe(message);
+      }
+    }
   }
 
   /**
@@ -1393,6 +1858,13 @@ public class OracleDatabaseImpl implements OracleDatabase
     {
       return OracleDatabaseImpl.this.getConnection();
     }
+
+    public List<OracleDropResult> dropCollections(boolean force)
+      throws OracleException
+    {
+      return OracleDatabaseImpl.this.dropCollections(force);
+    }
+
   }
 
 }

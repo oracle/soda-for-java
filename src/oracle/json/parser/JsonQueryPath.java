@@ -145,8 +145,7 @@ public class JsonQueryPath
       if (step.charAt(0) != '[')
       {
         sb.append(".");
-        sb.append(step); // ### Assumes necessary escaping
-                         //     has been done
+        sb.append(step); // ### Assumes it's already SQL-escaped?
       }
     }
   }
@@ -187,11 +186,11 @@ public class JsonQueryPath
       if (step.charAt(0) != '[')
       {
         sb.append(".");
-        sb.append(step);    // ### Assumes necessary escaping
-                            //     has been done
+        sb.append(step);    // ### Assumes it's already SQL-escaped?
         if (forceSingle)
           sb.append("[0]"); // Guarantee singleton cardinality at each step
       }
+      // ### Else OK to silently ignore array steps?
     }
   }
 

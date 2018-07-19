@@ -19,7 +19,7 @@
     <property name="javac.java.home" value="${env.JAVA_HOME}"/>
     
     <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
-    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.0.5.jar"/>
+    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.1.0.jar"/>
 
     <!--
        Generic project layout

@@ -24,7 +24,7 @@
             executable="@{sqlplus.dir}/sqlplus" 
             output="@{outfile}"
             inputstring="exit">
-             <arg line="'@{user}/@{pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${Server})(Port=${Port}))(CONNECT_DATA=(SID=${DBName})))' @ @{infile}"/>
+             <arg line="'@{user}/@{pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${Server})(Port=${Port}))(CONNECT_DATA=(SERVICE_NAME=${DBName})))' @ @{infile}"/>
           </exec>
       </sequential>
     </macrodef>

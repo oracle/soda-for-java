@@ -35,6 +35,7 @@ import java.util.Set;
  *     OracleCollection ocollection = ...;
  *     OracleCursor ocursor = ocollection.find().keys(keys).skip(25).limit(25).getCursor();
  * </pre>
+ *  
  * In this example, {@link #keys(Set)}, {@link #skip(long)},
  * and {@link #limit(int)} are non-terminal methods that specify parts
  * of the operation. More concretely, they specify that documents matching
@@ -169,7 +170,7 @@ public interface OracleOperationBuilder
    *                               be <code>null</code>
    * @return                       <code>OracleOperationBuilder</code>
    * @throws OracleException       if the <code>filterSpecification</code>
-   *                               is <code>null</code>
+   *                               is <code>null</code> or invalid.
    */
   public OracleOperationBuilder filter(OracleDocument filterSpecification)
     throws OracleException;
@@ -311,11 +312,10 @@ public interface OracleOperationBuilder
    * This interface assumes the results are ordered (e.g. by key).
    * <p>
    * This method should only be invoked as part of building a
-   * read operation. If it's invoked as part of building
-   * a write operation (e.g. with replace, update,
-   * or remove), it will have no effect. Also, this
-   * method will have no effect if invoked
-   * as part of building a {@link #count()} operation.
+   * read operation. If it's invoked as part of building a write operation
+   * (e.g. with replace, remove, etc.), it will have no effect. 
+   * It is an error to specify this method in conjunction with 
+   * a {@link #count()} terminal.
    *
    * @param limit                   limit on the number of results. Must be
    *                                positive.
@@ -335,11 +335,11 @@ public interface OracleOperationBuilder
    * This interface assumes the results are ordered (e.g. by key).
    * <p>
    * This method should only be invoked as part of building a
-   * read operation. If it's invoked as part of building
-   * a write operation (e.g. with replace, update,
-   * or remove), it will have no effect. Also, this
-   * method will have no effect if invoked
-   * as part of building a {@link #count()} operation.
+   * read operation. If it's invoked as part of building a write operation
+   * (e.g. with replace, remove, etc.), it will have no effect. 
+   * It is an error to specify this method in conjunction with 
+   * a {@link #count()} terminal.
+   *
    * <p>
    *
    * @param skip                    number of results to skip. Must be
@@ -369,51 +369,51 @@ public interface OracleOperationBuilder
    * <p>
    * This method should only be invoked as part of building a
    * read operation. If it's invoked as part of building
-   * a write operation (e.g. replace, update,
-   * or remove), it will have no effect. Also, this
-   * method will have no effect if invoked
+   * a write operation (e.g. replace, remove, etc), it will have 
+   * no effect. Also, this method will have no effect if invoked
    * as part of building a {@link #count()} operation.
    * <p>
    *
    * @return                       this <code>OracleOperationBuilder</code>
    */
-    public OracleOperationBuilder headerOnly();
+  public OracleOperationBuilder headerOnly();
 
-    /**
-     * Counts the number of documents.
-     * <p>
-     * This is a terminal method, and, as such, it causes operation
-     * execution.
-     *
-     * @return                        document count
-     * @throws OracleException        if there is an error getting the count
-     */
-    public long count()
-      throws OracleException;
+  /**
+   * Counts the number of documents.
+   * <p>
+   * This is a terminal method, and, as such, it causes operation
+   * execution.
+   *
+   * @return                        document count
+   * @throws OracleException        if there is an error getting the count
+   */
+  public long count()
+    throws OracleException;
 
-    /**
-     * Returns a single document. Use this method to get the 
-     * document from the <code>OracleOperationBuilder</code> returned by
-     * {@link #key(String)}, for example: <code>col.find().key(key).getOne()</code>
-     * <p>
-     * If this method is used as a terminal for an operation that
-     * returns multiple documents, the first document is returned.
-     * <p>
-     * This is a terminal method, and, as such, it causes operation
-     * execution.
-     * <p>
-     * For the Oracle RDBMS implementation of SODA, the current
-     * limit for the maximum size of document that can be read is 2GB.
-     * An exception will be thrown by this method if the document's
-     * size exceeds this limit.
-     * </p>
-     *
-     *
-     * @return                        returns a single document. <code>null</code>
-     *                                if no document is available.
-     * @throws OracleException        if there is an error retrieving the
-     *                                <code>OracleDocument</code>
-     */
-    public OracleDocument getOne()
-      throws OracleException;
+  /**
+   * Returns a single document. Use this method to get the 
+   * document from the <code>OracleOperationBuilder</code> returned by
+   * {@link #key(String)}, for example: <code>col.find().key(key).getOne()</code>
+   * <p>
+   * If this method is used as a terminal for an operation that
+   * returns multiple documents, the first document is returned.
+   * <p>
+   * This is a terminal method, and, as such, it causes operation
+   * execution.
+   * <p>
+   * For the Oracle RDBMS implementation of SODA, the current
+   * limit for the maximum size of document that can be read is 2GB.
+   * An exception will be thrown by this method if the document's
+   * size exceeds this limit.
+   * </p>
+   *
+   *
+   * @return                        returns a single document. <code>null</code>
+   *                                if no document is available.
+   * @throws OracleException        if there is an error retrieving the
+   *                                <code>OracleDocument</code>
+   */
+  public OracleDocument getOne()
+    throws OracleException;
+
 }

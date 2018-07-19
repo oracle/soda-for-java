@@ -55,7 +55,7 @@ drop table sodatbl;
 drop sequence sodatbl_version_seq;
 
 create table sodatbl (ID VARCHAR2(255) NOT NULL PRIMARY KEY, CONTENT_TYPE VARCHAR2(255),
-    CREATED_ON TIMESTAMP(6), LAST_MODIFIED TIMESTAMP(6), VERSION NUMBER(6) NOT NULL, JSON_DOCUMENT BLOB);
+    CREATED_ON TIMESTAMP(6), LAST_MODIFIED TIMESTAMP(6), VERSION varchar2(255) NOT NULL, JSON_DOCUMENT BLOB);
 
 create sequence sodatbl_version_seq increment by 1 start with 1 minvalue 1 maxvalue 9999999999999 nocache order;
 

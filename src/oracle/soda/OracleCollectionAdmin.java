@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -51,6 +51,18 @@ public interface OracleCollectionAdmin
   public void dropIndex(String indexName)
     throws OracleException;
 
+  /**
+   * Drops the named index.
+   *
+   * @param indexName                name of the index to drop
+   * @param force                    force index drop. Can only be used with
+   *                                 json search or spatial indexes.
+   * @throws OracleException         if an error occurs while dropping
+   *                                 the index
+   */
+  public void dropIndex(String indexName, boolean force)
+    throws OracleException;
+
 
   /**
    * Create an index using an index specification (expressed in JSON).
@@ -62,19 +74,6 @@ public interface OracleCollectionAdmin
    *                                 occurs while dropping the index
    */
   public void createIndex(OracleDocument indexSpecification)
-    throws OracleException;
-
-  /**
-   * Turns on Json Search Index.
-   *
-   * @param indexName                name of the index. Cannot be
-   *                                 <code>null</code>
-   * @param language                 language of JSON documents
-   * 
-   * @throws OracleException         if an error occurs while creating
-   *                                 the index
-   */
-  public void createJsonSearchIndex(String indexName, String language)
     throws OracleException;
 
   /**
@@ -124,5 +123,4 @@ public interface OracleCollectionAdmin
    * @return                         collection metadata in JSON
    */
   public OracleDocument getMetadata();
-
 }

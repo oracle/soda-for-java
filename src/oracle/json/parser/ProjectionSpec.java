@@ -1,6 +1,7 @@
-/* $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/4 2014/10/15 13:21:24 dmcmahon Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/10 2018/06/15 02:15:48 morgiyan Exp $ */
 
-/* Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.*/
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -9,17 +10,14 @@
    PRIVATE CLASSES
 
    NOTES
-    This is a hack implementation that only allows for a flat list of
-    columns that are presumed to be singletons. This is suitable for
-    a JSON_TABLE implementation, which is all we can do without a SQL
-    projection operator.
+   This is used to validate projection specifications.
 
    MODIFIED    (MM/DD/YY)
     dmcmahon    09/10/14 - Creation
  */
 
 /**
- *  @version $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/4 2014/10/15 13:21:24 dmcmahon Exp $
+ *  @version $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/10 2018/06/15 02:15:48 morgiyan Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -34,7 +32,6 @@ import java.math.BigDecimal;
 import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -44,155 +41,31 @@ import javax.json.JsonValue;
 import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
 
+
+import oracle.json.util.ByteArray;
 import oracle.json.util.JsonByteArray;
 
 public class ProjectionSpec
 {
   private final InputStream source;
 
-  private boolean       is_parsed = false;
+  private boolean       is_parsed                    = false;
+  private boolean       is_checked_for_array_steps   = false;
+  private boolean       is_checked_for_paths_overlap = false;
+  private boolean       is_validated                 = false;
+  private String        rendition                    = null;
 
-  private static final IndexColumn[] NO_COLUMNS = new IndexColumn[0];
+  private boolean       includeSeen                  = false;
+  private boolean       excludeSeen                  = false;
+  private boolean       badValueSeen                 = false;
+  private boolean       arrayStepSeen                = false;
+  private boolean       overlappingPathsSeen         = false;
 
-  // ### Cheesy reuse of IndexColumn but OK for now
-  private IndexColumn[] columns   = NO_COLUMNS;
-
-  // Fully quoted path strings for use in JSON_TABLE expressions
-  private String[]      jtpaths   = null;
-
-  //
-  // Root of the field template used for "rendering" a JSON fragment
-  //
-  private final FieldStep template = new FieldStep(null);
-
-  /*
-  ** This inner class is used to represent a tree of unique fields
-  */
-  class FieldStep
-  {
-    static final int CONTAINER_STEP = -1;
-
-    String name;
-    int    columnNum = CONTAINER_STEP;
-
-    HashMap<String, FieldStep> children = null;
-
-    FieldStep(String name)
-    {
-      this.name = name;
-    }
-
-    void setColumnPosition(int pos)
-    {
-      if (columnNum == CONTAINER_STEP)
-        columnNum = pos;
-      // ### Else this is a "lost" column we cannot map. That's because
-      // ### either there are dual paths to the same scalar, or the step
-      // ### is mapped as both a scalar and a container on different paths.
-    }
-
-    FieldStep getChild(String name)
-    {
-      if (children == null) return(null);
-      return(children.get(name));
-    }
-
-    void addChild(String name, FieldStep fld)
-    {
-      if (children == null)
-      {
-        children = new HashMap<String, FieldStep>();
-
-        if (columnNum >= 0)
-        {
-          // This now has to be marked as a container
-          this.columnNum = CONTAINER_STEP;
-          // ### This has become a "lost" column
-        }
-      }
-
-      children.put(name, fld);
-    }
-  }
-
-  private void makeStrings()
-  {
-    int ncols = columns.length;
-    if (ncols == 0) return;
-
-    //
-    // Make a tree of field steps, converting the path step strings from
-    // the SQL escaped format to JSON field names.
-    //
-    for (int i = 0; i < ncols; ++i)
-    {
-      String[] pathSteps = columns[i].getSteps();
-      String[] fieldSteps = new String[pathSteps.length];
-
-      FieldStep parent = template;
-
-      for (int j = 0; j < pathSteps.length; ++j)
-      {
-        String fieldName = PathParser.unescapeStep(pathSteps[j]);
-
-        FieldStep child = parent.getChild(fieldName);
-        if (child == null)
-        {
-          child = new FieldStep(fieldName);
-          parent.addChild(fieldName, child);
-        }
-        parent = child;
-      }
-
-      parent.setColumnPosition(i);
-    }
-
-    jtpaths = new String[ncols];
-
-    StringBuilder sb = new StringBuilder();
-
-    for (int i = 0; i < ncols; ++i)
-    {
-      String[] steps;
-
-      steps = columns[i].getSteps();
-
-      // Build a JSON_TABLE path string
-      sb.setLength(0);
-      sb.append("$");
-
-      for (int j = 0; j < steps.length; ++j)
-      {
-        String stp = steps[j];
-
-        if (stp == null) continue; // ### Should never happen
-
-        if (stp.charAt(0) != '[') // ### Silently ignore array steps?
-        {
-          // Separate steps with dots
-          sb.append(".");
-          // Append the step itself
-          sb.append(stp);
-          // ### Force singleton cardinality for now
-          sb.append("[0]");
-        }
-/***
-        if (stp.charAt(0) != '[')
-          // Separate non-array steps with dots
-          sb.append(".");
-        // Append the step itself
-        sb.append(stp);
-        // ### Unclear if final step should get [*] or not
-***/
-      }
-
-      jtpaths[i] = sb.toString();
-    }
-  }
+  private ArrayList<String[]> paths = new ArrayList<String[]>();
 
   public ProjectionSpec(InputStream inp)
   {
-    source = inp;
+    this.source = inp;
   }
 
   private void makeException(QueryMessage msg, Object... params)
@@ -201,7 +74,7 @@ public class ProjectionSpec
     QueryException.throwSyntaxException(msg, params);
   }
 
-  private void close(boolean silent)
+  private void close()
     throws QueryException
   {
     try
@@ -210,26 +83,154 @@ public class ProjectionSpec
     }
     catch (IOException e)
     {
-      if (!silent)
-        throw(new QueryException(QueryMessage.EX_INVALID_PROJECTION.get(), e));
+      throw(new QueryException(QueryMessage.EX_INVALID_PROJECTION.get(), e));
     }
   }
 
   /**
-   * Parse the projection specification.
+   * Load the projection specification without parsing it.
    */
-  public IndexColumn[] parse()
+  public String getAsString()
     throws QueryException
   {
+    if (rendition == null)
+    {
+      try
+      {
+        ByteArray barr = ByteArray.loadStream(source);
+        rendition = barr.getString();
+      }
+      catch (IOException e)
+      {
+        throw new QueryException(QueryMessage.EX_INVALID_PROJECTION.get(), e);
+      }
+    }
+    return(rendition);
+  }
+
+  public boolean hasIncludeRules()
+  {
+    return includeSeen;
+  }
+
+  public boolean hasExcludeRules()
+  {
+    return excludeSeen;
+  }
+
+  public boolean hasArraySteps()
+  {
+    if (is_checked_for_array_steps)
+      return arrayStepSeen;
+
+    for (String[] path : paths)
+    {
+      arrayStepSeen = hasArrayStep(path);
+      if (arrayStepSeen)
+      {
+        is_checked_for_array_steps = true;
+        return arrayStepSeen;
+      }
+    }
+
+    is_checked_for_array_steps = true;
+    return arrayStepSeen;
+  }
+
+  // Check for one path being a prefix of another.
+  // Note: this algorithm assumes no array steps are present
+  // in the paths. We expect the caller to only call this method
+  // if hasArraySteps() returns false. With array steps, the
+  // algorithm is not correct (for example a[0].b and a.b might
+  // be an overlapping path, depending on the data).
+  public boolean hasOverlappingPaths()
+  {
+    if (is_checked_for_paths_overlap)
+      return overlappingPathsSeen;
+
+    whileloop:
+    while (paths.size() >= 2)
+    {
+      for (int i = 1; i < paths.size(); i++)
+      {
+        if (isPrefix(paths.get(0), paths.get(i)))
+        {
+          overlappingPathsSeen = true;
+          // Since we found a case of overlapping paths (i.e. where
+          // one of the paths is a prefix of another), we can now
+          // break out of both the inner "for" loop, and the outter "while"
+          // loop.
+          break whileloop;
+        }
+      }
+
+      paths.remove(0);
+    }
+
+    is_checked_for_paths_overlap = true;
+
+    return overlappingPathsSeen;
+  }
+
+  static boolean isPrefix(String[] path1, String[] path2)
+  {
+    int length = (path1.length <= path2.length ) ? path1.length : path2.length;
+
+    for (int i = 0; i < length; i++)
+    {
+      // If one of both of the steps are wildcards, we
+      // take a pessimistic approach and assume the steps
+      // could be the same (though that's not necessarily
+      // true, depending on data).
+      if (!(path1[i].equals(path2[i])) && !(path1[i].equals("*") || path2[i].equals("*")))
+      {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  boolean hasArrayStep(String[] path)
+  {
+    for (String step : path)
+    {
+      if (step.startsWith("["))
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Parse the projection specification and validate it.
+   */
+  public boolean validate(boolean checkPaths)
+    throws QueryException
+  {
+    if (is_validated) return(!badValueSeen);
+
+    // Capture it as a string first
+    String src = getAsString();
+    QueryException ex = null;
+
+    includeSeen = excludeSeen = badValueSeen = false;
+
     try
     {
-      DocumentLoader loader = new DocumentLoader(source);
+      // Source was consumed so reparse it from the rendition
+      DocumentLoader loader = new DocumentLoader(src);
 
-      JsonObject jObj = (JsonObject)loader.parse();
+      Object parse = loader.parse();
 
-      close(false);
+      if (!(parse instanceof JsonObject))
+        throw new QueryException(QueryMessage.EX_INVALID_PROJECTION.get());
 
-      ArrayList<IndexColumn> columnList = new ArrayList<IndexColumn>();
+      JsonObject jObj = (JsonObject)parse;
+
+      close();
 
       for (Entry<String, JsonValue> entry : jObj.entrySet()) 
       {
@@ -238,52 +239,53 @@ public class ProjectionSpec
 
         JsonValue.ValueType vtype = entryVal.getValueType();
 
-        String dtype = null;
-
-        // Ignore fields set to false or null
-        if ((vtype == JsonValue.ValueType.FALSE) ||
-            (vtype == JsonValue.ValueType.NULL))
-          continue;
-
-        // ### Ignore structured fields (questionable)
-        if ((vtype == JsonValue.ValueType.OBJECT) ||
-            (vtype == JsonValue.ValueType.ARRAY))
-          continue;
-
-        // Accept 1 as equivalent to true, other numbers ignored
-        if (vtype == JsonValue.ValueType.NUMBER)
+        if (checkPaths)
         {
+          PathParser pp = new PathParser(entryKey);
+          String[] parr = pp.splitAndSQLEscape();
+
+          if (parr == null)
+            makeException(QueryMessage.EX_INDEX_ILLEGAL_PATH, entryKey);
+
+          paths.add(parr);
+        }
+
+        switch (vtype)
+        {
+        case TRUE:
+          includeSeen = true;
+          break;
+
+        case FALSE:
+          excludeSeen = true;
+          break;
+
+        case STRING:
+          String sval = ((JsonString)entryVal).getString();
+          if (sval.equals("include"))
+            includeSeen = true;
+          else if (sval.equals("exclude"))
+            excludeSeen = true;
+          else
+            badValueSeen = true;
+          break;
+
+        case NUMBER:
           BigDecimal dval = ((JsonNumber)entryVal).bigDecimalValue();
-          if (dval.compareTo(BigDecimal.ONE) != 0)
-            continue;
+          if (dval.compareTo(BigDecimal.ZERO) == 0)
+            excludeSeen = true;
+          else if (dval.compareTo(BigDecimal.ONE) == 0)
+            includeSeen = true;
+          else
+            badValueSeen = true;
+          break;
+
+        // Disallowed constructs (ARRAY, OBJECT, NULL)
+        default:
+          badValueSeen = true;
+          break;
         }
-        
-        if (vtype == JsonValue.ValueType.STRING)
-        {
-          // The field is included, this may give us the data type hint
-          dtype = ((JsonString)entryVal).getString();
-        }
-
-        IndexColumn idx  = new IndexColumn();
-
-        PathParser pp = new PathParser(entryKey);
-        String[] parr = pp.splitAndSQLEscape();
-        if (parr == null)
-          makeException(QueryMessage.EX_INDEX_ILLEGAL_PATH, entryKey);
-
-        idx.setPath(parr);
-        if (dtype != null) idx.setSqlType(dtype);
-
-        columnList.add(idx);
       }
-
-      int sz = columnList.size();
-      if (sz > 0)
-      {
-        columns = new IndexColumn[sz];
-        columns = columnList.toArray(columns);
-      }
-      // ### Should an empty column list be an exception for creation?
     }
     catch (IllegalArgumentException e)
     {
@@ -299,117 +301,24 @@ public class ProjectionSpec
     }
     finally
     {
-      // This will only really attempt to close if an exception occurs
-      close(true);
-    }
-
-    is_parsed = true;
-    makeStrings();
-
-    return(columns);
-  }
-
-  public IndexColumn[] getColumns()
-  {
-    if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(columns);
-  }
-
-  public int numColumns()
-  {
-    return(columns.length);
-  }
-
-  public String getColumnPath(int pos)
-  {
-    if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(jtpaths[pos]);
-  }
-
-  public int getSqlType(int pos)
-  {
-    if (!is_parsed) throw new IllegalStateException("Not parsed");
-    return(columns[pos].getSqlType());
-  }
-
-  private int projectObject(FieldStep fld,
-                            String[] values,
-                            JsonByteArray builder)
-  {
-    int totalBinds = 0;
-    boolean isFirst = true;
-
-    builder.appendOpenBrace();
-
-    for (Entry<String, FieldStep> entry : fld.children.entrySet())
-    {
-      String    fldName = entry.getKey();
-      FieldStep fldVal  = entry.getValue();
-
-      if (isFirst)
-        isFirst = false;
-      else
-        builder.appendComma();
-
-      // Render the field name
-      builder.appendValue(fldName);
-      builder.appendColon();
-
-      int pos = fldVal.columnNum;
-
-      // If it's a container, descend into it and render any children
-      if (pos == FieldStep.CONTAINER_STEP)
-        totalBinds += projectObject(fldVal, values, builder);
-      // Otherwise it's a leaf step so render the matching value
-      else
+      try
       {
-        String fieldValue = (pos < values.length) ? values[pos] : null;
-
-        ++totalBinds;
-
-        if (fieldValue == null)
-        {
-          // ### Perhaps we should omit the field instead?
-          builder.append("null");
-        }
-        else if (getSqlType(pos) == IndexColumn.SQLTYPE_NUMBER)
-        {
-          try
-          {
-            BigDecimal numValue = new BigDecimal(fieldValue);
-            builder.append(numValue.toString());
-          }
-          catch (NumberFormatException e)
-          {
-            // Render the field as a string
-            builder.appendValue(fieldValue);
-          }
-        }
-        else
-        {
-          // ### To-do: if the projection has a preference for a boolean
-          // ### or date/time field, we need to detect that here and
-          // ### attempt to render it nicely.
-          builder.appendValue(fieldValue);
-        }
+        // This will only really attempt to close if an exception occurs
+        close();
+      }
+      catch (QueryException e)
+      {
+        // This will be thrown after the try/catch/finally block
+        // but only if this isn't already finalizing an exception case.
+        ex = e;
       }
     }
 
-    builder.appendCloseBrace();
+    if (ex != null)
+      throw ex;
 
-    return(totalBinds);
-  }
+    is_validated = true;
 
-  /**
-   * Render the values into a JSON fragment
-   */
-  public byte[] projectValues(String[] values)
-  {
-    JsonByteArray builder = new JsonByteArray();
-
-    // Walk the template rendering the steps and any leaf values
-    projectObject(template, values, builder);
-
-    return(builder.toArray());
+    return(!badValueSeen);
   }
 }

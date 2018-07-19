@@ -351,7 +351,8 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-01841"));
+      // ORA-01858: a non-numeric character was found where a numeric was expected
+      assertTrue(t.getMessage().contains("ORA-01858"));
     }
 
     try {
@@ -361,7 +362,8 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-01862"));
+      // ORA-01840: input value not long enough for date format
+      assertTrue(t.getMessage().contains("ORA-01840"));
     }
     
     // test when no lastModified column
@@ -424,9 +426,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(false, cursor.hasNext());
 
     // Call version() for 1+ times
-    assertEquals(1, col.find().version(version1).limit(10).version(version10)
-        .count());
-    cursor = col.find().version(version1).limit(10).version(version10)
+    assertEquals(1, col.find().version(version1).version(version10)
+      .count());
+    cursor = col.find().version(version1).version(version10)
         .getCursor();
     assertEquals("id.10", cursor.next().getKey());
 
@@ -523,7 +525,8 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      assertTrue(t.getMessage().contains("ORA-01841"));
+      // ORA-01858: a non-numeric character was found where a numeric was expected
+      assertTrue(t.getMessage().contains("ORA-01858"));
     }
     
     // test when no lastModified column
@@ -651,11 +654,18 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     cursor.next();
     assertEquals(false, cursor.hasNext());
-    
-    // Test limit() with count() (should make no effect)
-    assertEquals(10, col.find().limit(5).count());
-    
+
     // Negative tests
+    try
+    {
+      col.find().limit(5).count();
+      fail("No exception when count() is used with limit().");
+    }
+    catch (OracleException e)
+    {
+      assertEquals(e.getMessage(), "skip or limit cannot be set for a count operation.");
+    }
+
     try {
       // Pass 0 for limit when collection count > 0
       cursor = col.find().skip(2).limit(0).getCursor();
@@ -667,7 +677,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     try {
       // Pass 0 for limit when collection count = 0
-      cursor = col.find().key("xyz").limit(0).getCursor();
+      cursor = col.find().key("ABC").limit(0).getCursor();
       fail("No exception when limit is 0");
     } catch (OracleException e) {
       // Expect an OracleException
@@ -688,8 +698,8 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   public void testSkip() throws Exception {
 
     OracleDocument mDoc = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("CLIENT").build();
-    
+      .keyColumnAssignmentMethod("CLIENT").build();
+
     OracleCollection col = dbAdmin.createCollection("testSkip", mDoc);
 
     for (int i = 1; i <= 10; i++) {
@@ -699,22 +709,22 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with skip >= collection count
     OracleCursor cursor = col.find().limit(10).skip(20).getCursor();
     assertEquals(false, cursor.hasNext());
-    
+
     cursor = col.find().limit(10).skip(10).getCursor();
     assertEquals(false, cursor.hasNext());
-    
+
     // Test with 0 < skip < collection count
     cursor = ((OracleOperationBuilderImpl) col.find().skip(8)).startKey("id", true, false).limit(10).getCursor();
     assertEquals(true, cursor.hasNext());
     // after skip and order,  the left document should be id-8 and id-9
     assertEquals("id-8", cursor.next().getKey());
     assertEquals("{ \"value\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertEquals(false, cursor.hasNext()); 
-    
+    assertEquals(false, cursor.hasNext());
+
     // Test with positive for skip when collection count is 0
     cursor = ((OracleOperationBuilderImpl) col.find()).startKey("id-999", true, true).skip(5).limit(5).getCursor();
-    assertEquals(false, cursor.hasNext()); 
-    
+    assertEquals(false, cursor.hasNext());
+
     // Test with other skip() call
     cursor = col.find().skip(6).skip(4).skip(8).getCursor();
     assertEquals(true, cursor.hasNext());
@@ -722,31 +732,26 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     cursor.next();
     assertEquals(false, cursor.hasNext());
-    
+
     // Test with limit()(pagination function)
     cursor = ((OracleOperationBuilderImpl) col.find().limit(3)).startKey("id", true, true).getCursor();
     assertEquals("id-1", cursor.next().getKey());
     assertEquals("id-10", cursor.next().getKey());
     assertEquals("id-2", cursor.next().getKey());
-    
+
     cursor = ((OracleOperationBuilderImpl) col.find().skip(3).limit(3)).startKey("id", true, false).getCursor();
     assertEquals("id-3", cursor.next().getKey());
     assertEquals("id-4", cursor.next().getKey());
     assertEquals("id-5", cursor.next().getKey());
-    
+
     cursor = col.find().skip(9).limit(3).getCursor();
     assertEquals(true, cursor.hasNext());
     cursor.next();
     assertEquals(false, cursor.hasNext());
-    
-    // Test limit() with count() (should make no effect)
-    assertEquals(10, col.find().skip(3).limit(5).count());
-    
-    // Pass 0 for skip when collection count > 0
-    assertEquals(10, col.find().skip(0).limit(10).count());
-    cursor = ((OracleOperationBuilderImpl)col.find().skip(0).limit(10)).startKey("id", true, true).getCursor();
+
+    cursor = ((OracleOperationBuilderImpl) col.find().skip(0).limit(10)).startKey("id", true, true).getCursor();
     assertEquals("id-1", cursor.next().getKey());
-    
+
     // Pass 0 for skip when collection count = 0
     cursor = ((OracleOperationBuilderImpl) col.find()).startKey("id-999", true, false).skip(0).getCursor();
     assertFalse(cursor.hasNext());
@@ -760,7 +765,17 @@ public class test_OracleOperationBuilder extends SodaTestCase {
       // Expect an OracleException
       assertEquals("skip argument must be nonnegative.", e.getMessage());
     }
-    
+
+    // Test skip() with count() (error)
+    try
+    {
+      col.find().skip(3).count();
+      fail("No exception when skip() and limit() are used with count().");
+    }
+    catch (OracleException e)
+    {
+      assertEquals(e.getMessage(), "skip or limit cannot be set for a count operation.");
+    }
   }
 
 
@@ -928,10 +943,18 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertNull(doc.getContentAsByteArray());
     assertNull(((OracleDocumentImpl) doc).getContentAsStream());
     assertNull(doc.getContentAsString());
-    
-    // should make no effect on count()
-    assertEquals(10, col.find().skip(8).limit(8).headerOnly().count());
-    
+
+    assertEquals(10, col.find().headerOnly().count());
+
+    // Negative test (skip and limit not allowed with count).
+    try {
+      col.find().skip(8).limit(8).headerOnly().count();
+      fail("No exception when skip() and limit() are specified with count().");
+    }
+    catch (OracleException e) {
+      assertEquals(e.getMessage(), "skip or limit cannot be set for a count operation.");
+    }
+
     // Test when no LastModified, CreatedOn and Version
     OracleDocument mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
         .keyColumnAssignmentMethod("UUID").build();
@@ -980,8 +1003,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(3, ((OracleOperationBuilderImpl) col.find()).startKey("id:3", false, false).count());
     // startKey("id:3", false) should return "id:6", "id:7", "id:8", "id:9"
     assertEquals(4, ((OracleOperationBuilderImpl) col.find()).startKey("id:6", true, true).count());
-    assertEquals(10, col.find().skip(3).limit(3).count());
-    assertEquals(10, col.find().skip(20).limit(10).count());
+    try {
+      col.find().skip(3).limit(3).count();
+      fail("No exception when count() is specified with skip() and limit()");
+    }
+    catch (OracleException e) {
+     assertEquals(e.getMessage(), "skip or limit cannot be set for a count operation.");
+    }
   }
   
   public void testGetOne() throws Exception {
@@ -1108,7 +1136,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     cursor = col.find().headerOnly().keys(keySet).limit(1).getCursor();
     assertEquals(false, cursor.hasNext());
 
-    // test with col.find().key(k1).keys(keys).skip(5). count();
+    // test with col.find().key(k1).keys(keys). count();
     keySet.clear();
     keySet.add("id:71");
     keySet.add("id-1");
@@ -1117,7 +1145,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     keySet.add("id:21");
     keySet.add("id:18"); // matched
     keySet.add("id:123");
-    assertEquals(3, col.find().key("id:1").keys(keySet).skip(5).count());
+    assertEquals(3, col.find().key("id:1").keys(keySet).count());
 
     // test col.find().timeRange(since, until).keys(keys).limit(n).getCursor()
     keySet.clear();
@@ -1182,8 +1210,28 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     keySet.add("id:15");
     keySet.add("id:16");
     keySet.add("id:17");
-    assertEquals(3, ((OracleOperationBuilderImpl) col.find().keys(keySet)).timeRange(lastModified3, lastModified20, true).count());    
- 
+    assertEquals(3, ((OracleOperationBuilderImpl) col.find().keys(keySet)).timeRange(lastModified3, lastModified20, true).count());
+
+    // test with col.find().key(k1).keys(keys).skip(5). count();
+    // Negative test.
+    keySet.clear();
+    keySet.add("id:71");
+    keySet.add("id-1");
+    keySet.add("id:12"); // matched
+    keySet.add("id:13"); // matched
+    keySet.add("id:21");
+    keySet.add("id:18"); // matched
+    keySet.add("id:123");
+    try
+    {
+      col.find().key("id:1").keys(keySet).skip(5).count();
+      fail("No exception when count() is used with skip().");
+    }
+    catch (OracleException e)
+    {
+      assertEquals(e.getMessage(), "skip or limit cannot be set for a count operation.");
+    }
+
     // lock() is not provided yet
     //col.find().startKey(key).skip(0).limit(5).lock().getCursor()
     
@@ -1234,9 +1282,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // Test for reusing OracleOperationBuilder object
     HashSet<String> keySet = new HashSet<String>();
-    keySet.add("id-x-y-z");
+    keySet.add("111");
     keySet.add(key4);
-    keySet.add("id-c-b-a");
+    keySet.add("222");
     keySet.add(key5);
     
     OracleOperationBuilder builder = col.find().keys(keySet);
@@ -1338,7 +1386,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     }
 
     OracleDocument mDoc = b.build();
-    OracleCollection col = dbAdmin.createCollection("testKeyLike" + assignMethod + columnType, 
+    OracleCollection col = dbAdmin.createCollection("testKeyLike" + assignMethod + columnType,
                                                      mDoc);
 
     try {
@@ -1358,5 +1406,5 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     testKeyLikeWithColumnTypeNeg("GUID", "NUMBER");
     testKeyLikeWithColumnTypeNeg("SEQUENCE", "RAW");
     testKeyLikeWithColumnTypeNeg("SEQUENCE", "NUMBER");
-  }
+  }  
 }

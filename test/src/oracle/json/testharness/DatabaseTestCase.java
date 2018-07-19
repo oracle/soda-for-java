@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /**
@@ -25,6 +25,16 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     public static final int PATCH2 = 2;
 
     public static final Integer PATCH_VERSION = Integer.getInteger("patch.version");
+    
+    // if there's no property with "jdcs.mode" specified, false will be returned.
+    protected static final boolean JDCS_MODE = Boolean.getBoolean("jdcs.mode");
+
+    // Project and patch tests only execute when running against 18 and above.
+    // Project and patch first appeared in 12.2.0.1, but was unusable due to
+    // a number of bugs. This property can be used to run project and patch tests
+    // against 12.2.0.1 (this might be needed if project and patch fixes ever need
+    // to be backported to 12.2.0.1).
+    protected static final boolean PROJECT_AND_PATCH = Boolean.getBoolean("test.projectAndPatch");
 
     protected OracleConnection conn;
 
@@ -50,11 +60,23 @@ public abstract class DatabaseTestCase extends JsonTestCase {
         }
         return false;
     }
+   
+    public static boolean includeProjectAndPatchTests() {
+        if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel) ||
+            (SODAUtils.sqlSyntax_12_2_0_1(sqlSyntaxLevel) && PROJECT_AND_PATCH))
+            return true;
+        return false;
+    }
+
+    // jdcs.mode property is specified in the entry of junit run.(the default value is false)
+    // when it's true, all explicit create/delete table/view/sequence SQL will fail.
+    public static boolean isJDCSMode() {
+      return JDCS_MODE;
+    }
     
-    // Method to check whether DB's character set is UTF8 or not
+    // the method to check whether DB's character set is UTF8 or not
     public boolean isUTF8DBCharacterSet(OracleConnection con) throws Exception {
-      final String sqlForCharSet = "SELECT value FROM nls_database_parameters" +
-                                   " WHERE parameter='NLS_CHARACTERSET'";
+      final String sqlForCharSet = "SELECT value FROM nls_database_parameters WHERE parameter='NLS_CHARACTERSET'";
       final String keyForUTF8CharSet = "AL32UTF8";
       String charSet = null;
       
@@ -62,37 +84,10 @@ public abstract class DatabaseTestCase extends JsonTestCase {
         throw new IllegalArgumentException();
       }
       
-      Exception e = null;
-      Statement statement = null;
-      ResultSet resultSet = null;
-      try {
-        statement = con.createStatement();
-        resultSet = statement.executeQuery(sqlForCharSet);
-        if (resultSet.next()) {
-          charSet = resultSet.getString(1);
-        }
-      }
-      finally {
-        // Close the result set
-        try {
-          if (resultSet != null)
-            resultSet.close();
-        }
-        catch (Exception closeException) { 
-          e = closeException;
-        }
-
-        // Close the statement
-        try {
-           if (statement != null)
-             statement.close();
-        }
-        catch (Exception closeException) { 
-          if (e != null) 
-            throw e;
-          else 
-            throw closeException;
-        }
+      Statement statement = con.createStatement();
+      ResultSet resultset = statement.executeQuery(sqlForCharSet);
+      if (resultset.next()) {
+        charSet = resultset.getString(1);
       }
       
       if (charSet == null) {
@@ -104,7 +99,7 @@ public abstract class DatabaseTestCase extends JsonTestCase {
         // matched UTF8 character set
         return true;
       }
-
+      
       return false;
     }
 
@@ -120,14 +115,15 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     }
 
     public static String createTextIndexSpec(String indexName) {
-      return createTextIndexSpec(indexName, null,false);
+      return createTextIndexSpec(indexName, null, false);
     }
 
     public static String createTextIndexSpec(String indexName,
                                              String language) {
-      return createTextIndexSpec(indexName,language,false);
+      return createTextIndexSpec(indexName, language, false);
     }
 
+    // ### Note: language is not officially supported, do not use in production!!!
     public static String createTextIndexSpec(String indexName,
                                              String language,
                                              boolean textIndex121WithLang) {
@@ -139,6 +135,8 @@ public abstract class DatabaseTestCase extends JsonTestCase {
             if (textIndex121WithLang) {
               indexSpec += "\",";
 
+              // ### Note: language is not officially supported,
+              // do not use in production!!!
               if (language != null)
                 indexSpec += "\"language\" : \"" + language + "\",";
 
@@ -152,6 +150,8 @@ public abstract class DatabaseTestCase extends JsonTestCase {
         } else {
             indexSpec = "{\"name\" : \"" + indexName + "\",";
 
+            // ### Note: language is not officially supported,
+            // do not use in production!!!
             if (language != null)
                 indexSpec += "\"language\" : \"" + language + "\",";
 
@@ -162,4 +162,5 @@ public abstract class DatabaseTestCase extends JsonTestCase {
 
         return indexSpec;
     }
+
 }
