@@ -81,7 +81,7 @@ See [Getting Started with SODA for Java](https://github.com/oracle/soda-for-java
 
 ### Documentation
 
-* [Introduction to SODA](https://docs.oracle.com/en/database/oracle/oracle-database/18/adsdi/). This covers subjects such as QBEs and indexing, which are common to all SODA impls.
+* [Introduction to SODA](https://docs.oracle.com/en/database/oracle/oracle-database/18/adsdi/). This book covers subjects common to all SODA impls, such as QBEs and indexing.
 * SODA Java documentation is located [here](http://docs.oracle.com/cd/E63251_01/index.htm).
 
 The Javadoc is located [here](http://oracle.github.io/soda-for-java).
