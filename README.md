@@ -89,7 +89,7 @@ SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [B
 
 SODA is an open source project. See [Contributing](https://github.com/oracle/soda-for-java/blob/master/CONTRIBUTING.md) for details.
 
-Oracle gratefully acknowledges the contributions to SODA made by the community.
+Oracle gratefully acknowledges the contributions to SODA made by the community
 
 ### Getting in touch
 
