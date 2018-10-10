@@ -1,6 +1,6 @@
 # Getting started with SODA for Java
 
-To get started, you must have a live Oracle database 12.2.0.1 instance (available from [this page](http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html)).
+To get started, you must have an Oracle database 12.2.0.1 or above instance (available from [this page](http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html)).
 
 SODA is also supported on 12.1.0.2 release, available from the same page. On 12.1.0.2, patch 20885778 is required
 to use SODA. Obtain the patch from My Oracle Support (https://support.oracle.com). Select tab Patches & Updates. Search for patch number 20885778 or access it directly at this URL: https://support.oracle.com/rs?type=patch&id=20885778. Make sure you follow all the installation steps specified in the README.txt file included with the patch, including the post-installation step.
