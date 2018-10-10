@@ -5,18 +5,9 @@ It's not required that Ivy is installed - as long as you have an internet connec
 the build process will download Ivy and use it to download SODA dependencies. 
 
 The only SODA dependency that must be manually downloaded is the Oracle JDBC jar that ships with 
-the Oracle database.
+the Oracle database. JDBC 6 or above jar is required.
 
-JDBC jars for use with JDK 6, 7, and 8 ship with Oracle Database 12.1.0.2 and can be downloaded from here:
-
-[http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html)
-
-Make sure you pick either ojdbc6.jar (for use with JDK 6), or ojdbc7.jar (for use with JDK 7 and 8),
-out of the different flavors available. 
-
-If you are using JDK 8 and planning to run SODA with Oracle Database 12.2.0.1, you can alternatively download ojdbc8.jar from here:
-
-http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html
+For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](https://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html). If you're still on JDK7 or even JDK6, you can use ojdbc7.jar or ojdbc6.jar respectively. These ship with Oracle Database 12.1.0.2, and are downloadable from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
 
 Copy the downloaded JDBC jar to the /lib directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file).
 
