@@ -211,11 +211,11 @@ As you can see a table has been created with the following columns:
     LAST_MODIFIED        Stores the auto-generated last-modified timestamp
     VERSION              Stores the auto-generated document version
 
-This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a New Document Collection](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA115) and [Collection Configuration Using Custom Metadata](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA192)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
+This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a Document Collection with SODA for Java](https://docs.oracle.com/en/database/oracle/simple-oracle-document-access/java-1/adsda/using-soda-java.html#GUID-CCD5E91C-7F28-4193-8564-C8201CCF08CE) and [SODA Collection Configuration Using Custom Metadata](https://docs.oracle.com/en/database/oracle/simple-oracle-document-access/java-1/adsda/soda-collection-configuration-using-custom-metadata.html#GUID-D17E8D3C-EE74-49CD-84AA-CE86B9664554)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
-    java -classpath "orajsoda.jar:ojdbc6-12.1.0.2.0.jar:javax.json-1.0.4.jar:." testSODA drop
+    java -classpath "orajsoda.jar:ojdbc8.jar:javax.json-1.0.4.jar:." testSODA drop
 
 The output will now be different from before, since the same three documents will be inserted again. But, at the end, the collection will be dropped, and the underlying table removed.
 
