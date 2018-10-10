@@ -159,7 +159,7 @@ Copy and paste this code into a file called testSODA.java. Then modify the "url"
 
 To compile and run SODA Java applications, you need the following jars:
 
-*    ojdbc7.jar (for use with JDK 7 or 8) that ship with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html). These jars will work with Oracle Database 12.1.0.2 and above. Alternatively, if you are using JDK 8 and Oracle Database 12.2.0.1 and above, you can use ojdbc8.jar from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html) or [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html).
+*   A JDBC 6 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ship with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html). For use with JDK7 or 8, you can also use ojdbc7.jar that ships with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html). 
 
 *    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
