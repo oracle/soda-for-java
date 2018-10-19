@@ -1,4 +1,4 @@
-![logo](https://github.com/oracle/soda-for-java/blob/master/soda3.PNG)
+![logo](https://github.com/oracle/soda-for-java/blob/master/soda3.PNG??style=centerme)
 
 # SODA 1.1.0
 Simple Oracle Document Access (SODA) is an API which allows you to use the Oracle Database as a NoSQL JSON document store. Although SODA is particularly powerful when it comes to JSON data, data of any other type is supported as well.
