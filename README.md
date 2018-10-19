@@ -1,6 +1,6 @@
-# image
+
 <p align="center">
-  <src="https://github.com/oracle/soda-for-java/blob/master/soda3.PNG">
+  <img src="https://github.com/oracle/soda-for-java/blob/master/soda3.PNG">
 </p>
 
 # SODA 1.1.0
