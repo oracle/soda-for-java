@@ -1,16 +1,22 @@
-#Getting started with SODA for Java
+# Getting started with SODA for Java
 
-To get started, you must have a live Oracle database 12.1.0.2 instance (available from [this page](http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html)), with patch 20885778 applied.
-Please make sure you have the 12.1.0.2 release in particular (and not just any 12C release).
+To get started, you must have an Oracle database 12.2.0.1 or above instance (available from [this page](http://www.oracle.com/technetwork/database/enterprise-edition/downloads/index.html)).
 
-Obtain the patch from My Oracle Support (https://support.oracle.com). Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: https://support.oracle.com/rs?type=patch&id=20885778. Make sure you follow all the installation steps specified in the README.txt file included with the patch, including the post-installation step.
+SODA is also supported on 12.1.0.2 release, available from the same page. On 12.1.0.2, patch 20885778 is required to use SODA. Obtain the patch from My Oracle Support (https://support.oracle.com). Select tab Patches & Updates. Search for patch number 20885778 or access it directly at this URL: https://support.oracle.com/rs?type=patch&id=20885778. Make sure you follow all the installation steps specified in the README.txt file included with the patch, including the post-installation step.
 
-This simple SODA Java program performs the following operations:
+SODA requires the SODA_APP role to be granted to the user (i.e. schema name) that
+will be used to work with collections. The underlying tables used to store
+document collections will be stored in this schema. Pick or create a schema
+for this purpose, and then issue the following command (in sqlplus, for example):
 
-*     Creates a new collection
-*     Inserts documents into the collection
-*     Retrieves the first inserted document by its auto-generated key
-*     Retrieves documents matching a query-by-example, or QBE
+    grant SODA_APP to schemaName;
+    
+The following simple SODA Java program performs several common operations:
+
+ * Creates a new collection
+ * Inserts documents into the collection
+ * Retrieves the first inserted document by its auto-generated key
+ * Retrieves documents matching a query-by-example, or QBE
 
 ```java
 import java.sql.Connection;
@@ -69,15 +75,15 @@ public class testSODA {
         // users and the number of friends they have
         OracleDocument doc1 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Alex\", \"friends\" : \"50\" }");
+            "{ \"name\" : \"Alex\", \"friends\" : 50 }");
 
         OracleDocument doc2 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Mia\", \"friends\" : \"300\" }");
+            "{ \"name\" : \"Mia\", \"friends\" : 300 }");
 
         OracleDocument doc3 =
           db.createDocumentFromString(
-            "{ \"name\" : \"Gloria\", \"friends\" : \"399\" }");
+            "{ \"name\" : \"Gloria\", \"friends\" : 399 }");
 
         // Insert the documents into a collection, one-by-one.
         // The result documents contain auto-generated 
@@ -152,33 +158,33 @@ Copy and paste this code into a file called testSODA.java. Then modify the "url"
 
 To compile and run SODA Java applications, you need the following jars:
 
-*    ojdbc6.jar that ships with Oracle Database 12.1.0.2. Download it from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
+*   A JDBC 6 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html). If you're still on JDK7 or even JDK6, you can use ojdbc7.jar or ojdbc6.jar respectively. These ship with Oracle Database 12.1.0.2, and are downloadable from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html). 
 
 *    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
-*    orajsoda.jar. The SODA jar. Download it [here](https://github.com/oracle/SODA-FOR-JAVA/releases/download/v1.0.0/orajsoda.jar).
+*    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/soda-for-java/releases).
 
-Compile and run testSODA.java, making sure the necessary jars are in the classpath. For example, assuming you're in the directory where the jars are located, do:
+Compile and run testSODA.java, making sure the necessary jars are in the classpath. JDK 6 or above is required. For example, assuming you're in the directory where the jars are located, and you are using ojdbc7.jar, do:
 
     javac -classpath "orajsoda.jar" testSODA.java
-    java -classpath "orajsoda.jar:ojdbc6.jar:javax.json-1.0.4.jar:." testSODA
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.0.4.jar:." testSODA
 
 You should see the following output:
 
     * Retrieving the first document by its key *
 
-    { "name" : "Alex", "friends" : "50" }
+    { "name" : "Alex", "friends" : 50 }
 
     * Retrieving documents representing users with at least 300 friends *
 
-    { "name" : "Mia", "friends" : "300" }
-    { "name" : "Gloria", "friends" : "399" }
+    { "name" : "Mia", "friends" : 300 }
+    { "name" : "Gloria", "friends" : 399 }
 
 This example illustrates two ways of retrieving documents from the collection: by using unique document keys, or by using QBEs. To find all users with at least 300 friends, the following QBE was used in the code above:
 
     {"friends" : {"$gte" : 300}}
 
-As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300. See the documentation for more info on QBEs ([Using Filter Specifications (QBEs)](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA172)).
+As you can see, a QBE is a JSON document with a structure similar to the JSON document it's trying to match. Various operators can appear inside the QBE. In this case, $gte operator is used to find all documents where the "friends" field is set to greater than or equal to 300. See the documentation for more info on QBEs ([Overview of SODA Filter Specifications (QBEs)](https://docs.oracle.com/en/database/oracle/oracle-database/18/adsdi/overview-soda-filter-specifications-qbes.html#GUID-CB09C4E3-BBB1-40DC-88A8-8417821B0FBE)).
 
 To check out the table backing this collection, connect to the schema associated with your JDBC connection in the example above, using SQLPlus or another similar tool, and do:
 
@@ -204,11 +210,11 @@ As you can see a table has been created with the following columns:
     LAST_MODIFIED        Stores the auto-generated last-modified timestamp
     VERSION              Stores the auto-generated document version
 
-This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a New Document Collection](http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA115) and [Collection Configuration Using Custom Metadata] (http://docs.oracle.com/cd/E63251_01/doc.12/e58124/soda.htm#ADSDA192)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
+This table schema corresponds to the default collection configuration, but SODA collections are highly configurable. For example, the timestamp and the version columns are optional, there are many possible ways of generating the IDs or versions, etc. Custom collection configuration is covered in the documentation (see  [Creating a Document Collection with SODA for Java](https://docs.oracle.com/en/database/oracle/simple-oracle-document-access/java-1/adsda/using-soda-java.html#GUID-CCD5E91C-7F28-4193-8564-C8201CCF08CE) and [SODA Collection Configuration Using Custom Metadata](https://docs.oracle.com/en/database/oracle/simple-oracle-document-access/java-1/adsda/soda-collection-configuration-using-custom-metadata.html#GUID-D17E8D3C-EE74-49CD-84AA-CE86B9664554)). Although most users should be fine with the defaults, custom collection configuration might be useful in some cases, such as mapping an existing table to a new collection.
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
-    java -classpath "orajsoda.jar:ojdbc6-12.1.0.2.0.jar:javax.json-1.0.4.jar:." testSODA drop
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.0.4.jar:." testSODA drop
 
 The output will now be different from before, since the same three documents will be inserted again. But, at the end, the collection will be dropped, and the underlying table removed.
 
