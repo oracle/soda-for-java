@@ -44,11 +44,11 @@ under the top SODA directory.
 
 SODA has the following dependencies:
 
-* ojdbc8.jar (or above) jar
+* ojdbc8.jar or above (JDBC jar)
 * javax.json-1.1.4.jar (JSR353 jar)
 * junit-3.8.1.jar (JUnit jar, only used by the testsuite)
 
-Download the ojdbc jar ([https://www.oracle.com/database/technologies/appdev/jdbc-ucp-19c-downloads.html#license-lightbox](https://www.oracle.com/database/technologies/appdev/jdbc-ucp-19c-downloads.html#license-lightbox)), javax.json-1.0.4.jar ([http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar)) and junit-3.8.1.jar ([http://central.maven.org/maven2/junit/junit/3.8.1/junit-3.8.1.jar](http://central.maven.org/maven2/junit/junit/3.8.1/junit-3.8.1.jar)).
+Download the jdbc jar ([https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/18.3.0.0/ojdbc8-18.3.0.0.jar](https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/18.3.0.0/ojdbc8-18.3.0.0.jar)), javax.json-1.1.4.jar ([http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.1.4/javax.json-1.1.4.jar](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar)) and junit-3.8.1.jar ([http://central.maven.org/maven2/junit/junit/3.8.1/junit-3.8.1.jar](http://central.maven.org/maven2/junit/junit/3.8.1/junit-3.8.1.jar)).
 
 Place these jars in the /lib directory under the root SODA directory. Make sure you also put the ojdbc6.jar into this directory as well, as described above.
 
