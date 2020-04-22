@@ -8,7 +8,7 @@ SODA for Java supports:
 * CRUD operations on documents containing data of any type using unique document keys
 * CRUD operations on documents containing JSON data using QBEs (simple pattern-like queries-by-example expressed in JSON), or unique document keys
 * Bulk read/write operations
-* Optimistic locking
+* Optimistic and pessimistic locking
 * Transactions
 * Document collections backed by Oracle Database tables or views
 * Mapping of existing Oracle Database tables or views as document collections
