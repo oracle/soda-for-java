@@ -35,6 +35,8 @@ package oracle.json.parser;
 import java.util.ArrayList;
 import java.util.Formatter;
 
+import oracle.json.common.DocumentKeyer;
+
 public class PathParser
 {
   private static final char STEP_SEPARATOR = '.';  // period

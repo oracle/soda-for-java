@@ -1,0 +1,6 @@
+<ivysettings>
+    <settings defaultResolver="mavenSecure"/>
+    <resolvers>
+        <ibiblio name="mavenSecure" m2compatible="true" root="https://repo1.maven.org/maven2"/>
+    </resolvers>
+</ivysettings>

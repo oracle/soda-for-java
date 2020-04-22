@@ -1,6 +1,7 @@
 Rem sodatestsetup.sql
 Rem
-Rem Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+Rem Copyright (c) 2014, 2017, Oracle and/or its affiliates. 
+Rem All rights reserved.
 Rem
 Rem    NAME
 Rem      sodatestsetup.sql - sql script to setup SODA tests env
@@ -8,8 +9,11 @@ Rem
 Rem    DESCRIPTION
 Rem      Create table/view for SODA tests
 Rem
-Rem    MODIFIED         (MM/DD/YY)
-Rem    Vincent Liu     08/31/14 - Created
+Rem    NOTES
+Rem      <other useful comments, qualifications, etc.>
+Rem
+Rem    MODIFIED          (MM/DD/YY)
+Rem    Vincent Liu        08/31/14 - Created
 Rem
 
 SET ECHO ON

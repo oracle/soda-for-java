@@ -21,7 +21,8 @@
       <sequential>
           <echo message="Running @{infile}  See @{outfile}"/>        
           <exec 
-            executable="@{sqlplus.dir}/sqlplus" 
+            dir="@{sqlplus.dir}" 
+            executable="sqlplus" 
             output="@{outfile}"
             inputstring="exit">
              <arg line="'@{user}/@{pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${Server})(Port=${Port}))(CONNECT_DATA=(SERVICE_NAME=${DBName})))' @ @{infile}"/>

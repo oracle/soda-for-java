@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -45,7 +45,14 @@ public class test_OracleSodaCache extends SodaTestCase {
     // Test create followed by open, and another create.
     OracleDocument metaDoc1 = client.createMetadataBuilder()
             .mediaTypeColumnName("CONTENT_TYPE").contentColumnType("BLOB").build();
-    OracleCollection col1 = dbAdmin.createCollection("cacheTests", metaDoc1);
+    OracleCollection col1;
+    if (isJDCSMode())
+    {
+      col1 = dbAdmin.createCollection("cacheTests", null);
+    } else
+    {
+      col1 = dbAdmin.createCollection("cacheTests", metaDoc1);
+    }
 
     // the open should fetch metadata from cache
     OracleCollection col1_1 = db.openCollection("cacheTests");
@@ -53,7 +60,15 @@ public class test_OracleSodaCache extends SodaTestCase {
 
     // the create should fetch metadata from cache
     // (collection exists already)
-    OracleCollection col1_2 = dbAdmin.createCollection("cacheTests", metaDoc1);
+    // OracleCollection col1_2 = dbAdmin.createCollection("cacheTests", metaDoc1);
+    OracleCollection col1_2 ;
+    if (isJDCSMode())
+    {
+      col1_2 = dbAdmin.createCollection("cacheTests", null);
+    } else
+    {
+      col1_2 = dbAdmin.createCollection("cacheTests", metaDoc1);
+    }
     assertEquals("cacheTests", col1_2.admin().getName());
   }
 
@@ -74,7 +89,12 @@ public class test_OracleSodaCache extends SodaTestCase {
       fail("No exception when mismatch on collection metadata");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Descriptor does not match existing collection.", e.getMessage());
+      if (isJDCSMode())
+        assertTrue(e.getCause().getMessage().contains(
+                   "ORA-40774: Metadata component contentColumn.sqlType" +
+                   " has value VARCHAR2 which differs from expected value BLOB"));
+      else
+        assertEquals("Descriptor does not match existing collection.", e.getMessage());
     }
   }
 
@@ -179,14 +199,26 @@ public class test_OracleSodaCache extends SodaTestCase {
     assertNull(colB1);
     
     //1.2 create and open collection in databaseA
-    dbAdminA.createCollection("cacheTestsWithMultipleDbObjs1", metaDoc);
+    if (isJDCSMode())
+    {
+      dbAdminA.createCollection("cacheTestsWithMultipleDbObjs1", null);
+    } else
+    {
+      dbAdminA.createCollection("cacheTestsWithMultipleDbObjs1", metaDoc);
+    }
 
     OracleCollection colA1 = dbA.openCollection("cacheTestsWithMultipleDbObjs1");
     assertEquals("cacheTestsWithMultipleDbObjs1", colA1.admin().getName());
     
     //1.3 create the collection in databaseB (collection
     //created already so this should open it).
-    colB1 = dbAdminB.createCollection("cacheTestsWithMultipleDbObjs1", metaDoc);
+    if (isJDCSMode())
+    {
+      colB1 = dbAdminB.createCollection("cacheTestsWithMultipleDbObjs1", null);
+    } else
+    {
+      colB1 = dbAdminB.createCollection("cacheTestsWithMultipleDbObjs1", metaDoc);
+    }
     assertNotNull(colB1);
     assertEquals("cacheTestsWithMultipleDbObjs1", colB1.admin().getName());
     
@@ -222,7 +254,13 @@ public class test_OracleSodaCache extends SodaTestCase {
     assertEquals(0, dbAdminB.getCollectionNames().size());
     
     //3.2 create collection and getCollectionNames in databaseA
-    dbAdminA.createCollection("cacheTestsWithMultipleDbObjs2", metaDoc);
+    if (isJDCSMode())
+    {
+      dbAdminA.createCollection("cacheTestsWithMultipleDbObjs2", null);
+    } else
+    {
+      dbAdminA.createCollection("cacheTestsWithMultipleDbObjs2", metaDoc);
+    }    
     assertEquals(1, dbAdminA.getCollectionNames().size());
     assertEquals("cacheTestsWithMultipleDbObjs2", dbAdminA.getCollectionNames().iterator().next());
     OracleCollection colA3 = dbA.openCollection("cacheTestsWithMultipleDbObjs2");
@@ -318,7 +356,16 @@ public class test_OracleSodaCache extends SodaTestCase {
   private void unitTestForCacheProperties() throws Exception {
     String colName = "unitTestForCacheProperties" ;
     
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
+    OracleDocument metaDoc = null;
+
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      metaDoc = client.createMetadataBuilder().build();
+    }
+
     dbAdmin.createCollection(colName, metaDoc);
     OracleCollection col = db.openCollection(colName);
     assertNotNull(col);

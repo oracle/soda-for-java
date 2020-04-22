@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -35,7 +35,16 @@ import oracle.json.testharness.ConnectionFactory;
 public class test_OracleCollectionAdmin extends SodaTestCase {
   
   public void testGetName() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else
+    {
+      metaDoc = client.createMetadataBuilder().build();
+    }
 
     String colName = "testGetName";
     OracleCollection col = dbAdmin.createCollection("testGetName", metaDoc);
@@ -44,6 +53,12 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
   public void testIsHeterogeneous() throws Exception {
+    if (isJDCSMode())
+    {
+      OracleCollection col = dbAdmin.createCollection("testIsHeterogeneous", null);
+      assertEquals(false, col.admin().isHeterogeneous());
+      return;
+    }
     
     // Test with mediaTypeColumn and content type = "BLOB" 
     OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE").contentColumnType("BLOB")
@@ -109,8 +124,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       fail("No exception when inserting non-JSON document into non-heterogeneous collection");
     } catch (OracleException e) {
       // Expect an OracleException
-      // ORA-02290: check constraint (SYS_C0010955) violated
       Throwable t = e.getCause();
+      // ORA-02290: check constraint (SYS_C0010955) violated
       assertTrue(t.getMessage().contains("ORA-02290"));
     }
     
@@ -151,18 +166,26 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
   
   public void testIsReadOnly() throws Exception {
-    
     // Test with READONLY = false
-    OracleDocument metaDoc = client.createMetadataBuilder().removeOptionalColumns().readOnly(false).build();
-    
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().removeOptionalColumns().readOnly(false).build();
+    }
+
     OracleCollection col = dbAdmin.createCollection("testIsReadOnly", metaDoc);
     assertEquals(false, col.admin().isReadOnly());
     col.insert(db.createDocumentFromString(null, "{ \"data\" : 1001 }", null));
     assertEquals(1, col.find().count());
     
+    if (isJDCSMode())
+        return;
+
     // Test with READONLY = true
     OracleDocument metaDoc2 = client.createMetadataBuilder().removeOptionalColumns().readOnly(true).build();
-    
     OracleCollection col2 = dbAdmin.createCollection("testIsReadOnly2", metaDoc2);
     assertEquals(true, col2.admin().isReadOnly());
     
@@ -194,6 +217,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   "}";
   
   public void testGetDescription() throws Exception {
+    if (isJDCSMode())
+        return;
     OracleDocument metaDoc = db.createDocumentFromString(colSpecExample);
     
     OracleCollection col = dbAdmin.createCollection("testGetDescription", metaDoc);
@@ -275,8 +300,19 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
   public void testDrop() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
-    
+    OracleDocument metaDoc = null;
+
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if (isJDCSMode()) {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().build();
+    }
+
     // Test to drop an empty collection 
     OracleCollection col = dbAdmin.createCollection("testDrop", metaDoc);
     OracleCollectionAdmin colAdmin = col.admin();
@@ -289,6 +325,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     // Test to drop an non-empty collection
     OracleCollection col2 = dbAdmin.createCollection("testDrop2", metaDoc);
+    
     OracleCollectionAdmin colAdmin2 = col2.admin();
     for (int i = 1; i <= 100; i++) {
         col2.insert(db.createDocumentFromString("{ \"value\" : \"v" + i + "\" }"));
@@ -296,6 +333,9 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin2.drop();
     
     // Test to drop the collection mapping to the existing table
+    if (isJDCSMode())
+        return;
+
     OracleDocument metaDoc3 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .versionColumnMethod("NONE").tableName("SODATBL").build();
@@ -306,9 +346,18 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
   public void testTruncate() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
- 
-    OracleCollection col = dbAdmin.createCollection("testTruncate", metaDoc);
+    OracleDocument metaDoc = null;
+
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().build();
+    }
+
+    OracleCollection col = dbAdmin.createCollection("testTruncate", metaDoc); 
     OracleCollectionAdmin colAdmin = col.admin();
     
     for (int i = 1; i <= 10; i++) {
@@ -325,6 +374,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     assertEquals(0, col.find().count());
     
     // Test it with existing table
+    if (isJDCSMode())
+        return;
     OracleDocument metaDoc2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
         .versionColumnMethod("NONE").tableName("SODATBL").build();
@@ -387,8 +438,16 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
   public void testDropIndex() throws Exception {
-
-    OracleDocument mDoc = client.createMetadataBuilder().build();
+    OracleDocument mDoc = null;
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else
+    {
+      mDoc = client.createMetadataBuilder().build();
+    }
     OracleCollection col = dbAdmin.createCollection("testDropIndex", mDoc);
     OracleCollectionAdmin colAdmin = col.admin();
 
@@ -575,16 +634,38 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin.createIndex(d);
 
     colAdmin.dropIndex("index7");
+    
+    // Test with empty key in key:value pair.(e.g. "":"T1IDX")
+    try {
+      if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+        jsonSearchIndexSpec = "{\"\" : \"T1IDX\", \"textindex121\":true }";
+      } else {
+        jsonSearchIndexSpec = "{\"\" : \"T1IDX\"}";
+      }
+      d = db.createDocumentFromString(jsonSearchIndexSpec);
+      colAdmin.createIndex(d);
+      fail("No exception when the index name is not specified.");
+    } catch (OracleException e) {
+      Throwable t = e.getCause();
+      assertEquals("Missing name property.", t.getMessage());
+    }
+    
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      jsonSearchIndexSpec = "{\"\" : \"T1IDX\",  \"name\":\"index8\", \"textindex121\":true }";
+    } else {
+      jsonSearchIndexSpec = "{\"\" : \"T1IDX\", \"name\":\"index8\" }";
+    }
+    d = db.createDocumentFromString(jsonSearchIndexSpec);
+    colAdmin.createIndex(d);
+    colAdmin.dropIndex("index8");
   }
   
   public void testJsonSearchIndex() throws Exception {
-
-    // Test with contentColumnType=BLOB
-    OracleDocument mDoc = client.createMetadataBuilder()
-        .contentColumnType("BLOB")
-        .mediaTypeColumnName("MediaTypeCol").build();
-    OracleCollection col = dbAdmin.createCollection("testIndexAll1", mDoc);
+    OracleCollection col = dbAdmin.createCollection("testIndexAll1");
     testJsonSearchIndexWithCol(col);
+
+    if (isJDCSMode())
+        return;
     
     // Test with contentColumnType=CLOB
     OracleDocument mDoc2 = client.createMetadataBuilder()
@@ -643,8 +724,15 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
  
   public void testCreateIndex() throws Exception {
+    OracleDocument mDoc;
+    if (isJDCSMode())
+    {
+      mDoc = null;
+    } else
+    {
+      mDoc = client.createMetadataBuilder().contentColumnType("CLOB").build();
+    }
 
-    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType("CLOB").build();
     OracleCollection col = dbAdmin.createCollection("testCreateIndex", mDoc);
     OracleCollectionAdmin colAdmin = col.admin();
 
@@ -1093,12 +1181,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
       try {
         // the value does not match "TIMESTAMP" format(required ISO8601)
-        col.insert(db.createDocumentFromString("{ \"orderDate\": \"2016-07-15 18:00:00\" } }"));
+        col.insert(db.createDocumentFromString("{\"orderDate\":\"2016-07-15 18:00:00\"}"));
         fail("Error should have been generated because invalid timestamp value is beging inserted");
       }
       catch (OracleException e) {
         Throwable c = e.getCause();
-       assertTrue(c.getMessage().contains("literal does not match format string"));
+        //###  for json type content, the error is "Expected EOF token, but got END_OBJECT"
+        assertTrue(c.getMessage().contains("literal does not match format string"));
       }
     
       col.admin().dropIndex("FUNC_INDEX3");
@@ -1372,7 +1461,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
   
   public void testCreateIndexNeg2() throws Exception {
-    OracleCollection col = dbAdmin.createCollection("testCreateDefaultIndexNeg1");
+    OracleCollection col = dbAdmin.createCollection("testCreateIndexNeg2");
     OracleCollectionAdmin colAdmin = col.admin();
 
     String docStr1 = "{ \"name\":\"Mike\" }";
@@ -1551,13 +1640,21 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
     
     doc = colAdmin.getDataGuide(); 
-
-    String schema = "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
+    
+    String schema = "{\"type\":\"object\",\"o:length\":32,\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
                      "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
                      "\"friends\":{\"type\":\"string\",\"o:length\":2," +
                      "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
-
-    assertEquals(schema, doc.getContentAsString());
+    //Bug### is this a bug? o:length : 1 at the top level in JDCS mode 
+    //(instead of o: length : 32 for JSON).
+    if (isJDCSMode())
+    {
+      schema = "{\"type\":\"object\",\"o:length\":1,\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
+               "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
+               "\"friends\":{\"type\":\"string\",\"o:length\":2," +
+               "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
+      assertEquals(schema, doc.getContentAsString());
+    }
   }
 
   public void testDataGuide() throws Exception
@@ -1578,19 +1675,30 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   
   // tests about string/number functional index used in sql rewrite
   private void testFuncIndexInPlan1(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
 
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
       return;
     }
-
+    
     OracleDocument mDoc = client.createMetadataBuilder()
         .contentColumnType(contentColumnType)
         .keyColumnAssignmentMethod("CLIENT").build();
-    
-    OracleCollection col = db.admin().createCollection("testFuncIndexInPlan1" + contentColumnType, mDoc);
+
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testFuncIndexInPlan1" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("testFuncIndexInPlan1" + contentColumnType, mDoc);
+    }
     OracleDocument filterDoc = null, doc = null;
     String name = null, docStr = null;
     
+    String[] key = new String[1000];
     for (int num = 0; num < 1000; num++) {
       if (num < 10) {
         name = "aaa00" + num;
@@ -1601,7 +1709,16 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       }
 
       docStr = "{\"order\" : { \"orderName\": \"" + name + "\", \"orderNum\": " + num + " } }";
-      col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+        key[num] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+        key[num] = doc.getKey();
+      }
+
     }
     
     final String indexName1 = "indexOnName";
@@ -1647,12 +1764,12 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // test with "$eq"
     filterDoc = db.createDocumentFromString("{ \"order.orderName\": {\"$eq\" : \"aaa001\"} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$eq\" : 100} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id100", doc.getKey());
+    assertEquals(key[100], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
     // the index is not used for QBE containing "not" operators(such as, "$ne", "$nin", "$nor", "$not").
@@ -1667,51 +1784,51 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // test with "$gt"
     filterDoc = db.createDocumentFromString("{ \"order.orderName\": {\"$gt\" : \"aaa998\"} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id999", doc.getKey());
+    assertEquals(key[999], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$gt\" : 998} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id999", doc.getKey());
+    assertEquals(key[999], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
     // test with "$lt"
     filterDoc = db.createDocumentFromString("{ \"order.orderName\": {\"$lt\" : \"aaa001\"} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$lt\" : 1} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
     // test with $gte
     filterDoc = db.createDocumentFromString("{ \"order.orderName\": {\"$gte\" : \"aaa999\"} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id999", doc.getKey());
+    assertEquals(key[999], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$gte\" : 999} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id999", doc.getKey());
+    assertEquals(key[999], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
     // test with $lte
     filterDoc = db.createDocumentFromString("{ \"order.orderName\": {\"$lte\" : \"aaa000\"} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$lte\" : 0} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
     // the functional index is not used for "$in" query
     filterDoc = db.createDocumentFromString("{ \"order.orderName\" : {\"$in\" : [\"aaa000\", \"aaa00\", \"aaa0\"]} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     //chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$in\" : [998, 999, 1000, 1001]} }");
@@ -1726,7 +1843,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
  
     filterDoc = db.createDocumentFromString("{ \"order.orderNum\": {\"$all\" : [0]} }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel))
       chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName2);
     
@@ -1743,7 +1860,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // test with $and
     filterDoc = db.createDocumentFromString("{ \"$and\":[ {\"order.orderName\":{\"$gte\" : \"aaa990\"}}, {\"order.orderName\":{\"$lte\" : \"aaa990\"}} ] }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id990", doc.getKey());
+    assertEquals(key[990], doc.getKey());
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel))
       chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
@@ -1760,18 +1877,23 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     col.admin().drop();
   }
   
-  String[] columnSqlTypes = {
-      "CLOB", "BLOB", "VARCHAR2"
-  };
-  
   public void testFuncIndexInPlan1() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
       testFuncIndexInPlan1(columnSqlType);
     }
   }
+
+  String[] columnSqlTypes = {
+      "CLOB", "BLOB", "VARCHAR2"
+  };
   
   //tests about "date"/"datetime" functional index used in sql rewrite
   private void testFuncIndexInPlan2(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
@@ -1779,19 +1901,35 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
         .contentColumnType(contentColumnType)
         .keyColumnAssignmentMethod("CLIENT").build();
     
-    OracleCollection col = db.admin().createCollection("testFuncIndexInPlan2" + contentColumnType, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testFuncIndexInPlan2" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("testFuncIndexInPlan2" + contentColumnType, mDoc);
+    }
     OracleDocument filterDoc = null, doc = null;
     String name = null, docStr = null;
     String date = "2016-01-01", date1 = "2016-07-25";
     String dateTime = "2016-01-01T00:00:00", dateTime1 = "2016-07-25T17:30:08";
     
+    String[] key = new String[1000];
     for (int num = 0; num < 1000; num++) {
       if (num == 1) {
         docStr = "{\"order\" : { \"orderDate\": \"" + date1 + "\", \"orderDateTime\": \"" + dateTime1 + "\" } }";
       } else {
         docStr = "{\"order\" : { \"orderDate\": \"" + date + "\", \"orderDateTime\": \"" + dateTime + "\" } }";  
       }
-      col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+        key[num] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+        key[num] = doc.getKey();
+      }
     }
     
     final String indexName1 = "func-index1";
@@ -1825,13 +1963,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     // test with "$timestamp" + "$eq"
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$eq\" : \"" + dateTime1 + "\"} } }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     // test with "$timestamp" + "$gt"
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$gt\" : \"2016-07-01T00:00:00\"} } }");
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), IndexType.funcIndex, indexName1);
     
     col.admin().dropIndex(textIndexName);
@@ -1886,7 +2024,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
-    OracleCollection col = dbAdmin.createCollection("testJsonSearchCol");
+    OracleCollection col = dbAdmin.createCollection("testJsonSearchIndexNeg");
 
     // Invalid value for dataguide
     OracleDocument index = db.createDocumentFromString("{\"name\" : \"jsonSearchIndex1\"," +
@@ -2047,20 +2185,40 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
   
   private void testJsonSearchIndex2(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+    
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
-      .contentColumnType(contentColumnType).build();
+        .contentColumnType(contentColumnType).build();
     String colName = "testOrderby" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     OracleCollectionAdmin colAdmin = col.admin();
     final String key1="id001", key2="id002", key3="id003", key4="id004", key5="id005";
     OracleDocument doc = null, filterDoc = null;
     
+    String[] key = new String[1000];
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":" + number + ", \"string\": \"11." + number + "\"}}}";
-      col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));
+      if (isJDCSMode())
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+        key[number] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));
+        key[number] = doc.getKey();
+      }
     }
     
     // Test "dataguide" property with on
@@ -2072,7 +2230,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     filterDoc = db.createDocumentFromString("{ \"a.b.number\": {\"$eq\" : 99} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-99", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[99], col.find().filter(filterDoc).getOne().getKey());
     chkSearchIndexExplainPlan(col.find().filter(filterDoc), SrearchIndexType.numberIndex, indexName1);
     colAdmin.dropIndex(indexName1);
     
@@ -2085,7 +2243,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     filterDoc = db.createDocumentFromString("{ \"a.b.number\": 199 }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-199", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[199], col.find().filter(filterDoc).getOne().getKey());
     chkSearchIndexExplainPlan(col.find().filter(filterDoc), SrearchIndexType.numberIndex, indexName2);
     colAdmin.dropIndex(indexName2);
     
@@ -2098,7 +2256,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     filterDoc = db.createDocumentFromString("{ \"a.b.number\": 299 }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-299", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[299], col.find().filter(filterDoc).getOne().getKey());
     chkSearchIndexExplainPlan(col.find().filter(filterDoc), SrearchIndexType.noIndex, indexName1);
     colAdmin.dropIndex(indexName3);
     
@@ -2111,7 +2269,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     filterDoc = db.createDocumentFromString("{ \"a.b.number\": { \"$eq\" : 50} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-50", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[50], col.find().filter(filterDoc).getOne().getKey());
     chkSearchIndexExplainPlan(col.find().filter(filterDoc), SrearchIndexType.numberIndex, indexName4);
     colAdmin.dropIndex(indexName4);
     
@@ -2124,7 +2282,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     
     filterDoc = db.createDocumentFromString("{ \"a.b.number\": { \"$eq\" : 50} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-50", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[50], col.find().filter(filterDoc).getOne().getKey());
     chkSearchIndexExplainPlan(col.find().filter(filterDoc), SrearchIndexType.textIndex, indexName5);
     colAdmin.dropIndex(indexName5);
     

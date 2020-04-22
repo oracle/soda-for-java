@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -15,34 +15,39 @@ All rights reserved.*/
 
 package oracle.soda.rdbms.impl;
 
-import java.io.InputStream;
 import java.io.ByteArrayInputStream;
-import java.io.UnsupportedEncodingException;
 import java.io.IOException;
-
-import java.util.Map;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Locale;
+import java.util.Map;
 
+import javax.json.JsonException;
+import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonString;
-import javax.json.JsonNumber;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
-import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
 
+import oracle.json.common.JsonFactoryProvider;
+import oracle.json.parser.DocumentLoader;
 import oracle.json.util.ByteArray;
+import oracle.json.util.JsonByteArray;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
 import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
-import oracle.json.parser.DocumentLoader;
-import oracle.json.util.JsonByteArray;
 
 /**
  * An immutable collection descriptor
  */
 public class CollectionDescriptor
 {
+  /** 
+   * Internal flag for testing purposes only.
+   * ### This can be removed once ADB OSON storage default is enabled
+   */
+  private static final boolean FORCE_BINARY = Boolean.getBoolean("oracle.soda.rdbms.impl.CollectionDescriptor.FORCE_BINARY");
 
   //
   // Parameters used internal to the package
@@ -127,9 +132,10 @@ public class CollectionDescriptor
   private static final int     DEFAULT_KEY_LENGTH      = 0;
   private static final byte    DEFAULT_KEY_TYPE        = STRING_KEY;
   private static final byte    DEFAULT_CONTENT_LENGTH  = 0; 
-  private static final boolean DEFAULT_LOB_CACHE       = false;
+  private static final boolean DEFAULT_LOB_CACHE       = true;
   private static final byte    DEFAULT_KEY_ASSIGN      = KEY_ASSIGN_UUID;
   private static final boolean DEFAULT_WRITABLE        = true;
+  private static final boolean DEFAULT_PRE_PARSED      = false;
   private static final byte    DEFAULT_VALIDATION_MODE = VALIDATION_STANDARD;
   private static final byte    DEFAULT_DBOBJECT        = DBOBJECT_TABLE;
   
@@ -144,6 +150,7 @@ public class CollectionDescriptor
   final byte     dbObjectType;
   final String   dbSchema;
   final boolean  writable;
+  final String   jsonFormat;
   final byte     validationMode;
   final String   timeIndex;
   final int      keyAssignmentMethod;
@@ -295,6 +302,7 @@ public class CollectionDescriptor
                        byte    keyAssignmentMethod,
                        String  keySequenceName,
                        boolean writable,
+                       String  jsonFormat,
                        byte    validationMode,
                        String  timeIndex)
   {
@@ -320,6 +328,7 @@ public class CollectionDescriptor
     this.keySequenceName = keySequenceName;
     this.keyAssignmentMethod = keyAssignmentMethod;
     this.writable = writable;
+    this.jsonFormat = jsonFormat;
     this.validationMode = validationMode;
   }
 
@@ -442,6 +451,15 @@ public class CollectionDescriptor
   }
 
   /**
+   *
+   * Returns true if running any jsonFormat (e.g. "oson")
+   */
+  boolean hasBinaryFormat()
+  {
+    return (jsonFormat != null || FORCE_BINARY);
+  }
+
+  /**
    * Compare two strings, even if one or both are null.
    */
   private boolean compareStrings(String s1, String s2)
@@ -475,6 +493,8 @@ public class CollectionDescriptor
     if (this.contentLength != desc.contentLength)
       return(false);
     if (this.writable != desc.writable)
+      return(false);
+    if (!compareStrings(this.jsonFormat, desc.jsonFormat))
       return(false);
     if (this.dbObjectType != desc.dbObjectType)
       return(false);
@@ -594,7 +614,7 @@ public class CollectionDescriptor
       builder.appendColon();
       builder.append(Integer.toString(contentLength));
     }
-    else
+    else if (jsonFormat == null)
     {
       builder.appendComma();
       builder.appendValue("compress");
@@ -612,10 +632,21 @@ public class CollectionDescriptor
       builder.appendValue(getLobEncryption());
     }
 
-    builder.appendComma();
-    builder.appendValue("validation");
-    builder.appendColon();
-    builder.appendValue(getValidationMode());
+    if (jsonFormat == null)
+    {
+      builder.appendComma();
+      builder.appendValue("validation");
+      builder.appendColon();
+      builder.appendValue(getValidationMode());
+    }
+
+    if (jsonFormat != null)
+    {
+      builder.appendComma();
+      builder.appendValue("jsonFormat");
+      builder.appendColon();
+      builder.appendValue(jsonFormat);
+    }
 
     builder.appendCloseBrace();
 
@@ -712,6 +743,13 @@ public class CollectionDescriptor
    */
   // Note: this can throw run-time exceptions.
   public static Builder jsonToBuilder(InputStream inp)
+          throws OracleException
+  {
+    // ### Prop up any existing usage of this old interface
+    return jsonToBuilder(new JsonFactoryProvider(), inp);
+  }
+
+  static Builder jsonToBuilder(JsonFactoryProvider jProvider, InputStream inp)
       throws OracleException
   {    
     if (inp == null) 
@@ -723,7 +761,7 @@ public class CollectionDescriptor
 
     try
     {
-      loader = new DocumentLoader(inp);
+      loader = new DocumentLoader(jProvider, inp);
     }
     catch (JsonException e)
     {
@@ -822,6 +860,10 @@ public class CollectionDescriptor
           else if (fieldName.equalsIgnoreCase("encrypt"))
           {
             builder.contentColumnEncrypt(entryToString(subentry));
+          }
+          else if (fieldName.equalsIgnoreCase("jsonFormat"))
+          {
+            builder.jsonFormat(entryToString(subentry));
           }
           else
             throw SODAUtils.makeException(SODAMessage.EX_COL_SPEC_NOT_EXPECTED, fieldName);
@@ -996,7 +1038,15 @@ public class CollectionDescriptor
     return(CollectionDescriptor.jsonToBuilder(inp));
   }
 
-  @Override
+  static Builder jsonToBuilder(JsonFactoryProvider jProvider,
+                               String jsonDescriptor)
+          throws OracleException
+  {
+    byte[] data = jsonDescriptor.getBytes(ByteArray.DEFAULT_CHARSET);
+    ByteArrayInputStream inp = new ByteArrayInputStream(data);
+    return(CollectionDescriptor.jsonToBuilder(jProvider, inp));
+  }
+
   public String toString()
   {
     return(getName());
@@ -1038,6 +1088,7 @@ public class CollectionDescriptor
     private byte    keyAssignmentMethod   = DEFAULT_KEY_ASSIGN;
     private String  keySequenceName;
     private boolean writable              = DEFAULT_WRITABLE;
+    private String  jsonFormat            = null;
     private byte    validationMode        = DEFAULT_VALIDATION_MODE;
     private String  timeIndex;
     
@@ -1104,6 +1155,7 @@ public class CollectionDescriptor
                            keyAssignmentMethod,
                            keySequenceName,
                            writable,
+                           jsonFormat,
                            validationMode, 
                            timeIndex);
     }
@@ -1288,6 +1340,7 @@ public class CollectionDescriptor
       if (isLobType(contentColumnType))
       {
         this.contentColumnLength = 0;
+        this.contentLobCache = true;
       }
       else
       {
@@ -1563,6 +1616,13 @@ public class CollectionDescriptor
     public Builder readOnly(boolean readOnly) 
     {
       this.writable = !readOnly;
+      return this;
+    }
+    
+    // ###
+    public Builder jsonFormat(String format)
+    {
+      this.jsonFormat = format;
       return this;
     }
     

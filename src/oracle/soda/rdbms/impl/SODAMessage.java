@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/SODAMessage.java /main/37 2018/06/15 02:15:49 morgiyan Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/SODAMessage.java /st_xdk_soda1/3 2020/02/28 18:58:42 kzhou Exp $ */
 
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -71,9 +71,7 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_COL_SPEC_NOT_EXPECTED              = create(2032);
   static final SODAMessage EX_INPUT_DOC_HAS_KEY                  = create(2033);
   static final SODAMessage EX_ITERATOR_RETURNED_DOC_WITH_KEY     = create(2034);
-  // Not part of a public API.
-  // ### Public for OracleRDBMSClient
-  public static final SODAMessage EX_SCHEMA_NAME_IS_NULL         = create(2035);
+  static final SODAMessage EX_SCHEMA_NAME_IS_NULL                = create(2035);
   static final SODAMessage EX_INVALID_PROJ_SPEC                  = create(2036);
   static final SODAMessage EX_INVALID_KEY                        = create(2037);
   static final SODAMessage EX_TOO_MANY_COLUMNS                   = create(2038);
@@ -100,6 +98,16 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_ARRAY_STEPS_NOT_ALLOWED_IN_PROJ    = create(2056);
   static final SODAMessage EX_OVERLAPPING_PATHS_NOT_ALLOWED_IN_PROJ
                                                                  = create(2057);
+  static final SODAMessage EX_INCOMPATIBLE_METHODS               = create(2058);
+  static final SODAMessage EX_TO_BINARY_CONVERSION_ERROR
+                                                                 = create(2059);
+  static final SODAMessage EX_FROM_BINARY_CONVERSION_ERROR       = create(2060);
+  // Not part of a public API.
+  // ### Public for OracleRDBMSClient
+  public static final SODAMessage EX_UNABLE_TO_FETCH_USER_NAME   = create(2061);
+  static final SODAMessage EX_INVALID_TYPE_MAPPING               = create(2065);
+  static final SODAMessage EX_INVALID_HINT                       = create(2066);  
+
 
   /****************************************************************************/
   /* Note: 2500 to 2999 range is reserved for SODA internal errors. These     */
@@ -115,6 +123,7 @@ public final class SODAMessage extends Message
   static final SODAMessage EX_2G_SIZE_LIMIT_EXCEEDED             = create(2505);
   static final SODAMessage EX_IDENTITY_ASSIGN_RETURNING          = create(2506);
   static final SODAMessage EX_UNABLE_TO_GET_DB_VERSION           = create(2507);
+  static final SODAMessage EX_JSON_FACTORY_MISSING_IN_JDBC       = create(2508);
 
   /***************************************************************************/
   /* Note: 3000 to 3499 range is reserved for unimplemented (or unsupported) */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -16,6 +16,8 @@ All rights reserved.*/
  */ 
 
 package oracle.json.parser;
+
+import oracle.json.common.JsonFactoryProvider;
 
 import java.nio.charset.Charset;
 
@@ -37,37 +39,42 @@ import javax.json.stream.JsonParsingException;
 
 public class DocumentLoader
 {
+  protected final JsonFactoryProvider jProvider;
+
   protected final JsonParser parser;
 
-  public DocumentLoader(byte[] data)
+  public DocumentLoader(JsonFactoryProvider jProvider, byte[] data)
     throws JsonException
   {
-    this(new ByteArrayInputStream(data));
+    this(jProvider, new ByteArrayInputStream(data));
   }
 
-  public DocumentLoader(String str)
+  public DocumentLoader(JsonFactoryProvider jProvider, String str)
     throws JsonException
   {
-    parser = Json.createParser(new StringReader(str));
+    this.jProvider = jProvider;
+    parser = jProvider.getParserFactory().createParser(new StringReader(str));
   }
 
-  public DocumentLoader(InputStream inp)
+  public DocumentLoader(JsonFactoryProvider jProvider, InputStream inp)
     throws JsonException
   {
-    parser = Json.createParser(inp);
+    this.jProvider = jProvider;
+    parser = jProvider.getParserFactory().createParser(inp);
   }
 
-  public DocumentLoader(InputStream inp, Charset cs)
+  public DocumentLoader(JsonFactoryProvider jProvider, InputStream inp, Charset cs)
     throws JsonException
   {
+    this.jProvider = jProvider;
     InputStreamReader reader = new InputStreamReader(inp, cs);
-    parser = Json.createParser(reader);
+    parser = jProvider.getParserFactory().createParser(reader);
   }
 
   protected JsonObjectBuilder parseObject(int depth)
     throws JsonParsingException
   {
-    JsonObjectBuilder obuilder = Json.createObjectBuilder();
+    JsonObjectBuilder obuilder = jProvider.createObjectBuilder();
 
     String key = null;
 
@@ -135,7 +142,7 @@ public class DocumentLoader
   protected JsonArrayBuilder parseArray(int depth)
     throws JsonParsingException
   {
-    JsonArrayBuilder abuilder = Json.createArrayBuilder();
+    JsonArrayBuilder abuilder = jProvider.createArrayBuilder();
 
     // Consume all events for that document
     while (parser.hasNext())
@@ -210,8 +217,8 @@ public class DocumentLoader
           break;
 
         default:
-          // Cannot happen
-          throw new IllegalStateException();
+          // ### support for primitive documents?
+          throw new JsonParsingException("", null);
         }
       }
     }

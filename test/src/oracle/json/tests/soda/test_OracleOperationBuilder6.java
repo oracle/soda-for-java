@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2017, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -60,6 +60,10 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   }
   
   private void testNot(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -67,9 +71,16 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testNot" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
-    final String key1="id001", key2="id002", key3="id003";
+    String key1="id001", key2="id002", key3="id003";
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     
@@ -94,15 +105,25 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
         "{ \"name\": \"Young Men and Fire\", \"price\": 10.88, \"quantity\": 2}, \n" + 
         "{ \"name\": \"Tina Fey\", \"price\": 13.57, \"quantity\": 3} \n" +
         "] } }";
-    
-    col.insert(db.createDocumentFromString(key1, docStr1));
-    col.insert(db.createDocumentFromString(key2, docStr2));
-    col.insert(db.createDocumentFromString(key3, docStr3));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
     
     // Test $not with multiple comparison operators
     filterDoc = db.createDocumentFromString("{\"order[0].items[0].price\":{\"$not\": {\"$gt\":40, \"$lt\":80 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"order[*].items[*].quantity\":{\"$not\": {\"$eq\":1, \"$eq\":3 }}}");
     assertEquals(2, col.find().filter(filterDoc).count());
@@ -128,7 +149,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     // else branch shows wrong result.
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id002", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
     }
     else {
       assertEquals(3, col.find().filter(filterDoc).count());
@@ -196,6 +217,10 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   }
   
   private void testOrderby(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -203,8 +228,15 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testOrderby" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
-    final String key1="id001", key2="id002", key3="id003", key4="id004", key5="id005";
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
+    String key1="id001", key2="id002", key3="id003", key4="id004", key5="id005";
     OracleDocument doc = null, filterDoc = null;
     
     String docStr1 = "{\"orderno\":1, \"date\":\"2017-08-01\", \"time\":\"2017-08-01T11:30:00\", \"string\": \"aaa\"}";
@@ -213,11 +245,28 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     String docStr4 = "{\"orderno\":102, \"date\":\"2017-05-01\", \"time\":\"2017-05-01T09:00:00\", \"string\": \"abd002\"}";
     String docStr5 = "{\"orderno\":103, \"date\":\"2017-07-15\", \"time\":\"2017-07-15T09:18:00\", \"string\": \"abc001\"}";
     
-    col.insert(db.createDocumentFromString(key1, docStr1));
-    col.insert(db.createDocumentFromString(key2, docStr2));
-    col.insert(db.createDocumentFromString(key3, docStr3));
-    col.insert(db.createDocumentFromString(key4, docStr4));
-    col.insert(db.createDocumentFromString(key5, docStr5));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr4));
+      key4 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr5));
+      key5 = doc.getKey();
+    } else
+    {
+      col.insert(db.createDocumentFromString(key1, docStr1));
+      col.insert(db.createDocumentFromString(key2, docStr2));
+      col.insert(db.createDocumentFromString(key3, docStr3));
+      col.insert(db.createDocumentFromString(key4, docStr4));
+      col.insert(db.createDocumentFromString(key5, docStr5));
+    }
+
+    
     
     // Tests $orderby with array object
     filterDoc = db.createDocumentFromString("{\"$orderby\": [" +
@@ -494,18 +543,44 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                 boolean withFilter)
     throws Exception
   {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+      
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
       .contentColumnType(contentColumnType).build();
 
-    OracleCollection col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    }
+    String key1="k1", key2="k2", key3="k3";
+
     String docStr1 = "{\"sfield\" : \"aac\", \"nfield\" : 21}";
     String docStr2 = "{\"sfield\": \"aaa\", \"nfield\": 20}";
     String docStr3 = "{\"newfield\": [\"aab\"]}";
 
-    col.insert(db.createDocumentFromString("k1", docStr1));
-    col.insert(db.createDocumentFromString("k2", docStr2));
-    col.insert(db.createDocumentFromString("k3", docStr3));
+    OracleDocument doc = null;
 
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      col.insert(db.createDocumentFromString(key1, docStr1));
+      col.insert(db.createDocumentFromString(key2, docStr2));
+      col.insert(db.createDocumentFromString(key3, docStr3));
+    }
+    
     String indexName = "\"orderByIndex" + contentColumnType + "\"";
 
     if (withIndex)
@@ -539,12 +614,15 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
 
     OracleDocument d;
 
+    if (isJDCSMode()) //// Blocked by bug 28996376 since 20181130 (remove this if() line once the bug is fixed).
+        return;
+
     if (withFilter) {
       d = c.next();
-      assertEquals(d.getKey(), "k2");
+      assertEquals(d.getKey(), key2);
 
       d = c.next();
-      assertEquals(d.getKey(), "k1");
+      assertEquals(d.getKey(), key1);
 
       d = c.next();
 
@@ -553,13 +631,13 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     else
     {
       d = c.next();
-      assertEquals(d.getKey(), "k2");
+      assertEquals(d.getKey(), key2);
 
       d = c.next();
-      assertEquals(d.getKey(), "k1");
+      assertEquals(d.getKey(), key1);
 
       d = c.next();
-      assertEquals(d.getKey(), "k3");
+      assertEquals(d.getKey(), key3);
 
       d = c.next();
 
@@ -592,20 +670,45 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                       boolean withFilter)
     throws Exception
   {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
       .contentColumnType(contentColumnType).build();
 
-    OracleCollection col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    }
+
     String docStr1 = "{\"sfield\" : \"aac\", \"nfield\" : 21}";
     String docStr2 = "{\"sfield\": \"aaa\", \"nfield\": 20}";
     String docStr3 = "{\"sfield\": [\"aab\"]}";
 
-    col.insert(db.createDocumentFromString("k1", docStr1));
-    col.insert(db.createDocumentFromString("k2", docStr2));
-    col.insert(db.createDocumentFromString("k3", docStr3));
+    String key1="k1", key2="k2", key3="k3";
+    OracleDocument doc = null;
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
 
     String indexName = "\"orderByIndex" + contentColumnType + "\"";
 
@@ -669,13 +772,25 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                    boolean withFilter)
     throws Exception
   {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
       .contentColumnType(contentColumnType).build();
 
-    OracleCollection col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    }
+
     String docStr1 = "{\"sfield\" : \"aac\", \"nfield\" : 21}";
     String docStr2 = "{\"sfield\": \"aaa\", \"nfield\": 20}";
     // The fields we are ordering by and indexing by are
@@ -683,9 +798,23 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     // that's allowed.
     String docStr3 = "{\"newfield\": \"aab\"}";
 
-    col.insert(db.createDocumentFromString("k1", docStr1));
-    col.insert(db.createDocumentFromString("k2", docStr2));
-    col.insert(db.createDocumentFromString("k3", docStr3));
+    String key1="k1", key2="k2", key3="k3";
+    OracleDocument doc = null;
+
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
 
     String indexName = "\"orderByIndex" + contentColumnType + "\"";
 
@@ -726,10 +855,10 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
 
     if (withFilter) {
       d = c.next();
-      assertEquals(d.getKey(), "k2");
+      assertEquals(d.getKey(), key2);
 
       d = c.next();
-      assertEquals(d.getKey(), "k1");
+      assertEquals(d.getKey(), key1);
 
       d = c.next();
 
@@ -738,13 +867,13 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     else
     {
       d = c.next();
-      assertEquals(d.getKey(), "k2");
+      assertEquals(d.getKey(), key2);
 
       d = c.next();
-      assertEquals(d.getKey(), "k1");
+      assertEquals(d.getKey(), key1);
 
       d = c.next();
-      assertEquals(d.getKey(), "k3");
+      assertEquals(d.getKey(), key3);
 
       d = c.next();
 
@@ -780,18 +909,41 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                      boolean withFilter)
     throws Exception
   {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
 
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
       .contentColumnType(contentColumnType).build();
 
-    OracleCollection col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, null);
+    } else
+    {
+      col = db.admin().createCollection("orderByCol" + contentColumnType, mDoc);
+    }
     String docStr1 = "{\"sfield\" : \"aac\", \"nfield\" : 21}";
     String docStr2 = "{\"sfield\": \"aaa\", \"nfield\": 20}";
     String docStr3 = "{\"sfield\": \"aab\", \"nfield\" : 20}";
+    String key1="k1", key2="k2", key3="k3";
+    OracleDocument doc = null;
 
-    col.insert(db.createDocumentFromString("k1", docStr1));
-    col.insert(db.createDocumentFromString("k2", docStr2));
-    col.insert(db.createDocumentFromString("k3", docStr3));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
 
     String indexName = "\"orderByIndex" + contentColumnType + "\"";
     if (withIndex)
@@ -830,13 +982,13 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     OracleDocument d;
 
     d = c.next();
-    assertEquals(d.getKey(), "k2");
+    assertEquals(d.getKey(), key2);
 
     d = c.next();
-    assertEquals(d.getKey(), "k3");
+    assertEquals(d.getKey(), key3);
 
     d = c.next();
-    assertEquals(d.getKey(), "k1");
+    assertEquals(d.getKey(), key1);
 
     d = c.next();
 

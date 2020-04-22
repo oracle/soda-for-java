@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,41 +19,32 @@ All rights reserved.*/
 
 package oracle.soda.rdbms.impl;
 
-import java.nio.charset.Charset;
-import java.nio.charset.CharacterCodingException;
-
 import java.math.BigDecimal;
-
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
-import java.sql.ResultSet;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.sql.Clob;
-
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
-
-import oracle.json.logging.OracleLog;
-import oracle.json.parser.JsonPath;
-import oracle.json.parser.IndexColumn;
-import oracle.json.parser.JsonQueryPath;
-
 import java.util.logging.Logger;
 
-import oracle.jdbc.OracleConnection;
-
 import oracle.json.common.MetricsCollector;
-
-import oracle.json.util.HashFuncs;
-import oracle.json.util.ByteArray;
-import oracle.json.util.JsonByteArray;
-
+import oracle.json.logging.OracleLog;
+import oracle.json.parser.IndexColumn;
 import oracle.json.parser.IndexSpecification;
+import oracle.json.parser.JsonPath;
+import oracle.json.parser.JsonQueryPath;
 import oracle.json.parser.QueryException;
-
-import oracle.soda.OracleException;
-import oracle.soda.OracleDocument;
+import oracle.json.util.ByteArray;
+import oracle.json.util.HashFuncs;
+import oracle.json.util.JsonByteArray;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleCollectionAdmin;
+import oracle.soda.OracleDocument;
+import oracle.soda.OracleException;
 import oracle.soda.OracleOperationBuilder;
 
 public abstract class OracleCollectionImpl implements OracleCollection
@@ -68,24 +59,27 @@ public abstract class OracleCollectionImpl implements OracleCollection
   private static final int ORA_SQL_DATAGUIDE_NOT_EXISTS = 40582;
 
   protected final String collectionName;
-  protected final OracleConnection conn;
+  protected final Connection conn;
   protected final OracleDatabaseImpl db;
   protected final MetricsCollector metrics;
   protected final CollectionDescriptor options;
 
   private OracleCollectionAdministrationImpl admin;
 
-  private final static int SQL_STATEMENT_SIZE = 1000;
-  protected StringBuilder sb = new StringBuilder(SODAConstants.SQL_STATEMENT_SIZE);
-
   private final static int ORA_SQL_OBJECT_EXISTS = 955;
   private final static int ORA_SQL_OBJECT_NOT_EXISTS = 942;
   private final static int ORA_SQL_INDEX_NOT_EXISTS = 1418;
+
+  protected StringBuilder sb = new StringBuilder(SODAConstants.SQL_STATEMENT_SIZE);
 
   // This is a work-around for the problem that inside the RDBMS
   // the SQL "returning" clause simply isn't supported.
   // This also triggers avoidance of a 32k limit on setBytes/setString.
   protected boolean internalDriver = false;
+  public    boolean oracleDriver   = false;
+
+  // ### This is enables use of CallableStatement for RETURNING clauses.
+  public    boolean useCallableReturns = false;
 
   private SODAUtils.SQLSyntaxLevel sqlSyntaxLevel = SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
 
@@ -115,6 +109,23 @@ public abstract class OracleCollectionImpl implements OracleCollection
       internalDriver = true;
       if (OracleLog.isLoggingEnabled())
         log.fine("Avoid returning clauses for internal connections");
+    }
+    if (db.hasOracleConnection())
+    {
+      oracleDriver = true;
+    }
+    else
+    {
+      // ### Switch this off to disable use of callable statements
+      // ### as the alternative when the Oracle driver isn't present.
+      // ### If this is disabled, then OracleOperationBuildImpl and
+      // ### TableCollectionImpl need modifications to avoid using
+      // ### the RETURNING clauses in situations where the Oracle
+      // ### driver is not used, e.g.
+      // ###   if (!oracleDriver && !useCallableReturns)
+      // ###     ...use a two-round-trip strategy...
+      // ### TO-DO for Max to implement that.
+      useCallableReturns = true;
     }
   }
 
@@ -374,6 +385,16 @@ public abstract class OracleCollectionImpl implements OracleCollection
     return (key);
   }
 
+  protected byte[] convertToBinary(byte[] data) throws OracleException
+  {
+    byte[] binary = null;
+
+    if ((data != null) && (data.length != 0))
+      binary = db.textToBinary(data);
+
+    return binary;
+  }
+
   /**
    * Convert a byte array to a string after autodetecting the character set.
    */
@@ -508,7 +529,10 @@ public abstract class OracleCollectionImpl implements OracleCollection
     return admin;
   }
 
-  CollectionDescriptor getOptions()
+  /**
+   * Not part of a public API
+   */
+  public CollectionDescriptor getOptions()
   {
     return options;
   }
@@ -541,11 +565,13 @@ public abstract class OracleCollectionImpl implements OracleCollection
   /**
    * Append a SQL format clause if the content column is binary
    */
-  private void addFormat(StringBuilder sb)
-  { 
-    //Append the format clause for binary types
-    if ((options.contentDataType == CollectionDescriptor.BLOB_CONTENT) ||
-        (options.contentDataType == CollectionDescriptor.RAW_CONTENT))
+  void addFormat(StringBuilder sb)
+  {
+    if (options.hasBinaryFormat())
+      sb.append(" format oson");
+    // Append the format clause for binary types
+    else if ((options.contentDataType == CollectionDescriptor.BLOB_CONTENT) ||
+             (options.contentDataType == CollectionDescriptor.RAW_CONTENT))
       sb.append(" format json");
   }
 
@@ -591,7 +617,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
   private String buildCTXIndexDDL(String indexName, String language,
                                   boolean is121TextIndexWithLang)
           throws OracleException
-  {
+  { 
     if (!is121TextIndexWithLang)
     {
       sb.setLength(0);
@@ -886,7 +912,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
     // the error here as opposed to relying on the SQL, because
     // it will create an invalid index object.
     if ((options.contentDataType == CollectionDescriptor.NCHAR_CONTENT) ||
-      (options.contentDataType == CollectionDescriptor.NCLOB_CONTENT))
+        (options.contentDataType == CollectionDescriptor.NCLOB_CONTENT))
     {
       throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_INDEX_CREATE,
         options.getContentDataType());
@@ -1003,11 +1029,12 @@ public abstract class OracleCollectionImpl implements OracleCollection
       {
         throw SODAUtils.makeException(SODAMessage.EX_NO_FUNC_INDEX_ON_HETERO_COLLECTIONS);
       }
+
       sqlSyntaxLevel = SODAUtils.getSQLSyntaxLevel(conn, sqlSyntaxLevel);
 
       if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel) && !scalarRequired && !lax)
       {
-        throw SODAUtils.makeException(SODAMessage.EX_NULL_ON_EMPTY_NOT_SUPPORTED);
+        throw SODAUtils.makeException(SODAMessage.EX_NULL_ON_EMPTY_NOT_SUPPORTED );
       }
 
       sqltext = buildIndexDDL(indexName, unique, scalarRequired, lax, columns, indexNulls);
@@ -1125,7 +1152,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                     "indexSpecification");
 
     IndexSpecification ispec =
-      new IndexSpecification(((OracleDocumentImpl) indexSpecification).getContentAsStream());
+      new IndexSpecification(db.getJsonFactoryProvider(),
+              ((OracleDocumentImpl) indexSpecification).getContentAsStream());
 
     try
     {
@@ -1187,7 +1215,6 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
       rows.close();
       rows = null;
-
       stmt.close();
       stmt = null;
 
@@ -1291,7 +1318,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
                                       "indexSpecification");
  
       IndexSpecification ispec =
-        new IndexSpecification(((OracleDocumentImpl) indexSpecification).getContentAsStream());
+      new IndexSpecification(db.getJsonFactoryProvider(),
+               ((OracleDocumentImpl) indexSpecification).getContentAsStream());
 
       try
       {

@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/Operation.java /main/10 2015/08/31 12:59:04 dmcmahon Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/Operation.java /st_xdk_soda1/1 2020/01/29 12:44:01 jspiegel Exp $ */
 
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -24,13 +24,14 @@ package oracle.soda.rdbms.impl;
 
 import oracle.soda.OracleCollection;
 
+import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.CallableStatement;
 
 class Operation
 {
-  private final PreparedStatement stmt;
   private final CallableStatement plsql_stmt;
+  private final PreparedStatement stmt;
 
   private final boolean headerOnly;
 
@@ -46,6 +47,27 @@ class Operation
   // SQL text, for subsequent error reporting
   private final String sqlText;
 
+  private final int returnParameterIndex;
+
+  Operation(PreparedStatement stmt,
+            String sqlText,
+            boolean headerOnly,
+            boolean filterSpecBased,
+            boolean singleKeyBased,
+            int returnParameterIndex,
+            OracleCollection collection)
+  {
+    this.stmt = stmt;
+    this.sqlText = sqlText;
+    this.headerOnly = headerOnly;
+    this.filterSpecBased = filterSpecBased;
+    this.singleKeyBased = singleKeyBased;
+    this.returnParameterIndex = returnParameterIndex;
+    this.collection = collection;
+    this.plsql_stmt = ((stmt instanceof CallableStatement) ?
+                       (CallableStatement)stmt : null);
+  }
+
   Operation(PreparedStatement stmt,
             String sqlText,
             boolean headerOnly,
@@ -53,28 +75,19 @@ class Operation
             boolean singleKeyBased,
             OracleCollection collection)
   {
-    this.stmt = stmt;
-    this.plsql_stmt = null;
-    this.sqlText = sqlText;
-    this.headerOnly = headerOnly;
-    this.filterSpecBased = filterSpecBased;
-    this.singleKeyBased = singleKeyBased;
-    this.collection = collection;
+    this(stmt, sqlText, headerOnly, filterSpecBased, singleKeyBased,
+         -1, collection);
   }
 
   Operation(CallableStatement stmt,
             String sqlText,
             boolean filterSpecBased,
             boolean singleKeyBased,
+            int returnParameterIndex,
             OracleCollection collection)
   {
-    this.stmt = null;
-    this.plsql_stmt = stmt;
-    this.sqlText = sqlText;
-    this.headerOnly = false;
-    this.filterSpecBased = filterSpecBased;
-    this.singleKeyBased = singleKeyBased;
-    this.collection = collection;
+    this(stmt, sqlText, false, filterSpecBased, singleKeyBased,
+         returnParameterIndex, collection);
   }
 
   PreparedStatement getPreparedStatement()
@@ -85,6 +98,11 @@ class Operation
   CallableStatement getCallableStatement()
   {
     return plsql_stmt;
+  }
+
+  Statement getStatement()
+  {
+    return stmt;
   }
 
   boolean headerOnly()
@@ -100,6 +118,11 @@ class Operation
   boolean isSingleKeyBased()
   {
     return singleKeyBased;
+  }
+
+  int getReturnParameterIndex()
+  {
+    return returnParameterIndex;
   }
 
   OracleCollection getCollection()

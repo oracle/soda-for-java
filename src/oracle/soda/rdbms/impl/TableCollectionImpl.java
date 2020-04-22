@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -19,40 +19,33 @@ All rights reserved.*/
 
 package oracle.soda.rdbms.impl;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.io.ByteArrayInputStream;
-
-import java.sql.SQLException;
-import java.sql.ResultSet;	
-import java.sql.PreparedStatement;
-import java.sql.Types;	
-import java.sql.Blob;
+import java.math.BigDecimal;
+import java.sql.Array;
 import java.sql.BatchUpdateException;
-
+import java.sql.Blob;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import oracle.jdbc.OracleCallableStatement;
-import oracle.jdbc.OraclePreparedStatement;
-import oracle.jdbc.OracleTypes;
-import oracle.jdbc.OracleConnection;
-
-import oracle.json.logging.OracleLog;
-
-import oracle.sql.Datum;
+import java.util.Map;
 
 import oracle.json.common.LobInputStream;
-
-import oracle.soda.OracleDocument;
-import oracle.soda.OracleException;
-import oracle.soda.OracleBatchException;
-
+import oracle.json.logging.OracleLog;
+import oracle.json.util.ByteArray;
 import oracle.json.util.ComponentTime;
 import oracle.json.util.LimitedInputStream;
-import oracle.json.util.ByteArray;
+import oracle.soda.OracleBatchException;
+import oracle.soda.OracleDocument;
+import oracle.soda.OracleException;
 
 public class TableCollectionImpl extends OracleCollectionImpl
 {
@@ -74,7 +67,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
     super(db, name, options);
   }
 
-  private String buildSelectForUpsert()
+  private String buildSelectForUpsert(String hint)
   {
     sb.setLength(0);
 
@@ -82,10 +75,11 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     if (options.creationColumnName != null)
     {
-      sb.append("select to_char(\"");
-      sb.append(options.creationColumnName);
+      sb.append("select ");
+      if (hint != null)
+        sb.append("/*+ " + hint + " */ ");
+      sb.append("\"" + options.creationColumnName);
       sb.append('\"');
-      OracleDatabaseImpl.addTimestampSelectFormat(sb);
 
       append = true;
     }
@@ -106,6 +100,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
 
     addFrom(sb);
+
+    addWhereKey(sb, false);
 
     return(sb.toString());
   }
@@ -162,18 +158,16 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     if (options.timestampColumnName != null)
     {
-      sb.append(",to_char(\"");
+      sb.append(",\"");
       sb.append(options.timestampColumnName);
       sb.append('\"');
-      OracleDatabaseImpl.addTimestampSelectFormat(sb);
     }
 
     if (options.creationColumnName != null)
     {
-      sb.append(",to_char(\"");
+      sb.append(",\"");
       sb.append(options.creationColumnName);
       sb.append('\"');
-      OracleDatabaseImpl.addTimestampSelectFormat(sb);
     }
 
     if (options.versionColumnName != null)
@@ -252,10 +246,18 @@ public class TableCollectionImpl extends OracleCollectionImpl
    * The batch version disables the RETURNING clause, obliging the
    * caller to supply those values from the server.
    */
-  private String buildInsert(boolean disableReturning)
+  private String buildInsert(boolean disableReturning, String hint)
   {
     sb.setLength(0);
-    sb.append("insert into ");
+
+    // Make this a callable statement for non-Oracle drivers
+    if (insertHasReturnClause(disableReturning) && useCallableReturns)
+      sb.append("begin\n");
+
+    sb.append("insert");
+    if (hint != null)
+      sb.append(" /*+ " + hint + " */");
+    sb.append(" into ");
     appendTable(sb);
     sb.append(" (\"");
     sb.append(options.keyColumnName);
@@ -394,14 +396,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
         sb.append(options.keyColumnName);
         sb.append("\"");
 
-        count++;
+        ++count;
       }
 
       if (returnInsertedTime())
       {
         addComma(sb, count);
 
-        sb.append("to_char(\"");
+        sb.append("\"");
         // Only last-mod timestamp or creation time needs
         // to be returned, as they are the same in the
         // case of insert.
@@ -411,9 +413,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
           sb.append(options.creationColumnName);
 
         sb.append('"');
-        OracleDatabaseImpl.addTimestampReturningFormat(sb);
 
-        count++;
+        ++count;
       }
 
       if (returnInsertedVersion())
@@ -424,12 +425,23 @@ public class TableCollectionImpl extends OracleCollectionImpl
         sb.append(options.versionColumnName);
         sb.append("\"");
 
-        count++;
+        ++count;
+      }
+
+      // Return a "flag" column that is never NULL
+      if (useCallableReturns)
+      {
+        addComma(sb, count);
+        sb.append("'1'");
+        ++count;
       }
 
       addInto(sb, count);
-
     }
+
+    // Make this a callable statement for non-Oracle drivers
+    if (insertHasReturnClause(disableReturning) && useCallableReturns)
+      sb.append(";\nend;\n");
 
     return(sb.toString());
   }
@@ -461,11 +473,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
   }
 
-  private String buildUpsert()
+  private String buildUpsert(String hint)
   {
     sb.setLength(0);
 
-    sb.append("merge into ");
+    sb.append("merge ");
+    if (hint != null)
+      sb.append("/*+ " + hint + " */ ");
+    sb.append("into ");
     appendTable(sb);
     sb.append(" JSON$TARGET using (select ");
     sb.append(" ? \"");
@@ -619,12 +634,23 @@ public class TableCollectionImpl extends OracleCollectionImpl
   public OracleDocument insertAndGet(OracleDocument document)
     throws OracleException
   {
+    return insertAndGet(document, null);
+  }
+  
+  /**
+   * Insert a new row into a collection. Returns the key assigned.
+   */
+  public OracleDocument insertAndGet(OracleDocument document,
+                                     Map<String, ?> insertOrSaveOptions)
+    throws OracleException
+  {
     if (document == null)
     {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
                                     "document");
     }
-
+    String hintStr = getHintString(insertOrSaveOptions);
+    
     writeCheck("insert");
 
     if (document.getKey() != null &&
@@ -633,8 +659,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       throw SODAUtils.makeException(SODAMessage.EX_INPUT_DOC_HAS_KEY);
     }
 
-    OraclePreparedStatement stmt = null;
-    ResultSet               rows = null;
+    PreparedStatement stmt = null;
 
     byte[]      dataBytes = EMPTY_DATA;
 
@@ -643,6 +668,11 @@ public class TableCollectionImpl extends OracleCollectionImpl
     String tstamp = null;
     
     boolean disableReturning = internalDriver;
+
+    // Disable use of DML RETURNING clauses for non-Oracle drivers unless
+    // the non-Oracle driver supports callable statements as an alternative.
+    if (!oracleDriver && !useCallableReturns)
+      disableReturning = true;
 
     switch (options.keyAssignmentMethod)
     {
@@ -677,17 +707,23 @@ public class TableCollectionImpl extends OracleCollectionImpl
       break;
     }
     
-    String sqltext = buildInsert(disableReturning);
+    String sqltext = buildInsert(disableReturning, hintStr);
 
-
-    //if (OracleLog.isLoggingEnabled())
-    //  log.info("Insert: " + sqltext);
+/***
+    if (OracleLog.isLoggingEnabled())
+      log.info("Insert: " + sqltext);
+***/
 
     try
     {
+      CallableStatement cstmt = null;
+
       metrics.startTiming();
 
-      stmt = (OraclePreparedStatement)conn.prepareStatement(sqltext);
+      if (insertHasReturnClause(disableReturning) && useCallableReturns)
+        stmt = cstmt = conn.prepareCall(sqltext);
+      else
+        stmt = conn.prepareStatement(sqltext);
 
       int num = 0;
 
@@ -770,49 +806,101 @@ public class TableCollectionImpl extends OracleCollectionImpl
         }
       }
 
-      // Oracle-specific RETURNING clause
-      if (!disableReturning)
+      int returnParameterIndex = -1;
+
+      // Parameters for RETURNING clause
+      if (insertHasReturnClause(disableReturning))
       {
-        if (returnInsertedKey())
-          stmt.registerReturnParameter(++num, Types.VARCHAR);
-        if (returnInsertedTime())
-          stmt.registerReturnParameter(++num, Types.VARCHAR);
-        if (returnInsertedVersion())
-          stmt.registerReturnParameter(++num, Types.VARCHAR);
+        // Oracle-specific binding mode
+        if (!useCallableReturns)
+        {
+          if (returnInsertedKey())
+            db.registerReturnString(stmt, ++num);
+          if (returnInsertedTime())
+            db.registerReturnTimestamp(stmt, ++num);
+          if (returnInsertedVersion())
+            db.registerReturnString(stmt, ++num);
+        }
+        else
+        {
+          returnParameterIndex = num;
+          if (returnInsertedKey())
+            cstmt.registerOutParameter(++num, Types.VARCHAR);
+          if (returnInsertedTime())
+            cstmt.registerOutParameter(++num, Types.TIMESTAMP);
+          if (returnInsertedVersion())
+            cstmt.registerOutParameter(++num, Types.VARCHAR);
+          // Register the "flag" column
+          cstmt.registerOutParameter(++num, Types.VARCHAR);
+        }
       }
 
       int nrows = stmt.executeUpdate();
-
+      //
+      // This is normally the count of rows updated; however, for a PL/SQL
+      // call it's the number of executions of the anonymous block. In
+      // such cases, nrows == 1 even if it didn't update any rows, and
+      // we have to use a "flag" column to tell if it worked or not.
+      //
       if (nrows != 1)
       {
         throw SODAUtils.makeException(SODAMessage.EX_INSERT_FAILED,
                                       options.uriName);
       }
 
+      // If there's a RETURNING clause, retrieve the results
       if (insertHasReturnClause(disableReturning))
       {
-        // Oracle-specific RETURNING clause
-        rows = stmt.getReturnResultSet();
-        if (rows.next())
+        int onum = 0;
+
+        // For the Oracle driver, these are returned as a ResultSet
+        if (!useCallableReturns)
         {
-          int onum = 0;
+          ResultSet rows = db.getReturnResultSet(stmt);
+          if ((rows == null) || !rows.next())
+          {
+            throw SODAUtils.makeException(SODAMessage.EX_INSERT_FAILED,
+                                          options.uriName);
+          }
+
           if (returnInsertedKey())
-          {
             key = rows.getString(++onum);
-          }
+
           if (returnInsertedTime())
-          {
-            tstamp = OracleDatabaseImpl.getTimestamp(rows.getString(++onum));
-          }
+            tstamp = OracleDatabaseImpl.getTimestamp(rows, ++onum);
+
           if (returnInsertedVersion())
-          {
             version = rows.getString(++onum);
-          }
+
+          rows.close();
+          rows = null;
         }
+        // Otherwise for a callable statement these are returned as OUT parameters
         else
         {
-          SODAUtils.makeException(SODAMessage.EX_INSERT_FAILED,
-                                  options.uriName);
+          onum = returnParameterIndex;
+
+          if (returnInsertedKey())
+            key = cstmt.getString(++onum);
+
+          if (returnInsertedTime())
+            tstamp = OracleDatabaseImpl.getTimestamp(cstmt, ++onum);
+
+          if (returnInsertedVersion())
+            version = cstmt.getString(++onum);
+
+          String flagValue = cstmt.getString(++onum);
+
+          // If this was wrapped in a PL/SQL block, the count is always 1
+          // because it's the execution count, not the row count. This is
+          // a work-around that relies on one of the returned columns to
+          // be non-NULL, but that's not guaranteed. To guarantee it we
+          // have to ensure that an additional flag column was returned.
+          if ((flagValue == null) || (!flagValue.equals("1")))
+          {
+            throw SODAUtils.makeException(SODAMessage.EX_INSERT_FAILED,
+                                          options.uriName);
+          }
         }
       }
 
@@ -836,9 +924,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
     }
 
-    OracleDocumentImpl doc = new OracleDocumentImpl(key,
-                                                    version,
-                                                    tstamp);
+    OracleDocumentImpl doc = new OracleDocumentImpl(key, version, tstamp);
 
     doc.setCreatedOn(tstamp);
 
@@ -855,14 +941,20 @@ public class TableCollectionImpl extends OracleCollectionImpl
     // ### This can be made more efficient then
     //     simply calling saveAndGet(...), since the "Get"
     //     part is not required.
-    saveAndGet(document);
+    saveAndGet(document, null);
   }
 
   public OracleDocument saveAndGet(OracleDocument document)
     throws OracleException
   {
+    return saveAndGet(document, null);
+  }
+  
+  public OracleDocument saveAndGet(OracleDocument document, Map<String, ?> insertOrSaveOptions)
+    throws OracleException
+  {
     writeCheck("save");
-
+   String hintStr = getHintString(insertOrSaveOptions);
     // If this collection allows client-assigned keys, perform upsert
     if (options.keyAssignmentMethod == CollectionDescriptor.KEY_ASSIGN_CLIENT)
     {
@@ -873,7 +965,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
 
       String key = document.getKey();
-      return(upsert(key, document));
+      return(upsert(key, document, hintStr));
     }
 
     return insertAndGet(document);
@@ -917,8 +1009,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
         if (avoidTxnManagement)
         {
           throw SODAUtils.makeBatchException(SODAMessage.EX_OPERATION_REQUIRES_TXN_MANAGEMENT,
-            rowCount,
-            "insertAndGet");
+                                             rowCount, "insertRows");
         }
 
         conn.setAutoCommit(false);
@@ -995,11 +1086,21 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     return(results);
   }
-
+ 
   /**
    * Insert a set of rows into a collection.
    */
   public List<OracleDocument> insertAndGet(Iterator<OracleDocument> documents)
+    throws OracleBatchException
+  {
+    return insertAndGet(documents, null);
+  }
+  
+  /**
+   * Insert a set of rows into a collection with options
+   */
+  public List<OracleDocument> insertAndGet(Iterator<OracleDocument> documents,
+                                           Map <String, ?> insertOrSaveOptions)
     throws OracleBatchException
   {
     // Counter of input rows successfully inserted
@@ -1014,7 +1115,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                          rowCount,
                                          "documents");
     }
-
+    String hintStr = null;
+    try {
+      hintStr = getHintString(insertOrSaveOptions);
+    } catch (OracleException e)
+    {
+      throw convertToOracleBatchException(e, rowCount, null);
+    }
+    
     if (isReadOnly())
     {
       if (OracleLog.isLoggingEnabled())
@@ -1040,9 +1148,9 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     ArrayList<OracleDocument> results = new ArrayList<OracleDocument>();
 
-    OraclePreparedStatement stmt = null;
+    PreparedStatement stmt = null;
 
-    String sqltext = buildInsert(true);
+    String sqltext = buildInsert(true, hintStr);
 
     boolean manageTransaction = false;
 
@@ -1058,8 +1166,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
         if (avoidTxnManagement)
         {
           throw SODAUtils.makeBatchException(SODAMessage.EX_OPERATION_REQUIRES_TXN_MANAGEMENT,
-            rowCount,
-            "insertAndGet");
+                                             rowCount, "insertAndGet");
         }
 
         conn.setAutoCommit(false);
@@ -1068,7 +1175,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
       metrics.startTiming();
 
-      stmt = (OraclePreparedStatement)conn.prepareStatement(sqltext);
+      stmt = conn.prepareStatement(sqltext);
 
       // Use a stopped clock for all rows
       long lstamp = db.getDatabaseTime();
@@ -1085,10 +1192,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
         if (document == null)
         {
           OracleBatchException bE = SODAUtils.makeBatchException(
-            SODAMessage.EX_ITERATOR_RETURNED_NULL_ELEMENT,
-            rowCount,
-            "documents",
-            rowCount);
+              SODAMessage.EX_ITERATOR_RETURNED_NULL_ELEMENT,
+              rowCount,
+              "documents",
+              rowCount);
 
           throw bE;
         }
@@ -1097,10 +1204,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
             options.keyAssignmentMethod != CollectionDescriptor.KEY_ASSIGN_CLIENT)
         {
           OracleBatchException bE = SODAUtils.makeBatchException(
-            SODAMessage.EX_ITERATOR_RETURNED_DOC_WITH_KEY,
-            rowCount,
-            "documents",
-            rowCount);
+              SODAMessage.EX_ITERATOR_RETURNED_DOC_WITH_KEY,
+              rowCount,
+              "documents",
+              rowCount);
 
           throw bE;
         }
@@ -1330,7 +1437,23 @@ public class TableCollectionImpl extends OracleCollectionImpl
     return batchException;
   }
 
-  static OracleException completeTxnAndRestoreAutoCommit(OracleConnection conn,
+  private String getHintString(Map<String, ?> insertOrSaveOptions) throws OracleException
+  {
+    if (insertOrSaveOptions == null || insertOrSaveOptions.isEmpty())
+      return null;
+    //### should we have error or just ignore other options? 
+    Object val = insertOrSaveOptions.get("hint");
+    if (val == null)
+      throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL, "hint");
+    if (!(val instanceof String))
+      throw SODAUtils.makeException(SODAMessage.EX_INVALID_HINT, val.toString());
+    String hint = (String) val;
+    if (hint.indexOf("/*") >= 0 || hint.indexOf("*/") >= 0)
+      throw SODAUtils.makeException(SODAMessage.EX_INVALID_HINT, hint);
+    return (hint == "")? null: hint;	 
+  }
+  
+  static OracleException completeTxnAndRestoreAutoCommit(Connection conn,
                                                          boolean manageTransaction,
                                                          boolean commit)
   {
@@ -1378,13 +1501,13 @@ public class TableCollectionImpl extends OracleCollectionImpl
     return oe;
   }
 
-  private OracleDocument upsert(String key, OracleDocument document)
+  private OracleDocument upsert(String key, OracleDocument document, String hint)
     throws OracleException
   {
     PreparedStatement stmt = null;
     ResultSet rows = null;
 
-    String sqltext = buildUpsert();
+    String sqltext = buildUpsert(hint);
 
     OracleDocumentImpl result = null;
 
@@ -1431,8 +1554,27 @@ public class TableCollectionImpl extends OracleCollectionImpl
       // Update portion of the SQL MERGE
 
       // Set the payload column
-      byte[] data = document.getContentAsByteArray();
-      if (data == null) data = EMPTY_DATA;
+      byte[] data = null;
+
+      // ### This is for future use. Right now, a collection with
+      // client assigned keys will never store binary JSON (only
+      // default collection can store binary JSON). So this "if"
+      // code will never run.
+      if (options.hasBinaryFormat())
+      {
+        if (((OracleDocumentImpl) document).isBinary())
+        {
+          data = ((OracleDocumentImpl) document).getBinaryContentAsByteArray();
+        }
+        else
+        {
+          data = convertToBinary(document.getContentAsByteArray());
+        }
+      }
+      else
+      {
+        data = document.getContentAsByteArray();
+      }
 
       String sdata = null;
 
@@ -1583,7 +1725,9 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         //if (OracleLog.isLoggingEnabled())
         //  log.info("Generating an additional select");
-        stmt = conn.prepareStatement(buildSelectForUpsert());
+        stmt = conn.prepareStatement(buildSelectForUpsert(hint));
+
+        bindKeyColumn(stmt, 1, key);
 
         rows = stmt.executeQuery();
 
@@ -1598,7 +1742,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         if (options.creationColumnName != null)
         {
-          ctime = rows.getString(++num);
+          ctime = OracleDatabaseImpl.getTimestamp(rows, ++num);
         }
 
         if (returnVersion())
@@ -1688,6 +1832,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
     LobInputStream               payloadStream = null;
     boolean                      streamContent = false;
     String                       sqltext = buildQuery();
+
     key = canonicalKey(key);
 
     if (admin().isHeterogeneous())
@@ -1726,7 +1871,12 @@ public class TableCollectionImpl extends OracleCollectionImpl
           else if (ctype.equalsIgnoreCase(OracleDocumentImpl.APPLICATION_JSON))
             streamContent = false;
         }
-      
+        // Always use the streaming mode for pre-parsed content,
+        // This will force the use of a LobInputStream, which ensures
+        // that the temporary LOB locator is freed after use.
+        if (options.hasBinaryFormat())
+          streamContent = true;
+
         if (streamContent)
         {
 
@@ -1740,7 +1890,6 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                           options.getContentDataType());
           }
 
-
           Blob loc = rows.getBlob(++num);
           if (loc != null)
           {
@@ -1752,7 +1901,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
                 length = (int)(datalen - offset);
 
               // If this is a range transfer
-              if ((offset > 0L) || (((long)length + offset)< datalen))
+              if ((offset > 0L) || (((long)length + offset) < datalen))
               {
                 // Consider whether to honor the request
                 // The range needs to be small enough that we are OK
@@ -1767,6 +1916,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
                   payload = loc.getBytes(offset + 1L, length);
                   streamContent = false;
                   // No longer going to use streaming response
+                  loc.free();
                 }
               }
 
@@ -1793,10 +1943,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
         }
 
         if (options.timestampColumnName != null)
-          mtime = rows.getString(++num);
+          mtime = OracleDatabaseImpl.getTimestamp(rows, ++num); 
 
         if (options.creationColumnName != null)
-          ctime = rows.getString(++num);
+          ctime = OracleDatabaseImpl.getTimestamp(rows, ++num); 
 
         if (options.versionColumnName != null)
           version = rows.getString(++num);
@@ -1810,7 +1960,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
         // Otherwise this is a whole or partial object as a byte array
         else
         {
-          result = new OracleDocumentFragmentImpl(keyval, version, mtime, payload);
+          result = new OracleDocumentFragmentImpl(keyval, version, mtime,
+                                                  payload);
           setContentType(ctype, result);
 
           // If this is a fragment of a larger object
@@ -1946,9 +2097,11 @@ public class TableCollectionImpl extends OracleCollectionImpl
     sb.append("  type NTAB is table of number index by binary_integer;\n");
     sb.append("  N number;\n");
     sb.append("  X number;\n");
-    sb.append("  K ntab;\n");
+    sb.append("  K XDB.DBMS_SODA_ADMIN.NUMNTAB;\n");
     sb.append("begin\n");
     sb.append("  N := ?;\n");
+    sb.append("  K := XDB.DBMS_SODA_ADMIN.NUMNTAB();\n");
+    sb.append("  K.extend(N);\n");
     sb.append("  for I in 1..N loop\n");
     sb.append("    select \"");
     sb.append(options.keySequenceName);
@@ -1963,7 +2116,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
   private void fetchSequence(int quantity)
     throws OracleException
   {
-    OracleCallableStatement stmt = null;
+    CallableStatement stmt = null;
     String sqltext = buildSequenceFetch();
 
     //
@@ -1980,22 +2133,22 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     try
     {
-      Datum[] vcarr = null;
-
       metrics.startTiming();
 
-      stmt = (OracleCallableStatement)conn.prepareCall(sqltext);
+      stmt = conn.prepareCall(sqltext);
       stmt.setInt(1, count);
-      stmt.registerIndexTableOutParameter(2, count, OracleTypes.NUMBER, 0);
+      stmt.registerOutParameter(2, Types.ARRAY, "XDB.DBMS_SODA_ADMIN.NUMNTAB");
 
       stmt.execute();
 
-      vcarr = stmt.getOraclePlsqlIndexTable(2);
+      // ### Somewhat inefficient, can we get it directly as a Long[] ?
+      Array parray = stmt.getArray(2);
+      BigDecimal[] numarr = (BigDecimal[])parray.getArray();
 
-      count = vcarr.length;
+      count = numarr.length;
 
       for (int i = 0; i < count; ++i)
-        seqCache[i] = vcarr[i].longValue();
+        seqCache[i] = numarr[i].longValue();
 
       seqCachePos = 0;
       seqCacheAvail = count;
@@ -2078,9 +2231,19 @@ public class TableCollectionImpl extends OracleCollectionImpl
   private void setPayloadBlob(PreparedStatement stmt,
                               int parameterIndex,
                               byte[] data)
-    throws SQLException
+    throws SQLException, OracleException
   {
-    if (internalDriver)
+    // The RDBMS internal JDBC driver doesn't have the code path to
+    // support setBytes(). Also, the OSON mode can't handle setBytes()
+    // correctly because the server side is identified as a RAW, not
+    // a BLOB, and reports a truncated length - therefore we must
+    // use setBytesForBlob() whenever the length exceeds that of a RAW.
+    //
+    // ### Is 32767 always safe to use? Or might some servers use a
+    // ### lower limit like 4000 or even 2000?
+    //
+    if ((internalDriver) ||
+        ((options.hasBinaryFormat()) && (data != null) && (data.length > 32767)))
       // Previously we used setBlob, but setBytesForBlob(...) appears to be 
       // faster, especially for data  under 32k. According to JDBC folks, 
       // this is because direct bind path is used in that case (despite the
@@ -2095,7 +2258,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
       //             new ByteArrayInputStream(data),
       //             (long)data.length);
       //
-      ((OraclePreparedStatement)stmt).setBytesForBlob(parameterIndex, data);
+    {
+      if (!db.setBytesForBlob(stmt, parameterIndex, data))
+        stmt.setBlob(parameterIndex, new ByteArrayInputStream(data), (long)data.length);
+    }
     else
       stmt.setBytes(parameterIndex, data);
   }
@@ -2112,9 +2278,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
   private void setPayloadBlobWorkaround(PreparedStatement stmt,
                                         int parameterIndex,
                                         byte[] data)
-    throws SQLException
+    throws SQLException, OracleException
   {
-    ((OraclePreparedStatement)stmt).setBytesForBlob(parameterIndex, data);
+    if (!db.setBytesForBlob(stmt, parameterIndex, data))
+      stmt.setBlob(parameterIndex, new ByteArrayInputStream(data), (long)data.length);
   }
 
   // setStringForClob(...) appears to be faster for smaller sizes of data,
@@ -2127,13 +2294,15 @@ public class TableCollectionImpl extends OracleCollectionImpl
   // than setStringForClob (reason is not clear). This anamoly is specific to
   // internal driver.
   private void setClobInternalDriver(PreparedStatement stmt,
-                                        int parameterIndex,
-                                        String str) throws SQLException
+                                     int parameterIndex,
+                                     String str)
+    throws SQLException
   {
     if (str.length() < 32767)
-      ((OraclePreparedStatement)stmt).setStringForClob(parameterIndex, str);
-    else
-      stmt.setClob(parameterIndex, new StringReader(str));
+      if (db.setStringForClob(stmt, parameterIndex, str))
+        return;
+
+    stmt.setClob(parameterIndex, new StringReader(str));
   }
 
   private void setPayloadClob(PreparedStatement stmt,
@@ -2168,7 +2337,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
     if (internalDriver) 
        setClobInternalDriver(stmt, parameterIndex, str);
     else
-      ((OraclePreparedStatement)stmt).setStringForClob(parameterIndex, str);
+      if (!db.setStringForClob(stmt, parameterIndex, str))
+        stmt.setClob(parameterIndex, new StringReader(str));
   }
 
   private void setPayloadNclob(PreparedStatement stmt,
@@ -2187,14 +2357,16 @@ public class TableCollectionImpl extends OracleCollectionImpl
                            OracleDocument document)
     throws SQLException, OracleException
   {
-    byte[] dataBytes = document.getContentAsByteArray();
-    if (dataBytes == null)
-    {
-      dataBytes = OracleCollectionImpl.EMPTY_DATA;
-    }
+    byte[] dataBytes = getContentForTransfer(document);
 
+    bindPayloadColumn(stmt, parameterIndex, dataBytes);
+
+    return(dataBytes);
+  }
+
+  void bindPayloadColumn(PreparedStatement stmt, int parameterIndex, 
+      byte[] dataBytes) throws OracleException, SQLException {
     String str;
-
     switch (options.contentDataType)
     {
     case CollectionDescriptor.CHAR_CONTENT:
@@ -2228,18 +2400,25 @@ public class TableCollectionImpl extends OracleCollectionImpl
     default:
       throw new IllegalStateException();
     }
-
-    return(dataBytes);
   }
 
-  /**
-   * Append a SQL format clause if the content column is binary
-   */
-  void addFormat(StringBuilder sb)
-  {
-    // Append the format clause for binary types
-    if ((options.contentDataType == CollectionDescriptor.BLOB_CONTENT) ||
-        (options.contentDataType == CollectionDescriptor.RAW_CONTENT))
-      sb.append(" format json");
+  byte[] getContentForTransfer(OracleDocument document) throws OracleException {
+    // If the doc has binary content, and we are binding into
+    // a collection that has binary content, bind that content as is.
+    if (options.hasBinaryFormat())
+    {
+      if (((OracleDocumentImpl) document).isBinary())
+      {
+        return ((OracleDocumentImpl) document).getBinaryContentAsByteArray();
+      }
+      else
+      {
+        return convertToBinary(document.getContentAsByteArray());
+      }
+    }
+    else 
+    {
+      return document.getContentAsByteArray();
+    }
   }
 }

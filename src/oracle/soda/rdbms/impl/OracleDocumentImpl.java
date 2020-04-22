@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/OracleDocumentImpl.java /main/21 2015/12/24 12:19:36 morgiyan Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/OracleDocumentImpl.java /st_xdk_soda1/1 2020/01/29 12:44:01 jspiegel Exp $ */
 
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -27,23 +27,27 @@ All rights reserved.*/
 
 package oracle.soda.rdbms.impl;
 
+import java.lang.ref.SoftReference;
 import java.nio.charset.Charset;
 import java.nio.charset.CharacterCodingException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.ByteArrayInputStream;
 
 import java.util.logging.Logger;
 
-import javax.activation.MimeType;
-import javax.activation.MimeTypeParseException;
+import javax.json.Json;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
+import javax.json.stream.JsonParser;
 
 import oracle.json.logging.OracleLog;
 
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
-
 import oracle.json.util.ByteArray;
 import oracle.json.util.JsonByteArray;
 import oracle.json.util.LimitedInputStream;
@@ -61,11 +65,24 @@ public class OracleDocumentImpl implements OracleDocument
   private final String version;
  
   private byte[] payload;
+
+  // When payload stores OSON binary, this points to
+  // its converted textual JSON UTF8 byte array representation.
+  //
+  // ### Should we use weak reference instead for more aggressive
+  // garbage collection?
+  private SoftReference<byte[]> payloadRef = null;
+
   private InputStream payloadStream;
 
   private String ctype = APPLICATION_JSON;
   private String creationTime;
   private int len = UNKNOWN_LENGTH;
+
+  private boolean binary = false;
+
+  // OracleJsonFactory
+  Object jsonFactory = null;
 
   OracleDocumentImpl(String docid,
                      String version,
@@ -211,18 +228,43 @@ public class OracleDocumentImpl implements OracleDocument
       // Destroy the InputStream
       payloadStream = null;
     }
+    else if (binary && (payload != null))
+    {
+      return convertBinaryToUTF8();
+    }
     // Return byte[] payload
     return(payload);
   }
 
+  private byte[] convertBinaryToUTF8() throws OracleException
+  {
+    // First check if previously converted JSON byte[] is available already.
+    // If so, return it.
+    if (payloadRef != null) {
+      byte[] json = payloadRef.get();
+      if (json != null) {
+        return json;
+      }
+    }
+
+    byte[] json = OracleDatabaseImpl.binaryToText(payload, jsonFactory);
+
+    // Cache the converted JSON byte[] for future use by
+    // using a soft refence.
+    payloadRef = new SoftReference<byte[]>(json);
+    return json;
+  }
+
   // ### Not part of a public API.
-  public InputStream getContentAsStream()
+  public InputStream getContentAsStream() throws OracleException
   {
     if (payloadStream != null)
       // ### We could be handing out a stream already consumed
       return(payloadStream);
-
     // Convert byte[] to InputStream
+    else if (binary && (payload != null))
+      return new ByteArrayInputStream(convertBinaryToUTF8());
+
     return((payload == null) ? null : new ByteArrayInputStream(payload));
   }
 
@@ -273,6 +315,8 @@ public class OracleDocumentImpl implements OracleDocument
     }
   }
 
+  byte[] getBinaryContentAsByteArray() { return payload; }
+
   void setContent(byte[] content)
   {
      payload = content;
@@ -286,22 +330,17 @@ public class OracleDocumentImpl implements OracleDocument
     }
     if ((ctype == APPLICATION_JSON) || (ctype.equals(APPLICATION_JSON)))
     {
-      return true; // optimization
+      return true;
     }
-    try {
-      MimeType mimeType = new MimeType(ctype);
-      return "application".equals(mimeType.getPrimaryType()) &&
-             "json".equals(mimeType.getSubType());
-    } catch (MimeTypeParseException e) {
-      // gulp
-      return false;
-    }
+    return false;
   }
 
   public boolean isJSON()
   {
     return isJSON(ctype);
   }
+
+  public boolean isBinary() { return binary; }
 
   public String getMediaType()
   {
@@ -330,10 +369,89 @@ public class OracleDocumentImpl implements OracleDocument
   {
     this.creationTime = createdOn;
   }
- 
+
+  void setBinary() { binary = true; }
+
+  void setJsonFactory(Object factory) { jsonFactory = factory; }
   @Override
   public String toString()
   {
     return(docid);
   }
+
+  /**
+   * {@inheritDoc} 
+   */
+  @Override
+  public <T> T getContentAs(Class<T> type) throws OracleException 
+  {
+    if (CharSequence.class.isAssignableFrom(type)) 
+      return type.cast(getContentAsString());
+    else if (Reader.class.isAssignableFrom(type)) 
+      return type.cast(new StringReader(getContentAsString()));
+    else if (InputStream.class.isAssignableFrom(type))
+      return type.cast(getContentAsStream()); 
+    else if (byte[].class.isAssignableFrom(type))
+      return type.cast(getContentAsByteArray());
+    else if (JsonValue.class.isAssignableFrom(type))
+      return type.cast(getJsonValue());
+    else if (JsonParser.class.isAssignableFrom(type))
+      return type.cast(getJsonParser());
+    else if (OracleDatabaseImpl.JSON_VALUE_CLASS.isAssignableFrom(type))
+      return type.cast(getOracleJsonValue());
+    else if (OracleDatabaseImpl.JSON_PARSE_CLASS.isAssignableFrom(type))
+      return type.cast(getOracleJsonParser());
+    else
+      throw SODAUtils.makeException(SODAMessage.EX_INVALID_TYPE_MAPPING, type);
+  }
+
+  private JsonValue getJsonValue() throws OracleException 
+  {
+    if (isBinary()) 
+    {
+      return OracleDatabaseImpl.binaryToJsonValue(getBinaryContentAsByteArray(), jsonFactory);
+    } 
+    else 
+    {
+      InputStream is = getContentAsStream();
+      JsonReader reader = Json.createReader(is);
+      JsonValue result = reader.readValue();
+      reader.close();
+      return result;
+    }
+  }
+  
+  private Object getOracleJsonValue() throws OracleException 
+  {
+    return isBinary() ?
+      OracleDatabaseImpl.binaryToOracleJsonValue(getBinaryContentAsByteArray(), jsonFactory) :
+      OracleDatabaseImpl.textToOracleJsonValue(getBinaryContentAsByteArray(), jsonFactory);
+  }
+  
+  private Object getOracleJsonParser() throws OracleException 
+  {
+    return isBinary() ?
+      OracleDatabaseImpl.createBinaryParser(getBinaryContentAsByteArray(), jsonFactory) :
+      OracleDatabaseImpl.createTextParser(getBinaryContentAsByteArray(), jsonFactory);
+  }
+  
+  private JsonParser getJsonParser() throws OracleException 
+  {
+    if (isBinary()) 
+    {
+      return OracleDatabaseImpl.binaryToJsonParser(getBinaryContentAsByteArray(), jsonFactory);
+    } 
+    else 
+    {
+      InputStream is = getContentAsStream();
+      return Json.createParser(is);
+    }
+  }
+  
+  protected static boolean isBinary(OracleDocument doc) {
+    return doc instanceof OracleDocumentImpl &&
+      ((OracleDocumentImpl)doc).isBinary();
+  }
+
+  
 }

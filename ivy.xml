@@ -8,7 +8,8 @@
 <ivy-module version="2.0">
     <info organisation="com.oracle" module="soda-dependencies"/>
     <dependencies>
-        <dependency org="org.glassfish" name="javax.json" rev="1.0.4" conf="default->master"/>
+        <dependency org="com.oracle.database.jdbc" name="ojdbc8" rev="19.3.0.0" conf="default->master"/>
+        <dependency org="org.glassfish" name="javax.json" rev="1.1.4" conf="default->master"/>
         <dependency org="junit" name="junit" rev="3.8.1" conf="default->master"/>
     </dependencies>
 </ivy-module>

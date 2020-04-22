@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -39,9 +39,12 @@ import javax.json.JsonValue;
 import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
 
+import oracle.json.common.JsonFactoryProvider;
+
 public class IndexSpecification
 {
   private final InputStream source;
+  private final JsonFactoryProvider jProvider;
 
   private boolean       is_parsed = false;
 
@@ -58,8 +61,9 @@ public class IndexSpecification
   private boolean       indexNulls = false;
   private boolean       force = false;
 
-  public IndexSpecification(InputStream inp)
+  public IndexSpecification(JsonFactoryProvider jProvider, InputStream inp)
   {
+    this.jProvider = jProvider;
     source = inp;
   }
 
@@ -101,7 +105,7 @@ public class IndexSpecification
       if (source == null)
         makeAndThrowException(QueryMessage.EX_INVALID_INDEX_SPEC);
 
-      DocumentLoader loader = new DocumentLoader(source);
+      DocumentLoader loader = new DocumentLoader(jProvider, source);
 
       JsonObject jObj = (JsonObject)loader.parse();
 

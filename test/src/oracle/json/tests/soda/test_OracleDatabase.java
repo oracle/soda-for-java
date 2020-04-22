@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -27,9 +27,18 @@ public class test_OracleDatabase extends SodaTestCase {
 
   // Test method for openCollection(collectionName)
   public void testOpenCollection() throws OracleException {
-    
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
-    
+   
+    OracleDocument metaDoc = null;
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else
+    {
+      metaDoc = client.createMetadataBuilder().build();
+    }
+
     String colName = "testOpenCollection";
     dbAdmin.createCollection(colName, metaDoc);
     
@@ -68,7 +77,15 @@ public class test_OracleDatabase extends SodaTestCase {
     if(from != fromString && from != fromStream && from != fromByteArray)
       throw new Exception("unknown input parameter: " + from);
     
-    OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE").build();
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE").build();
+    }
+
     OracleCollection col = dbAdmin.createCollection("testCreateDocument", metaDoc);
     OracleDocument doc = null;
     OracleDatabaseImpl dbImpl = (OracleDatabaseImpl) db;
@@ -84,6 +101,9 @@ public class test_OracleDatabase extends SodaTestCase {
     
     col.insertAndGet(doc);
     assertNotNull(doc);
+    
+    if (isJDCSMode())
+      return;
     
     OracleDocument metaDoc2 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     OracleCollection col2 = dbAdmin.createCollection("testCreateDocument2", metaDoc2);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -84,7 +84,7 @@ public final class ComponentTime implements Comparable<ComponentTime>
 
   // Maxim allowed value for fractional seconds
   // (we use TIMESTAMP(6) in the RDBMS).
-  private static final long MAX_MICROS = 999999L;
+  private static final long MAX_MICROS = 1000000L;
 
   /**
    * Construct from a date in this format:
@@ -393,12 +393,10 @@ public final class ComponentTime implements Comparable<ComponentTime>
    */
   public static long plus(long tstamp, long microseconds)
   {
-
-    long microsmask = (long)UMASK;
-    long newmicros = tstamp & microsmask;
+    long newmicros = tstamp & ((long)UMASK);
 
     // If the addition doesn't roll over past fractional seconds we can add it
-    if ((newmicros + microseconds) <= MAX_MICROS)
+    if ((newmicros + microseconds) < MAX_MICROS)
     {
       tstamp += microseconds;
     }
@@ -418,10 +416,11 @@ public final class ComponentTime implements Comparable<ComponentTime>
       newmicros += microseconds;
 
       // Compute the number of seconds of overflow
-      int overseconds = (int)(newmicros / 1000000L);
+      int overseconds = (int)(newmicros / MAX_MICROS);
+      // ### Revisit: what happens if this overflows remaining seconds 
 
-      // Get the remaining microseconds
-      newmicros = (newmicros % 1000000L);
+      // Strip microseconds to the trailing amount
+      newmicros = newmicros % MAX_MICROS;
 
       // Use a calendar to handle leap-years and leap-seconds.
       // Note that we subtract 1 from the month, because DB

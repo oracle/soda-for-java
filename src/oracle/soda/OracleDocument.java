@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -48,7 +48,7 @@ public interface OracleDocument
    *                         <code>null</code> if the key is not
    *                         available
    */
-  public String getKey();
+  String getKey();
 
   /**
    * Returns the content as a byte array.
@@ -59,7 +59,7 @@ public interface OracleDocument
    * @throws OracleException if there's an error returning content
    *                         as <code>byte[]</code>
    */
-  public byte[] getContentAsByteArray()
+  byte[] getContentAsByteArray()
     throws OracleException;
 
   /**
@@ -71,9 +71,61 @@ public interface OracleDocument
    * @throws OracleException if there's an error returning content
    *                         as <code>String</code>
    */
-  public String getContentAsString()
+  String getContentAsString()
     throws OracleException;
 
+  /**
+   * Returns the content as the specified type. The following types are
+   * supported: 
+   * <br><br>
+   * <table border="1" cellpadding="5" summary="Supported types">
+   * <tr>
+   * <th>Class</th>
+   * <th>Description</th>
+   * </tr>
+   * <tr>
+   * <td>{@code javax.json.JsonValue}<br>
+   *     {@code oracle.sql.json.OracleJsonValue}
+   * </td>
+   * <td>The JSON type value is returned as {@code JsonValue} or {@code OracleJsonValue}.
+   * Any derived interface, such as {@code JsonObject} may also be used.  
+   * <pre><code>  JsonObject obj = doc.getContentAs(JsonObject.class);</code></pre>
+   * </tr>
+   * <tr>
+   * <td>
+   * {@code javax.json.stream.JsonParser}<br>
+   * {@code oracle.sql.json.OracleJsonParser}
+   * </td>
+   * <td>
+   * The JSON type value is returned as an event stream.
+   * </td>
+   * </tr>
+   * <tr>
+   * <td>{@code java.lang.String}<br>
+   *     {@code java.io.Reader}
+   * </td>
+   * <td>The JSON type value is returned as JSON text. </td>
+   * </tr>
+   * <tr>
+   * <td>{@code java.io.InputStream}</td>
+   * <td>The JSON type value is returned as UTF8 JSON text. </td>
+   * </tr>
+   * </table>
+   * 
+   *
+   * @param <T> the type of the returned content
+   * @param type the type of the returned content
+   *
+   * @return                 content as an instance of the specified type
+   *                         or <code>null</code> if the content is not
+   *                         available
+   * @throws OracleException if there's an error returning content
+   *                         as the specified type or if a mapping to the 
+   *                         specified type is not supported
+   */
+  <T> T getContentAs(Class<T> type) 
+    throws OracleException;
+  
   /**
    * Returns the media type. JSON objects have media type
    * <code>"application/json"</code>.
@@ -82,7 +134,7 @@ public interface OracleDocument
    *                         or <code>null</code> if the media type is
    *                         not available
    */
-  public String getMediaType();
+  String getMediaType();
 
   /**
    * Returns the timestamp of the last modification to this document in
@@ -92,7 +144,7 @@ public interface OracleDocument
    *                         timestamp, or <code>null</code> if the timestamp
    *                         is not available
    */
-  public String getLastModified();
+  String getLastModified();
 
   /**
    * Returns the timestamp of creation of this document in ISO format.
@@ -101,7 +153,7 @@ public interface OracleDocument
    *                         timestamp, or <code>null</code> if the timestamp
    *                         is not available
    */
-  public String getCreatedOn();
+  String getCreatedOn();
 
   /**
    * Returns a string suitable for use as a version of the
@@ -112,7 +164,7 @@ public interface OracleDocument
    *                         version, or <code>null</code> if the version
    *                         is not available
    */
-  public String getVersion();
+  String getVersion();
 
    /**
     * Returns the length of content if know. <code>-1</code>
@@ -121,7 +173,7 @@ public interface OracleDocument
     * @return                 length of content, in bytes. <code>-1</code>
     *                         if not known.
     */
-  public int getContentLength();
+  int getContentLength();
 
   /**
    * Returns <code>true</code> is this document has media type
@@ -131,6 +183,6 @@ public interface OracleDocument
    *                          media type "application/json", <code>false</code>
    *                          otherwise
    */
-  public boolean isJSON();
+  boolean isJSON();
 
 }

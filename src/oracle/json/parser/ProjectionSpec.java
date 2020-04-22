@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/10 2018/06/15 02:15:48 morgiyan Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/11 2019/05/30 17:46:03 morgiyan Exp $ */
 
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -17,7 +17,7 @@ All rights reserved.*/
  */
 
 /**
- *  @version $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/10 2018/06/15 02:15:48 morgiyan Exp $
+ *  @version $Header: xdk/src/java/json/src/oracle/json/parser/ProjectionSpec.java /main/11 2019/05/30 17:46:03 morgiyan Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -33,7 +33,6 @@ import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.ArrayList;
 
-import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonNumber;
@@ -41,6 +40,7 @@ import javax.json.JsonValue;
 import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
 
+import oracle.json.common.JsonFactoryProvider;
 
 import oracle.json.util.ByteArray;
 import oracle.json.util.JsonByteArray;
@@ -48,6 +48,7 @@ import oracle.json.util.JsonByteArray;
 public class ProjectionSpec
 {
   private final InputStream source;
+  private final JsonFactoryProvider jProvider;
 
   private boolean       is_parsed                    = false;
   private boolean       is_checked_for_array_steps   = false;
@@ -63,8 +64,9 @@ public class ProjectionSpec
 
   private ArrayList<String[]> paths = new ArrayList<String[]>();
 
-  public ProjectionSpec(InputStream inp)
+  public ProjectionSpec(JsonFactoryProvider jProvider, InputStream inp)
   {
+    this.jProvider = jProvider;
     this.source = inp;
   }
 
@@ -221,7 +223,7 @@ public class ProjectionSpec
     try
     {
       // Source was consumed so reparse it from the rendition
-      DocumentLoader loader = new DocumentLoader(src);
+      DocumentLoader loader = new DocumentLoader(jProvider, src);
 
       Object parse = loader.parse();
 

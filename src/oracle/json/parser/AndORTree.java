@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -31,6 +31,8 @@ import javax.json.JsonObject;
 import javax.json.JsonArray;
 import javax.json.JsonException;
 import javax.json.stream.JsonParsingException;
+
+import oracle.json.common.JsonFactoryProvider;
 
 import oracle.json.parser.Evaluator.EvaluatorCode;
 
@@ -302,14 +304,15 @@ public class AndORTree
     return 0;
   }
 
-  public static AndORTree createTree(InputStream stream)
+  public static AndORTree createTree(JsonFactoryProvider jProvider,
+                                     InputStream stream)
     throws QueryException
   {
     FilterLoader dl;
 
     try
     {
-      dl = new FilterLoader(stream);
+      dl = new FilterLoader(jProvider, stream);
     }
     catch (JsonException e)
     {

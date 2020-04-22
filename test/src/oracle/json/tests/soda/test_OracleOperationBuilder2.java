@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -112,7 +112,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         fail("No exception when empty step is specified without backquotes");
     }
     catch (OracleException e) {
-        System.out.println("Message" + e.getMessage());
+        assertEquals("Invalid filter condition.", e.getMessage());
     }
     
     // Three empty steps
@@ -126,7 +126,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         assertEquals(1, col.find().filter(filter).count());
     }
     catch (OracleException e) {
-        System.out.println("Message2" + e.getMessage());
+        assertEquals("Invalid filter condition.", e.getMessage());
     }
 
     // Empty step below the top level non-empty step
@@ -158,13 +158,34 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
 
   private void testFilter(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+    // Blocked by bug 28996376 since 20181130 (uncomment this following line once the bug is fixed).
+    // if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
 
     OracleDocument mDoc = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").contentColumnType(contentColumnType).build();
     
-    OracleCollection col = db.admin().createCollection("testFilter" + contentColumnType + (withIndex?"Idx":""), mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testFilter" + (withIndex?"Idx":""), null);
+    } else
+    {
+      col = db.admin().createCollection("testFilter" + (withIndex?"Idx":""), mDoc);
+    }
+    String[] key = new String[10];
+    OracleDocument doc;
     for (int i = 1; i <= 10; i++) {
-      col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"d\" : " + i + " }"));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
+        key[i-1] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"d\" : " + i + " }"));
+        key[i-1] = doc.getKey();
+      }
     }
     
     if (withIndex) {
@@ -176,77 +197,92 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     //so text index wouldn't be used (even is it exists).
     OracleDocument filterDoc =db.createDocumentFromString("{ \"$id\" : [\"id-3\", \"id-5\", \"id-7\"] }"); 
 
-    OracleOperationBuilder builder = col.find().filter(filterDoc);
-    assertEquals(3, builder.count());
-    OracleCursor cursor = builder.getCursor();
-    assertEquals("id-3", cursor.next().getKey());
-    assertEquals("{ \"d\" : 5 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertEquals("id-7", cursor.next().getKey());
-    assertFalse(cursor.hasNext());
-    cursor.close();
+    OracleOperationBuilder builder;
+    OracleCursor cursor = null;
+    HashSet<String> keySet;
+    String fStr;
+
+    //### marked in 20190102, some of these tests needs to be revisited in non-JDCS mode as
+    //### well, because order of IDs returned by queries is not guaranteed.
+    //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSMode() check after the tests are modified.
+    if (!isJDCSMode())
+    {
+        builder = col.find().filter(filterDoc);
+        assertEquals(3, builder.count());
+        cursor = builder.getCursor();
+        assertEquals(key[2], cursor.next().getKey());
+        assertEquals("{ \"d\" : 5 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
+        
+        assertEquals(key[6], cursor.next().getKey());
+        assertFalse(cursor.hasNext());
+        cursor.close();
+        
+        keySet = new HashSet<String>();
+        keySet.add(key[1]);
+        keySet.add(key[2]);
+        keySet.add(key[8]); 
+        builder.keys(keySet);
+        assertEquals(5, builder.count());
+        cursor = builder.getCursor();
+        assertEquals(key[1], cursor.next().getKey());
+        cursor.next(); // skip id-3
+        cursor.next(); // skip id-5
+        cursor.next(); // skip id-7
+        assertEquals("{ \"d\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
+        assertFalse(cursor.hasNext());
+        cursor.close();
     
-    HashSet<String> keySet = new HashSet<String>();
-    keySet.add("id-2");
-    keySet.add("id-3");
-    keySet.add("id-9"); 
-    builder.keys(keySet);
-    assertEquals(5, builder.count());
-    cursor = builder.getCursor();
-    assertEquals("id-2", cursor.next().getKey());
-    cursor.next(); // skip id-3
-    cursor.next(); // skip id-5
-    cursor.next(); // skip id-7
-    assertEquals("{ \"d\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertFalse(cursor.hasNext());
-    cursor.close();
-    
-    filterDoc = db.createDocumentFromString("{ \"$id\" : [\"id-1\", \"id-7\"] }");
-    builder = col.find().key("id-3").filter(filterDoc);
-    assertEquals(3, builder.count());
-    cursor = builder.getCursor();
-    assertEquals("id-1", cursor.next().getKey());
-    assertEquals("{ \"d\" : 3 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertEquals("{ \"d\" : 7 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertFalse(cursor.hasNext());
-    cursor.close();
-    
-    // SODA filter might not support the following key array syntax
-    /*filterDoc =db.createDocumentFromString(" [\"id-2\", \"id-5\", \"id-8\"] ");
-    builder = col.find().key("id-4").filter(filterDoc);
-    assertEquals(4, builder.count());
-    cursor = builder.getCursor();
-    assertEquals("id-2", cursor.next().getKey());
-    assertEquals("{ \"d\" : 4 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertEquals("{ \"d\" : 5 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertEquals("id-8", cursor.next().getKey());*/
-    
-    String fStr = null;
-    if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-        fStr = "{ \"$query\" : {\"d\" : {\"$gt\" : 5 }}, \"$orderby\" : {\"d\" : -1} }";
+        filterDoc = db.createDocumentFromString("{ \"$id\" : [\"id-1\", \"id-7\"] }");
+        builder = col.find().key("id-3").filter(filterDoc);
+        assertEquals(3, builder.count());
+        cursor = builder.getCursor();
+        assertEquals("id-1", cursor.next().getKey());
+        assertEquals("{ \"d\" : 3 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
+        assertEquals("{ \"d\" : 7 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
+        assertFalse(cursor.hasNext());
+        cursor.close();
+
+        fStr = null;
+        if (!SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+            fStr = "{ \"$query\" : {\"d\" : {\"$gt\" : 5 }}, \"$orderby\" : {\"d\" : -1} }";
+        }
+        else {
+            fStr = "{ \"$query\" : {\"d\" : {\"$gt\" : 5 }}, " +
+                    "\"$orderby\" : {\"$lax\" : true, \"$fields\" : [ {\"path\" : \"d\", \"order\" : \"desc\"} ]}}";
+        }
+        filterDoc = db.createDocumentFromString(fStr);
+        chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+        builder = col.find().filter(filterDoc);
+        assertEquals(1, ((OracleOperationBuilderImpl) builder).startKey(key[2], false, false).count());
+        
+        builder = ((OracleOperationBuilderImpl) builder).startKey(key[6], false, false);
+        assertEquals(2, builder.count());
+        cursor = builder.getCursor();
+        assertEquals(key[5], cursor.next().getKey());
+        assertEquals("{ \"d\" : 10 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
+        assertFalse(cursor.hasNext());
+        cursor.close();
     }
-    else {
-        fStr = "{ \"$query\" : {\"d\" : {\"$gt\" : 5 }}, " +
-                "\"$orderby\" : {\"$lax\" : true, \"$fields\" : [ {\"path\" : \"d\", \"order\" : \"desc\"} ]}}";
-    }
-    filterDoc = db.createDocumentFromString(fStr);
-    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
-    builder = col.find().filter(filterDoc);
-    assertEquals(1, ((OracleOperationBuilderImpl) builder).startKey("id-3", false, false).count());
-    
-    builder = ((OracleOperationBuilderImpl) builder).startKey("id-7", false, false);
-    assertEquals(2, builder.count());
-    cursor = builder.getCursor();
-    assertEquals("id-6", cursor.next().getKey());
-    assertEquals("{ \"d\" : 10 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
-    assertFalse(cursor.hasNext());
-    cursor.close();
 
     // Test with "{ \"d\" : 1 }"
     filterDoc = db.createDocumentFromString("{ \"d\" : 1 }");
     chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
-    OracleDocument doc =  col.find().filter(filterDoc).getOne();
-    assertEquals("id-1", doc.getKey());
+    doc =  col.find().filter(filterDoc).getOne();
+    assertEquals(key[0], doc.getKey());
   
+    try
+    {
+      // SODA filter doesn't support the following key array syntax
+      filterDoc =db.createDocumentFromString(" [\"id-2\", \"id-5\", \"id-8\"] ");
+      builder = col.find().key("id-4").filter(filterDoc);
+      fail("No exception when filter string is non-JSON format");
+    } catch (Exception e)
+    {
+      // ### marked in 20190131,will enable the assert statement after the bug fix is grabbed to xdk main from xdk main
+      // The exception should also be changed to OracleException after enabled.
+      // assertEquals("Invalid filter condition.", e.getMessage());
+    }
+
     try {
       // Test with "{ \"d\" : 1 } 2 3 4"
       filterDoc = db.createDocumentFromString("{ \"d\" : 1 } 2 3 4");
@@ -255,7 +291,11 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } catch (OracleException e) {
       // Expect OracleException
       assertEquals("Invalid filter condition.", e.getMessage());
-      cursor.close();
+      //### marked in 20190102, some of these tests needs to be revisited in non-JDCS mode as
+      //### well, because order of IDs returned by queries is not guaranteed.
+      //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSMode() check after the tests are modified.
+      if (!isJDCSMode()) //### will uncomment isJDCSMode() check after the above tests(#line208) are modified.
+        cursor.close();
     }
     
     try {
@@ -283,6 +323,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
  
  private void testFilter2(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+      return;
 
     OracleDocument doc = null, mDoc = null;
 
@@ -292,8 +334,15 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
 
-    OracleCollection col = db.admin().createCollection("testFilter2" + contentColumnType + (withIndex?"Idx":""), mDoc);
-      
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testFilter2" + contentColumnType + (withIndex?"Idx":""), null);
+    } else
+    {
+      col = db.admin().createCollection("testFilter2" + contentColumnType + (withIndex?"Idx":""), mDoc);
+    }
+
     String textIndex1 = "jsonSearchIndex-1";
 
     if (withIndex) {
@@ -377,14 +426,17 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         "\"$orderby\" : {\"$lax\" : true, \"$fields\" : [ {\"path\" : \"seq\", \"order\" : \"asc\"} ]}}");
     }
     assertEquals(2, col.find().filter(filterDoc).count());
-    OracleCursor cursor = col.find().filter(filterDoc).getCursor();
+    OracleCursor cursor;
+
+    cursor = col.find().filter(filterDoc).getCursor();
     assertEquals(true, cursor.hasNext());
     assertEquals(key2, cursor.next().getKey());
     assertEquals(key3, cursor.next().getKey());
+
     assertEquals(false, cursor.hasNext());
     cursor.close();
     chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
-
+    
     // match doc3
     filterDoc = db.createDocumentFromString(
         "{ \"type\" : {\"$in\": [\"t1\", \"t3\"]}, \"seq\" : {\"$gt\" : 101}}");
@@ -640,10 +692,14 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                    contentColumnType(contentColumnType).build();
    }
 
-   OracleCollection col = db.admin().createCollection("testFilter3" +
-                                                      contentColumnType +
-                                                      (withIndex?"Idx":""),
-                                                      mDoc);
+   OracleCollection col;
+   if (isJDCSMode())
+   {
+     col = db.admin().createCollection("testFilter3" + contentColumnType + (withIndex?"Idx":""), null);
+   } else
+   {
+     col = db.admin().createCollection("testFilter3" + contentColumnType + (withIndex?"Idx":""), mDoc);
+   }
 
    if (withIndex) {
        String textIndex = createTextIndexSpec("jsonSearchIndex-3");
@@ -766,6 +822,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   private void testFilter3OrderBy(String contentColumnType, boolean withIndex) throws Exception {
 
+   // Blocked by bug 28996376 
+   // Remove isJDCSMode check the bug is fixed (test should be
+   // runnaing in JDCS mode then).
+   if (isJDCSMode())
+     return;
+
    OracleDocument mDoc = null; 
    
    if (contentColumnType.equalsIgnoreCase("BLOB") && supportHeterogeneousQBEs()) {
@@ -773,10 +835,15 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    } else {
      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
    }
-   OracleCollection col = db.admin().createCollection("testFilter3OrderBy" +
-                                                      contentColumnType +
-                                                      (withIndex?"Idx":""),
-                                                      mDoc);
+
+   OracleCollection col;
+   if (isJDCSMode())
+   {
+     col = db.admin().createCollection("testFilter3OrderBy" + contentColumnType + (withIndex?"Idx":""), null);
+   } else
+   {
+     col = db.admin().createCollection("testFilter3OrderBy" + contentColumnType + (withIndex?"Idx":""), mDoc);
+   }
    
    if (withIndex) {
      String textIndex = createTextIndexSpec("jsonSearchIndex-3");
@@ -833,6 +900,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
      orderby = "\"$orderby\" : {\"$lax\" : true, \"$fields\" : [ {\"path\" : \"orderno\", \"order\" : \"asc\"} ]}}";
    }
 
+    
    filterDoc = db.createDocumentFromString(
        "{ \"$query\":{\"order[0].items[0].quantity\": 1, "+
                      "\"order[0].items[*].price\": {\"$gt\" : 9.0, \"$lte\" : 12.0}}," +
@@ -844,6 +912,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(false, cursor.hasNext());
    cursor.close();
    chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex);
+   
 
    //match doc2
    filterDoc = db.createDocumentFromString(
@@ -940,7 +1009,16 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilterNeg" + contentColumnType, mDoc);
+
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+     col = db.admin().createCollection("testFilterNeg" + contentColumnType, null);
+    } else
+    {
+     col = db.admin().createCollection("testFilterNeg" + contentColumnType, mDoc);
+    }
+
     OracleCursor cursor = null;
     
     String[] invalidArrayPaths = {
@@ -1091,8 +1169,16 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter4" + contentColumnType + (withIndex?"Idx":""), mDoc);
-    
+
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+     col = db.admin().createCollection("testFilter4" + contentColumnType + (withIndex?"Idx":""), null);
+    } else
+    {
+     col = db.admin().createCollection("testFilter4" + contentColumnType + (withIndex?"Idx":""), mDoc);
+    }
+
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-4");
       col.admin().createIndex(db.createDocumentFromString(textIndex));
@@ -1273,7 +1359,15 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     } else {
       mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
     }
-    OracleCollection col = db.admin().createCollection("testFilter5" + contentColumnType + (withIndex?"Idx":""), mDoc);
+
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+     col = db.admin().createCollection("testFilter5" + contentColumnType + (withIndex?"Idx":""), null);
+    } else
+    {
+     col = db.admin().createCollection("testFilter5" + contentColumnType + (withIndex?"Idx":""), mDoc);
+    }
     
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-5");
@@ -1440,9 +1534,18 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   // operators (before and after $orderby).
   private void testFilter6(String contentColumnType, boolean withIndex) throws Exception {
 
-    OracleCollection col = db.admin().createCollection("testFilter6" + contentColumnType + (withIndex?"Idx":""),
-                                                       getClientAssignedKeyMetadata(
-                                                       contentColumnType));
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+        if (!contentColumnType.equalsIgnoreCase("BLOB"))
+            return;
+        col = db.admin().createCollection("testFilter6" + contentColumnType + (withIndex?"Idx":""), null);
+    } else
+    {
+        col = db.admin().createCollection("testFilter6" + contentColumnType + (withIndex?"Idx":""),
+                                                   getClientAssignedKeyMetadata(
+                                                   contentColumnType));
+    }
 
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-6");
@@ -1451,14 +1554,36 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     
     OracleDocument d;
 
-    d = db.createDocumentFromString("6", "{\"b\" : 6}");
-    col.insert(d);
-    d = db.createDocumentFromString("4", "{\"b\" : 4}");
-    col.insert(d);
-    d = db.createDocumentFromString("1", "{\"b\" : 1}");
-    col.insert(d);
-    d = db.createDocumentFromString("3", "{\"b\" : 3}");
-    col.insert(d);
+    String[] key = new String[6];
+    if (isJDCSMode()) 
+    {
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 1}"));
+      key[0] = d.getKey();
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 2}"));   
+      key[1] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 3}"));   
+      key[2] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 4}"));   
+      key[3] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 5}"));   
+      key[4] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 6}"));   
+      key[5] = d.getKey();  
+    } else
+    {
+      d = col.insertAndGet(db.createDocumentFromString("1", "{\"b\" : 1}"));
+      key[0] = d.getKey();
+      d = col.insertAndGet(db.createDocumentFromString("2", "{\"b\" : 2}"));   
+      key[1] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("3", "{\"b\" : 3}"));   
+      key[2] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("4", "{\"b\" : 4}"));   
+      key[3] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("5", "{\"b\" : 5}"));   
+      key[4] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("6", "{\"b\" : 6}"));   
+      key[5] = d.getKey();   
+    }   
 
     OracleDocument f;
 
@@ -1482,9 +1607,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     OracleCursor c = col.find().filter(f).getCursor();
 
-    checkKey("1", c);
-    checkKey("3", c);
-    checkKey("4", c);
+    checkKey(key[0], c);
+    checkKey(key[2], c);
+    checkKey(key[3], c);
 
     c.close();
     chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
@@ -1497,9 +1622,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     c = col.find().filter(f).getCursor();
 
-    checkKey("1", c);
-    checkKey("3", c);
-    checkKey("4", c);
+    checkKey(key[0], c);
+    checkKey(key[2], c);
+    checkKey(key[3], c);
 
     c.close();
     chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
@@ -1512,9 +1637,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     c = col.find().filter(f).getCursor();
 
-    checkKey("1", c);
-    checkKey("3", c);
-    checkKey("4", c);
+    checkKey(key[0], c);
+    checkKey(key[2], c);
+    checkKey(key[3], c);
 
     c.close();
     chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
@@ -1524,6 +1649,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   public void testFilter6() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
+      if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+        return;
+
       testFilter6(columnSqlType, false);
       testFilter6(columnSqlType, true);
     }
@@ -1531,10 +1659,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   // Test $ge and $le (synonyms for $gte and $lte)
   private void testFilter7(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode()) // client assigned key is not supported in jdcs mode
+        return;
 
     OracleCollection col = db.admin().createCollection("testFilter7" + contentColumnType + (withIndex?"Idx":""),
-                                                       getClientAssignedKeyMetadata(
-                                                       contentColumnType));
+                                                   getClientAssignedKeyMetadata(
+                                                   contentColumnType));
 
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-7");
@@ -1600,12 +1730,21 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
   }
 
-  // Test $ge and $le (synonyms for $gte and $lte)
+  // Test booleans and nulls
   private void testFilter8(String contentColumnType, boolean withIndex) throws Exception {
 
-    OracleCollection col = db.admin().createCollection("testFilter8" + contentColumnType + (withIndex?"Idx":""),
-                                                       getClientAssignedKeyMetadata(
-                                                       contentColumnType));
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+        if (!contentColumnType.equalsIgnoreCase("BLOB"))
+            return;
+        col = db.admin().createCollection("testFilter8" + contentColumnType + (withIndex?"Idx":""), null);
+    } else
+    {
+        col = db.admin().createCollection("testFilter8" + contentColumnType + (withIndex?"Idx":""),
+                                                   getClientAssignedKeyMetadata(
+                                                   contentColumnType));
+    }
 
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-8");
@@ -1614,18 +1753,37 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     
     OracleDocument d;
 
-    d = db.createDocumentFromString("1", "{\"b\" : \"true\"}");
-    col.insert(d);
-    d = db.createDocumentFromString("2", "{\"b\" : \"false\"}");
-    col.insert(d);
-    d = db.createDocumentFromString("3", "{\"b\" : \"null\"}");
-    col.insert(d);
-    d = db.createDocumentFromString("4", "{\"b\" : true}");
-    col.insert(d);
-    d = db.createDocumentFromString("5", "{\"b\" : false}");
-    col.insert(d);
-    d = db.createDocumentFromString("6", "{\"b\" : null}");
-    col.insert(d);
+    String[] key = new String[6];
+    if (isJDCSMode()) 
+    {
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":\"true\"}"));
+      key[0] = d.getKey();
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":\"false\"}"));   
+      key[1] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":\"null\"}"));   
+      key[2] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":true}"));   
+      key[3] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":false}"));   
+      key[4] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("{\"b\":null}"));   
+      key[5] = d.getKey();  
+    } else
+    {
+      d = col.insertAndGet(db.createDocumentFromString("1", "{\"b\":\"true\"}"));
+      key[0] = d.getKey();
+      d = col.insertAndGet(db.createDocumentFromString("2", "{\"b\":\"false\"}"));   
+      key[1] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("3", "{\"b\":\"null\"}"));   
+      key[2] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("4", "{\"b\":true}"));   
+      key[3] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("5", "{\"b\":false}"));   
+      key[4] = d.getKey();   
+      d = col.insertAndGet(db.createDocumentFromString("6", "{\"b\":null}"));   
+      key[5] = d.getKey();   
+    } 
+
 
     OracleDocument f;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -1634,13 +1792,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // ### in 12.2 "true" is a synonym for true.
     //     Change of behavior wrt 12.1.
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-      checkSingleResult("{\"b\" : \"true\"}", "1", col, withIndex);
+      checkSingleResult("{\"b\":\"true\"}", key[0], col, withIndex);
     }
     else {
-      f = db.createDocumentFromString("{\"b\" : \"true\"}");
+      f = db.createDocumentFromString("{\"b\":\"true\"}");
       expectedKeys.clear();
-      expectedKeys.add("1");
-      expectedKeys.add("4");
+      expectedKeys.add(key[0]);
+      expectedKeys.add(key[3]);
       checkKeys(col, f, expectedKeys);
       chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
     }
@@ -1649,31 +1807,31 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // ### in 12.2 "false" is a synonym for false.
     // Change of behavior wrt 12.1.
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-      checkSingleResult("{\"b\" : \"false\"}", "2", col, withIndex);
+      checkSingleResult("{\"b\":\"false\"}", key[1], col, withIndex);
     }
     else {
-      f = db.createDocumentFromString("{\"b\" : \"false\"}");
+      f = db.createDocumentFromString("{\"b\":\"false\"}");
       expectedKeys.clear();
-      expectedKeys.add("2");
-      expectedKeys.add("5");
+      expectedKeys.add(key[1]);
+      expectedKeys.add(key[4]);
       checkKeys(col, f, expectedKeys);
       chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
     }
 
-    // "null" string constant
-    checkSingleResult("{\"b\" : \"null\"}", "3", col, withIndex);
+    // "null" string constent
+    checkSingleResult("{\"b\":\"null\"}", key[2], col, withIndex);
 
     // true constant
     // ### in 12.2 "true" is a synonym for true.
     //     Change of behavior wrt 12.1.
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-      checkSingleResult("{\"b\" : true}", "4", col, withIndex);
+      checkSingleResult("{\"b\":true}", key[3], col, withIndex);
     }
     else {
-      f = db.createDocumentFromString("{\"b\" : true}");
+      f = db.createDocumentFromString("{\"b\":true}");
       expectedKeys.clear();
-      expectedKeys.add("1");
-      expectedKeys.add("4");
+      expectedKeys.add(key[0]);
+      expectedKeys.add(key[3]);
       checkKeys(col, f, expectedKeys);
       chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
     }
@@ -1682,21 +1840,32 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     // ### in 12.2 "false" is a synonym for false.
     // Change of behavior wrt 12.1.
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
-        checkSingleResult("{\"b\" : false}", "5", col, withIndex);
+        checkSingleResult("{\"b\":false}", key[4], col, withIndex);
     }
     else {
-      f = db.createDocumentFromString("{\"b\" : false}");
+      f = db.createDocumentFromString("{\"b\":false}");
       expectedKeys.clear();
-      expectedKeys.add("2");
-      expectedKeys.add("5");
+      expectedKeys.add(key[1]);
+      expectedKeys.add(key[4]);
       checkKeys(col, f, expectedKeys);
       chkExplainPlan122((OracleOperationBuilderImpl) col.find().filter(f), withIndex);
     }
 
-    // null constant
-    checkSingleResult("{\"b\" : null}", "6", col, withIndex);
+    // null constent
+    // Blocked by bug 28996376 since 20181130
+    if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+      return;
+
+    checkSingleResult("{\"b\":null}", key[5], col, withIndex);
 
     col.admin().drop();
+  }
+
+  public void testFilter8() throws Exception {
+    for (String columnSqlType : columnSqlTypes) {
+      testFilter8(columnSqlType, false);
+      testFilter8(columnSqlType, true);
+    }
   }
 
   private void checkSingleResult(String filter,
@@ -1748,22 +1917,30 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     return mDoc;
   }
 
-  public void testFilter8() throws Exception {
-    for (String columnSqlType : columnSqlTypes) {
-      testFilter8(columnSqlType, false);
-      testFilter8(columnSqlType, true);
-    }
-  }
   
   //QBE test about single operator, which is used to verify index is used for each operator
   private void testFilter9(String contentColumnType, boolean withIndex) throws Exception {
+    OracleCollection col;
     OracleDocument mDoc = null; 
-
-    mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
-    OracleCollection col = db.admin().createCollection("testFilter9" +
-                                                       contentColumnType +
-                                                       (withIndex?"Idx":""), mDoc);
-    
+    if (isJDCSMode())
+    {
+      if (contentColumnType.equalsIgnoreCase("BLOB")) 
+      {
+        col = db.admin().createCollection("testFilter9" +
+                                           contentColumnType +
+                                           (withIndex?"Idx":""), null);
+      } else
+      {
+        return;
+      }
+    } else
+    {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+      col = db.admin().createCollection("testFilter9" +
+                                         contentColumnType +
+                                         (withIndex?"Idx":""), mDoc);
+    }
+        
     if (withIndex) {
       String textIndex = createTextIndexSpec("jsonSearchIndex-9");
       col.admin().createIndex(db.createDocumentFromString(textIndex));
@@ -1824,14 +2001,21 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     // test "$orderby" (match doc3, 2, 1)
-    filterDoc = db.createDocumentFromString(orderby);
-    assertEquals(3, col.find().filter(filterDoc).count());
-    OracleCursor cursor = col.find().filter(filterDoc).getCursor();
-    assertEquals(key3, cursor.next().getKey());
-    assertEquals(key2, cursor.next().getKey());
-    assertEquals(key1, cursor.next().getKey());
-    assertEquals(false, cursor.hasNext());
-    cursor.close();
+    if (!isJDCSMode())
+    {
+      //blocked by bug 28996376 since 20181130, will uncomment the jdcs check after fixed.
+      if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+        return;
+
+      filterDoc = db.createDocumentFromString(orderby);
+      assertEquals(3, col.find().filter(filterDoc).count());
+      OracleCursor cursor = col.find().filter(filterDoc).getCursor();
+      assertEquals(key3, cursor.next().getKey());
+      assertEquals(key2, cursor.next().getKey());
+      assertEquals(key1, cursor.next().getKey());
+      assertEquals(false, cursor.hasNext());
+      cursor.close();
+    }
     // $orderby is not supported by index
     //chkExplainPlan122((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex);
     
@@ -1933,16 +2117,29 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
 
   private void testFilterWithSkipAndLimit(boolean withIndex) throws Exception {
-
-    OracleCollection col = db.admin().createCollection("testFilterSL" + (withIndex?"Idx":""),
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+        col = db.admin().createCollection("testFilterSL" + (withIndex?"Idx":""), null);
+    } else
+    {
+        col = db.admin().createCollection("testFilterSL" + (withIndex?"Idx":""),
             getClientAssignedKeyMetadata("BLOB"));
+    }
 
     OracleDocument d;
 
     for (int i = 0; i < 50; i++)
     {
-      d = db.createDocumentFromString(String.valueOf(i),
+      if (isJDCSMode())
+      {
+        d = db.createDocumentFromString(null,
                                       "{\"num\" : " + i + "}");
+    } else
+      {
+        d = db.createDocumentFromString(String.valueOf(i),
+                                      "{\"num\" : " + i + "}");
+      }
       col.insert(d);
     }
     
@@ -1966,14 +2163,20 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     {
       // 31 should be the last key, since the limit is 10.
       if (i > 31)
-        fail("Limit was 10, so the last should be the one with key equals to 31");
+          fail("Limit was 10, so the last should be the one with key equals to 31");
       r = c.next();
-      assertEquals(r.getKey(), String.valueOf(i));
+      if (!isJDCSMode())
+      {
+          assertEquals(r.getKey(), String.valueOf(i)); 
+      }
       i++;
+    }
+    if (isJDCSMode())
+    {
+      assertEquals(32, i); 
     }
 
     c.close();
-    
     col.admin().drop();
   }
   
@@ -2182,6 +2385,49 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
                       "appear at the top level of the filter specification."));
     }
 
+    
+    // Test with empty key(empty field name or path is not allowed, unless escaped by back-quote)
+    try {
+      f = db.createDocumentFromString("{\"\" : 2}");
+      col.find().filter(f).getCursor();
+      fail("No exception when\"\" path is used");
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("Empty step not allowed in path ()"));
+    }
+    
+    try {
+      f = db.createDocumentFromString(
+          "{\"$query\" : {\"a..b\":1} }");
+      col.find().filter(f).getCursor();
+      fail("No exception when \"a..b\" path is used");
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("Empty step not allowed in path (a..b)"));
+    }
+    
+    try {
+      f = db.createDocumentFromString("{\"a\" : {\"\": true} }");
+      col.find().filter(f).getCursor();
+      fail("No exception when QBE spec is invalid");
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("Empty step not allowed in path ()"));
+    }
+
+    try {
+      f = db.createDocumentFromString("{\"a\" : {\"$\": true} }");
+      col.find().filter(f).getCursor();
+      fail("No exception when \"a..b\" path is used");
+    }
+    catch (OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().equals("The field name $ is not a recognized operator."));
+    }
+    
   }
 
   private void basicRemoveTest(OracleCollection col, boolean clientAssignedKey) throws Exception{
@@ -2211,15 +2457,33 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       }
     }
     
-    assertEquals("{ \"value\" : \"v3\" }", col.find().key(key3).version(version3).getOne().getContentAsString());
+    if (isJDCSMode())
+    {
+        assertEquals("{\"value\":\"v3\"}", col.find().key(key3).version(version3).getOne().getContentAsString());
+    } else
+    {
+        assertEquals("{ \"value\" : \"v3\" }", col.find().key(key3).version(version3).getOne().getContentAsString());
+    }
     assertEquals(1, col.find().key(key3).version(version3).remove());
     assertNull(col.find().key(key3).version(version3).getOne());
     
-    assertEquals("{ \"value\" : \"v5\" }", col.find().key(key5).version(version5).getOne().getContentAsString());
+    if (isJDCSMode())
+    {
+        assertEquals("{\"value\":\"v5\"}", col.find().key(key5).version(version5).getOne().getContentAsString());
+    } else
+    {
+        assertEquals("{ \"value\" : \"v5\" }", col.find().key(key5).version(version5).getOne().getContentAsString());
+    }
     assertEquals(1, col.find().key(key5).version(version5).remove());
     assertNull(col.find().key(key5).version(version5).getOne());
     
-    assertEquals("{ \"value\" : \"v1\" }", col.find().key(key1).version(version1).getOne().getContentAsString());
+    if (isJDCSMode())
+    {
+        assertEquals("{\"value\":\"v1\"}", col.find().key(key1).version(version1).getOne().getContentAsString());
+    } else
+    {
+        assertEquals("{ \"value\" : \"v1\" }", col.find().key(key1).version(version1).getOne().getContentAsString());
+    }
     assertEquals(1, col.find().key(key1).version(version1).remove());
     assertNull(col.find().key(key1).version(version1).getOne());
     
@@ -2230,15 +2494,31 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
   
   public void testRemove() throws Exception {
-    
    // Test with KeyAssignmentMethod="CLIENT"
    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
 
-   OracleCollection col = dbAdmin.createCollection("testRemove", mDoc);
+   OracleCollection col;
+   if (isJDCSMode())
+   {
+      col = db.admin().createCollection("testRemove", null);
+   } else
+   {
+      col = db.admin().createCollection("testRemove", mDoc);
+   }
+
    String lastModified1=null, lastModified10=null, lastModified4=null;
    OracleDocument doc;
+   String[] key = new String[10];
    for (int i = 1; i <= 10; i++) {
-     doc = col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"d\" : " + i + " }"));
+     if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
+        key[i-1] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id-" + i, "{ \"d\" : " + i + " }"));
+        key[i-1] = doc.getKey();
+      }
      
      if (i == 1)
        lastModified1 = doc.getLastModified();
@@ -2251,47 +2531,58 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(10, col.find().count());
   
    // Test with key()
-   assertEquals(1, col.find().key("id-5").remove());
-   assertNull(col.findOne("id-5"));
+   assertEquals(1, col.find().key(key[4]).remove());
+   assertNull(col.findOne(key[4]));
    // remove again
-   assertEquals(0, col.find().key("id-5").remove());
+   assertEquals(0, col.find().key(key[4]).remove());
    assertEquals(9, col.find().count());
   
    // Test with keys()
    HashSet<String> keySet = new HashSet<String>();
-   keySet.add("id-2");
-   keySet.add("id-5"); // already removed
-   keySet.add("id-8");
+   keySet.add(key[1]);
+   keySet.add(key[4]); // already removed
+   keySet.add(key[7]);
    
    assertEquals(2, col.find().keys(keySet).remove());
-   assertNull(col.findOne("id-2"));
-   assertNull(col.findOne("id-8"));
+   assertNull(col.findOne(key[1]));
+   assertNull(col.findOne(key[7]));
    assertEquals(7, col.find().count());
    
    // Test with startKey()
-   assertEquals(3, ((OracleOperationBuilderImpl)col.find()).startKey("id-5", true, true).remove());
-   assertNull(col.findOne("id-6"));
-   assertNull(col.findOne("id-7"));
-   assertNull(col.findOne("id-9"));
-   assertEquals(0, ((OracleOperationBuilderImpl)col.find()).startKey("id-7", true, true).remove());
-   
-   assertEquals(4, col.find().count());
+   if (!isJDCSMode()) // the order is not in sequence in jdcs mode
+   {
+       assertEquals(3, ((OracleOperationBuilderImpl)col.find()).startKey(key[4], true, true).remove());
+       assertNull(col.findOne(key[5]));
+       assertNull(col.findOne(key[6]));
+       assertNull(col.findOne(key[8]));
+       assertEquals(0, ((OracleOperationBuilderImpl)col.find()).startKey(key[6], true, true).remove());
+       assertEquals(4, col.find().count());
+   }
    
    // Test with timeRange()
    assertEquals(1, ((OracleOperationBuilderImpl)col.find()).timeRange(null, lastModified1, true).remove());
    assertEquals(0, ((OracleOperationBuilderImpl)col.find()).timeRange(null, lastModified1, true).remove());
    assertEquals(2, ((OracleOperationBuilderImpl)col.find()).timeRange(lastModified1, lastModified4, true).remove());
    
-   assertEquals(1, col.find().count());
-   // only id-10 is left
-   assertEquals("id-10", col.find().getOne().getKey());
+   if (!isJDCSMode()) // some docs haven't been deleted in jdcs mode
+   {
+        assertEquals(1, col.find().count());
+       // only id-10 is left
+       assertEquals(key[9], col.find().getOne().getKey());
+   }
    
    //key().lastModified()
-   assertEquals(0, ((OracleOperationBuilderImpl)col.find().key("id-10")).lastModified(lastModified1).remove());
-   assertEquals(1, ((OracleOperationBuilderImpl)col.find().key("id-10")).lastModified(lastModified10).remove());
+   assertEquals(0, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified1).remove());
+   assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified10).remove());
+   if (!isJDCSMode()) // some docs haven't been deleted in jdcs mode
+       assertEquals(0, col.find().count());
    
-   assertEquals(0, col.find().count());
-   
+   if (isJDCSMode())
+   {
+        OracleCollection colDefalut = dbAdmin.createCollection("testRemoveDefault", null);
+        basicRemoveTest(colDefalut, false);
+        return;
+   }
    // Test with KeyAssignmentMethod="SEQUENCE" and versionMethod = "TIMESTAMP"
    OracleDocument mDoc2 = client.createMetadataBuilder().versionColumnMethod("TIMESTAMP")
        .keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("keysqlname").build();
@@ -2336,7 +2627,6 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
   
   private void testReplaceOneWithCol(OracleCollection col, boolean clientAssignedKey, boolean replaceAndGet) throws Exception {
-    
     OracleDocument doc;
     String key2 = null, key4 = null, key5 = null;
     String version2 = null, version4 = null;
@@ -2379,7 +2669,14 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       assertTrue(col.find().key(key2).version(version2).replaceOne(doc));
     
     doc = col.findOne(key2);
-    assertEquals("{ \"data\" : \"v2\" }", doc.getContentAsString());
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":\"v2\"}", doc.getContentAsString());
+    } else
+    {
+      assertEquals("{ \"data\" : \"v2\" }", doc.getContentAsString());
+    }
+    
     // an new version should be generated
     assertFalse(doc.getVersion().equals("version-v2"));
     assertFalse(doc.getVersion().contentEquals(version2));
@@ -2404,58 +2701,66 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
     
     doc = col.findOne(key2);
-    assertEquals("{ \"data\" : \"v2-2\" }", doc.getContentAsString());
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":\"v2-2\"}", doc.getContentAsString());
+    } else
+    {
+      assertEquals("{ \"data\" : \"v2-2\" }", doc.getContentAsString());
+    }    
     
     // Test with document having non-JSON data
-    if(col.admin().isHeterogeneous()) {
-      // updated JSON data to non-JSON data
-      doc = db.createDocumentFromString(null, "new data v4", "text/plain");
-      if (replaceAndGet) {
-        doc = col.find().key(key4).version(version4).replaceOneAndGet(doc);
-        verifyNullContentDocument(doc);
-        assertEquals(key4, doc.getKey());
-        assertEquals(1, col.find().key(key4).version(doc.getVersion()).count());
-        assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key4)).lastModified(doc.getLastModified()).count());
-      } else {
-        assertTrue(col.find().key(key4).version(version4).replaceOne(doc));
-      }
-      
-      doc = col.findOne(key4);
-      assertEquals("new data v4", new String(doc.getContentAsByteArray(), "UTF-8"));
-      assertEquals("text/plain", doc.getMediaType());
-      
-      // updated non-JSON data to JSON data
-      doc = db.createDocumentFromString("{ \"data\" : \"v4-2\" }");
-      if (replaceAndGet) {
-        doc = col.find().key(key4).replaceOneAndGet(doc);
-        verifyNullContentDocument(doc);
-        assertEquals(key4, doc.getKey());
-        assertEquals(1, col.find().key(key4).version(doc.getVersion()).count());
-        assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key4)).lastModified(doc.getLastModified()).count());
-      } else {
-        assertTrue(col.find().key(key4).replaceOne(doc));
-      }
-      
-      doc = col.findOne(key4);
-      assertEquals("{ \"data\" : \"v4-2\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
-      assertEquals("application/json", doc.getMediaType());
-    } else {
-      try {
-        // Test with non-JSON data for non-Heterogeneous collection 
-        doc = db.createDocumentFromString(null, "new data v4", "text/plain");
-        if (replaceAndGet) 
-          col.find().key(key4).replaceOneAndGet(doc);
-        else
-          col.find().key(key4).replaceOne(doc);
-        
-        fail("No exception when replacing with non-JSON in non-Heterogeneous collection");
-      } catch (OracleException e) {
-        // Expect an OracleException
-        // ORA-02290: check constraint (SYS_C0012008) violated
-        Throwable t = e.getCause();
-        assertTrue(t.getMessage().contains("ORA-02290"));
-      }
-    }
+    if (!isJDCSMode())
+        if(col.admin().isHeterogeneous()) {
+          // updated JSON data to non-JSON data
+          doc = db.createDocumentFromString(null, "new data v4", "text/plain");
+          if (replaceAndGet) {
+            doc = col.find().key(key4).version(version4).replaceOneAndGet(doc);
+            verifyNullContentDocument(doc);
+            assertEquals(key4, doc.getKey());
+            assertEquals(1, col.find().key(key4).version(doc.getVersion()).count());
+            assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key4)).lastModified(doc.getLastModified()).count());
+          } else {
+            assertTrue(col.find().key(key4).version(version4).replaceOne(doc));
+          }
+          
+          doc = col.findOne(key4);
+          assertEquals("new data v4", new String(doc.getContentAsByteArray(), "UTF-8"));
+          assertEquals("text/plain", doc.getMediaType());
+          
+          // updated non-JSON data to JSON data
+          doc = db.createDocumentFromString("{ \"data\" : \"v4-2\" }");
+          if (replaceAndGet) {
+            doc = col.find().key(key4).replaceOneAndGet(doc);
+            verifyNullContentDocument(doc);
+            assertEquals(key4, doc.getKey());
+            assertEquals(1, col.find().key(key4).version(doc.getVersion()).count());
+            assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key4)).lastModified(doc.getLastModified()).count());
+          } else {
+            assertTrue(col.find().key(key4).replaceOne(doc));
+          }
+          
+          doc = col.findOne(key4);
+          assertEquals("{ \"data\" : \"v4-2\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+          
+          assertEquals("application/json", doc.getMediaType());
+        } else {
+          try {
+            // Test with non-JSON data for non-Heterogeneous collection 
+            doc = db.createDocumentFromString(null, "new data v4", "text/plain");
+            if (replaceAndGet) 
+              col.find().key(key4).replaceOneAndGet(doc);
+            else
+              col.find().key(key4).replaceOne(doc);
+            
+            fail("No exception when replacing with non-JSON in non-Heterogeneous collection");
+          } catch (OracleException e) {
+            // Expect an OracleException
+            // ORA-02290: check constraint (SYS_C0012008) violated
+            Throwable t = e.getCause();
+            assertTrue(t.getMessage().contains("ORA-02290"));
+          }
+        }
     
     // Test with key() + lastModified
     doc = db.createDocumentFromString("{ \"data\" : \"v5\" }");
@@ -2470,7 +2775,14 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
     
     doc = col.findOne(key5);
-    assertEquals("{ \"data\" : \"v5\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":\"v5\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : \"v5\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }   
+    
     
     // Test with null content
     doc = db.createDocumentFromString(null);
@@ -2541,7 +2853,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
   
   public void testReplaceOne() throws Exception {
-    
+    if (isJDCSMode())
+    {
+        OracleCollection colDefalut = dbAdmin.createCollection("testReplaceOneDefalut", null);
+        testReplaceOneWithCol(colDefalut, false, false);
+        return;
+    }
+
     // Test with keyColumnAssignmentMethod="SEQUENCE", versionColumnMethod="SEQUENTIAL" and contentColumnType="BLOB"
     OracleDocument mDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("keysql1")
@@ -2643,6 +2961,12 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
  
   public void testReplaceOneAndGet() throws Exception {
+    if (isJDCSMode())
+    {
+        OracleCollection colDefalut = dbAdmin.createCollection("testReplaceOneDefalut", null);
+        testReplaceOneWithCol(colDefalut, false, true);
+        return;
+    }
     
     // Test with keyColumnAssignmentMethod="SEQUENCE", versionColumnMethod="MD5" and keyColumnType="NUMBER"
     OracleDocument mDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2017, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -69,6 +69,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testBetween(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -76,7 +80,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testBetween" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     String indexSpec, indexName = "searchIndexOnTestBetween" + contentColumnType;
     IndexType indexType = IndexType.noIndex;
@@ -89,7 +100,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       indexType = IndexType.textIndex;
     }
       
-    final String key1="id00a", key2="id00b", key3="id00c";
+    String key1="id00a", key2="id00b", key3="id00c";
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     String docStr1 = "{\"a\":{\"b\":{\"number\":101, \"str\":\"a001a\", \"double\":3.141," +
@@ -99,9 +110,20 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"number\":121, \"str\":\"a03\", \"double\":4.1405," +
         "\"time\":\"2017-03-22T12:43:07.076112Z\", \"number1\":-5, \"array\":[1,2,3,4,5]}}}";
 
-    doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
-    doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
-    doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
     
     // Test $between with number value    
     filterDoc = db.createDocumentFromString("{\"a.b.number\":{\"$between\": [101,110]}}");
@@ -343,6 +365,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   // Tests for $instr and $hasSubstring
   private void testInstr(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -350,18 +376,36 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testInstr" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
       
-    final String key1="id00a", key2="id00b", key3="id00c";
+    String key1="id00a", key2="id00b", key3="id00c";
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     String docStr1 = "{\"a\":{\"b\":{\"number\":100, \"str1\":\"You Are Welcome\", \"str2\":\"A001a\"}}}";
     String docStr2 = "{\"a\":{\"b\":{\"number\":101, \"str1\":\"you are welcome \", \"str2\":\"a001A\"}}}";
     String docStr3 = "{\"a\":{\"b\":{\"boolean\":true, \"str1\":\"WELCOME!!!\", \"str2\":\"a001a\"}}}";
 
-    doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
-    doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
-    doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
     
     // Test $instr with string value    
     filterDoc = db.createDocumentFromString("{\"a.b.str1\":{\"$instr\":\"welcome\"}}");
@@ -515,6 +559,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   // Tests for $like
   private void testLike(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -522,18 +570,36 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testLike" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
       
-    final String key1="id001", key2="id002", key3="id003";
+    String key1="id001", key2="id002", key3="id003";
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     String docStr1 = "{\"a\":{\"b\":{\"number\":100, \"str\":\"you are welcome\"}}}";
     String docStr2 = "{\"a\":{\"b\":{\"number\":101, \"str\":\"You Are Welcome\"}}}";
     String docStr3 = "{\"a\":{\"b\":{\"boolean\":true, \"str\":\"are \"}}}";
 
-    doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
-    doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
-    doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key3 = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    }
     
     // Test $like with string value    
     filterDoc = db.createDocumentFromString("{\"a.b.str\":{\"$like\":\"are%\"}}");
@@ -670,11 +736,23 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   // Tests for $boolean
   private void testBoolean(String contentColumnType, boolean withIndex) throws Exception {
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
         
-    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
-    
+    OracleDocument mDoc = null;
+
+    if (isJDCSMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))  
+        return;
+
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
+
     String colName = "testBoolean" + contentColumnType;
     OracleCollection col = db.admin().createCollection(colName, mDoc);
     
@@ -788,6 +866,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testTimestamp(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel))
       return;
     
@@ -795,12 +877,20 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testTimestamp" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument filterDoc = null, doc = null;
     String name = null, docStr = null;
     String dateTime0 = "2016-01-01T00:00:00", dateTime1 = "2016-07-25T17:30:08";
 
+    String[] key = new String[1000];
     for (int num = 0; num < 1000; num++) {
       if (num == 1) {
         docStr = "{\"order\" : { \"orderDateTime\": \"" + dateTime1 + "\" } }";
@@ -809,7 +899,15 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         // the generated timestamp value is like: "2016-01-01T00:00:00.100002"
         docStr = "{\"order\" : { \"orderDateTime\": \"" + timestamp + "\" } }";  
       }
-      col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+        key[num] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+        key[num] = doc.getKey();
+      }
     }
     
     IndexType indexType = IndexType.noIndex;
@@ -837,7 +935,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$eq\" : \"" + dateTime1 + "\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     // test with "$timestamp" + "$ne"
@@ -848,28 +946,28 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$gt\" : \"2016-07-01T00:00:00\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     // test with "$timestamp" + "$lt"
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$lt\" : \"" + dateTime0 + ".100002\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     // test with "$timestamp" + "$gte"
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$gte\" : \"" + dateTime1 + "\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     // test with "$timestamp" + "$lte"
     filterDoc = db.createDocumentFromString("{ \"order.orderDateTime\": {\"$timestamp\" : {\"$lte\" : \"" + dateTime0 + ".100000\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id0", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     // $between
@@ -877,13 +975,18 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "[\"" + dateTime0 + ".101000\", \"" + dateTime1 + "\" ]} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, timeIndexName);
 
     docStr = "{\"order\" : { \"orderDateTime\": \"" + dateTime1 + "\", \"string\":\"abc\"," +
             "\"booleean\":true,\"object\":{\"key\":\"value\"},\"array\":[1,2,3],\"null\":null}}";
-    col.insertAndGet(db.createDocumentFromString("id20001", docStr));
-    
+    if (isJDCSMode()) 
+      {
+        col.insertAndGet(db.createDocumentFromString(docStr));
+      } else
+      {
+        col.insertAndGet(db.createDocumentFromString("id20001", docStr));
+      }
     // when invalid input is fed to $timestamp, the doc is just ignored.
     // Test $timestamp with invalid string input
     filterDoc = db.createDocumentFromString("{ \"order.string\": {\"$timestamp\" : {\"$eq\" : \"" + dateTime1 + "\"} } }");
@@ -1007,6 +1110,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testDate(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel))
       return;
     
@@ -1015,7 +1122,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
     
     String colName = "testDate" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     OracleDocument filterDoc = null, doc = null;
     String docStr = null;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -1025,6 +1139,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     Calendar cal = Calendar.getInstance();
     cal.setTime(date);
     
+    String[] key = new String[1000];
     // the date range is: 2014-01-01T00:00:00 - 2016-09-25T00:00:00
     for (int num = 1; num <= 1000; num++) {
       if (num == 1) {
@@ -1036,7 +1151,15 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         String dateTime = format.format(cal.getTime());
         docStr = "{\"order\" : { \"orderDate\": \"" + dateTime + "\" } }";
       }
-      col.insert(db.createDocumentFromString("id" + num, docStr));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+        key[num-1] = doc.getKey();
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id" + num, docStr));
+        key[num-1] = doc.getKey();
+      }
     }
     
     IndexType indexType = IndexType.noIndex;
@@ -1070,30 +1193,30 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{ \"order.orderDate\": {\"$date\" : \"2016-01-01\"} }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id732", doc.getKey());
+    assertEquals(key[731], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
     // test with "$date" + "$lt"
     filterDoc = db.createDocumentFromString("{ \"order.orderDate\": {\"$date\" : {\"$lt\" : \"2014-01-02\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id1", doc.getKey());
+    assertEquals(key[0], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
     // test with "$date" + "$gt"
     filterDoc = db.createDocumentFromString("{ \"order.orderDate\": {\"$date\" : {\"$gt\" : \"2016-12-01\"} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("id2", doc.getKey());
+    assertEquals(key[1], doc.getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
     // test with "$date" + "$gte"
     filterDoc = db.createDocumentFromString("{ \"order.orderDate\": {\"$date\" : {\"$gte\" : \"2016-09-24\"} } }");
     assertEquals(3, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add("id2");
-    expectedKeys.add("id999");
-    expectedKeys.add("id1000");
+    expectedKeys.add(key[1]);
+    expectedKeys.add(key[998]);
+    expectedKeys.add(key[999]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
@@ -1103,8 +1226,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
     docStr = "{\"order\" : { \"orderDate\": \"2017-01-02\", \"str\":\"\", \"num\":20170102 }}";
-    col.insertAndGet(db.createDocumentFromString("id20001", docStr));
-
+    if (isJDCSMode()) 
+    {
+      col.insertAndGet(db.createDocumentFromString(docStr));
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString("id20001", docStr));
+    }
     // Test $date with empty string input
     filterDoc = db.createDocumentFromString("{ \"order.str\": {\"$date\" : {\"$eq\" : \"2017-01-02\" }}}");
     assertEquals(0, col.find().filter(filterDoc).count());
@@ -1221,6 +1349,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testNumber(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -1228,7 +1360,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testNumber" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     IndexType indexType = IndexType.noIndex;
     String numberIndexName = "numberIndexOnTestNumber" + contentColumnType;
@@ -1254,10 +1393,18 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     
+    String[] key = new String[1002];
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":11, \"string\": \"11." + number + "\", \"float\":3.0001," +
         "\"bool\":true, \"array\":[101, 100] }}}";
-      col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));
+      if (isJDCSMode()) 
+      {
+        doc = col.insertAndGet(db.createDocumentFromString(docStr));
+      } else
+      {
+        doc = col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));;
+      }
+      key[number] = doc.getKey();
     }
     
     String docStr1 = "{\"a\":{\"b\":{\"number\":12, \"string\":12.1, \"float\":3.0002," +
@@ -1265,18 +1412,29 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"number\":13, \"string\":\"12.2\", \"float\":3.0003," +
         "\"bool\":false, \"array\":[103, 100, 110], \"invalid_str\":\"abc\", \"empty_str\":\"\", \"null\":null }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[1000] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1001] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[1000] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+      key[1001] = doc.getKey();
+    }    
     
-    // Test $number with number input
+    // Test $number with number input("id-1001")
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$number\": {\"$between\": [12, 12.5] }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1000], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $number with string input
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$eq\": 12.1 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1000], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, numberIndexName);
     
     // Test $number with float input
@@ -1286,7 +1444,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $number with array item input
     filterDoc = db.createDocumentFromString("{\"a.b.array[0]\": { \"$number\": {\"$eq\": 102 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1000], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $number with $between
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$between\": [11.115, 11.118] }}}");
@@ -1302,8 +1460,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$gt\": 12 }}}");
     assertEquals(2, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add("id-1001");
-    expectedKeys.add("id-1002");
+    expectedKeys.add(key[1000]);
+    expectedKeys.add(key[1001]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, numberIndexName);
     
@@ -1311,35 +1469,35 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$gte\": 11.999 }}}");
     assertEquals(3, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add("id-999");
-    expectedKeys.add("id-1001");
-    expectedKeys.add("id-1002");
+    expectedKeys.add(key[999]);
+    expectedKeys.add(key[1000]);
+    expectedKeys.add(key[1001]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, numberIndexName);
     
     // Test $number with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$lt\": 11.001 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, numberIndexName);
     
     // Test $number with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$number\": {\"$lte\": 11 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, numberIndexName);
     
     // Test $number with array input(each the array elements will be applied to number())
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$number\": {\"$eq\": 103 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1001], col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$number\": {\"$eq\": 100 }}}");
     assertEquals(1002, col.find().filter(filterDoc).count());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$number\": {\"$eq\": 110 }}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1001], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $number with boolean input (the result is still TBD)
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$number\": {\"$eq\": 0 }}}");
@@ -1421,6 +1579,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testString(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -1428,7 +1591,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testString" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     IndexType indexType = IndexType.noIndex;
     String numberIndexName = "numberIndexOnTestString" + contentColumnType;
@@ -1454,17 +1624,32 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
     
+    String[] key = new String[1000];
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":11, \"string\":" + (11.0 + (number/1000.0)) + "}}}";
-      col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));
+      if (isJDCSMode()) 
+      {
+        col.insertAndGet(db.createDocumentFromString(docStr));
+      } else
+      {
+        col.insertAndGet(db.createDocumentFromString("id-" + number, docStr));
+      }
     }
     
     String docStr1 = "{\"a\":{\"b\":{\"number\":12, \"string\":12.1, \"bool\":true, \"array\":[102, 0] }}}";
     String docStr2 = "{\"a\":{\"b\":{\"number\":12.0, \"string\":\"12.2\", \"bool\":false, \"array\":[103, 104, 105], " +
             "\"empty_str\":\"\", \"null\":null }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    if (isJDCSMode()) 
+    {
+      col.insertAndGet(db.createDocumentFromString(docStr1));
+      col.insertAndGet(db.createDocumentFromString(docStr2));
+    } else
+    {
+      col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    }
+    
     
     // Test $string with number and string input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$string\": \"12\"}}");
@@ -1474,46 +1659,55 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       expectedKeys.clear();
       expectedKeys.add("id-1001");
       expectedKeys.add("id-1002");
-      checkKeys(col, filterDoc, expectedKeys);
+      if (!isJDCSMode())
+        checkKeys(col, filterDoc, expectedKeys);
     }
     else {
       assertEquals(1, col.find().filter(filterDoc).count());
       expectedKeys.clear();
       expectedKeys.add("id-1001");
-      checkKeys(col, filterDoc, expectedKeys);
+      if (!isJDCSMode())
+        checkKeys(col, filterDoc, expectedKeys);
     }
     
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": \"11.999\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-999", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-999", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": \"12.2\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with boolean input
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$string\": {\"$eq\": \"true\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$string\": {\"$eq\": \"false\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     // Test $string with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"103\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"104\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"105\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     // Test $string with $ne
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": {\"$ne\": \"11.0\"}}}");
@@ -1532,7 +1726,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.add("id-999");
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    checkKeys(col, filterDoc, expectedKeys);
+    if (!isJDCSMode())
+      checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $gte
@@ -1542,19 +1737,22 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.add("id-999");
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    checkKeys(col, filterDoc, expectedKeys);
+    if (!isJDCSMode())
+      checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": {\"$lt\": \"11.001\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": {\"$lte\": \"11.0\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
+    if (!isJDCSMode())
+      assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $startsWith
@@ -1563,7 +1761,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.clear();
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    checkKeys(col, filterDoc, expectedKeys);
+    if (!isJDCSMode())
+      checkKeys(col, filterDoc, expectedKeys);
     // $startsWith does not support the functional index
     //chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
@@ -1573,7 +1772,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.clear();
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    checkKeys(col, filterDoc, expectedKeys);
+    if (!isJDCSMode())
+      checkKeys(col, filterDoc, expectedKeys);
     
     // Test $string with empty string input
     filterDoc = db.createDocumentFromString("{\"a.b.empty_str\": { \"$string\": \"\"}}");
@@ -1648,6 +1848,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testDouble(String contentColumnType, boolean withIndex) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -1655,7 +1859,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testDouble" + contentColumnType + (withIndex?"Idx":"");
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     String indexSpec, indexName = "searchIndexOnTestDouble" + contentColumnType;
     IndexType indexType = IndexType.noIndex;
@@ -1675,26 +1886,41 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"number\":1.01, \"string\":\"12.0000003\", \"bool\":true, \"array\":[103, 104, 105], " +
         "\"empty_str\":\"\", \"null\":null, \"invalid_str\":\"abc\" }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
-    col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key[2] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+      key[2] = doc.getKey();
+    }    
     
     // Test $double with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$double\": 0}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     // conversion will bring a little precision loss
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$double\": {\"$between\":[1.0000099999, 1.0000100001]}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     // Test $double with string input
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$double\": {\"$between\":[12.00000009999, 12.00000010001]}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     // Test $double with $eq
@@ -1709,19 +1935,19 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $double with $gt
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$double\": {\"$gt\": 104}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     // Test $double with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$double\": {\"$gte\": 104}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     //Test $double with $lte.
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$double\": {\"$lte\": 104}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, indexName);
     
     // when invalid input is fed to double(), the result is UNKNOWN.
@@ -1799,6 +2025,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testUpperAndLower(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -1806,7 +2036,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testUpperAndLower" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -1816,39 +2053,54 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"upper_str\":\"CCC\", \"lower_str\":\"ccc\", \"mixed_str\":\"FOOBar003\", \"bool\":true, " +
         "\"array\":[\"Hello\", \" World!\"], \"empty_str\":\"\", \"null\":null, \"number\":100 }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
-    col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key[2] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+      key[2] = doc.getKey();
+    }    
     
     // Test $upper with upper string input
     filterDoc = db.createDocumentFromString("{\"a.b.upper_str\": { \"$upper\": \"AAA\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with upper string input
     filterDoc = db.createDocumentFromString("{\"a.b.upper_str\": { \"$lower\": \"aaa\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with lower string input
     filterDoc = db.createDocumentFromString("{\"a.b.lower_str\": { \"$upper\": {\"$eq\":\"ABC\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with lower string input
     filterDoc = db.createDocumentFromString("{\"a.b.lower_str\": { \"$lower\": {\"$eq\":\"abc\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with mixed case string input
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$gt\":\"FOOBAR002\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with mixed case string input
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$lower\": {\"$gt\":\"foobar002\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with $ne
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$ne\":\"FOOBar003\"} }}");
@@ -1861,32 +2113,32 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $upper with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$lt\":\"FOOBAR002\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$lower\": {\"$lt\":\"foobar002\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$gte\":\"FOOBAR003\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$lower\": {\"$gte\":\"foobar003\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$lte\":\"FOOBAR001\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$lower\": {\"$lte\":\"foobar001\"} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with $startsWith
     filterDoc = db.createDocumentFromString("{\"a.b.mixed_str\": { \"$upper\": {\"$startsWith\":\"FOOBAR00\"} }}");
@@ -1907,32 +2159,32 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $upper with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$upper\": \"HELLO\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
      // Test $lower with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$lower\": \" world!\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with boolean input
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$upper\": \"TRUE\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with boolean input
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$lower\": \"true\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with null input
     filterDoc = db.createDocumentFromString("{\"a.b.null\": { \"$upper\": \"NULL\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $lower with null input
     filterDoc = db.createDocumentFromString("{\"a.b.null\": { \"$lower\": \"null\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $upper with empty string input
     filterDoc = db.createDocumentFromString("{\"a.b.empty_str\": { \"$upper\": \"\" }}");
@@ -2026,6 +2278,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testCeilingAndFloor(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -2033,7 +2289,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testCeilingAndFloor" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     
@@ -2042,29 +2305,44 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"int\":9.0, \"float\":9.55, \"bool\":false, \"array\":[1.2, 1.8, 2.4], " +
         "\"empty_str\":\"\", \"null\":null, \"string\":\"abc\" }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
-    col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key[2] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+      key[2] = doc.getKey();
+    }    
     
     // Test $ceiling with integer input
     filterDoc = db.createDocumentFromString("{\"a.b.int\": { \"$ceiling\": 7}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with integer input
     filterDoc = db.createDocumentFromString("{\"a.b.int\": { \"$floor\": 9}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $ceiling with float input
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$eq\":8} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with float input
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$floor\": {\"$eq\":9} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $ceiling with $ne
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$ne\":7} }}");
@@ -2077,52 +2355,52 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $ceiling with $gt
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$gt\":9} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with $gt
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$floor\": {\"$gt\":8} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
 
     // Test $ceiling with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$gte\":10} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$floor\": {\"$gte\":9} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $ceiling with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$lt\":9} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$floor\": {\"$lt\":8} }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
    // Test $ceiling with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$ceiling\": {\"$lte\":8.0 } }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.float\": { \"$floor\": {\"$lte\":7.0 } }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
 
     // Test $ceiling with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$ceiling\": 3 }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $floor with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$floor\": 1 }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $ceiling with boolean input (the result is still TBD)
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$ceiling\": {\"$eq\": 0 }}}");
@@ -2202,6 +2480,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testAbs(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -2209,7 +2491,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testAbs" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     
@@ -2218,26 +2507,41 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"pos\":7.77, \"neg\":-5.23, \"zero\":0, \"bool\":true, " +
         "\"array\":[-1.2, 1.8, -2.4], \"number_str\":\"-2.5\", \"non_number_str\":\"abc\" }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
-    col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+      key[2] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
+      key[2] = doc.getKey();
+    }    
     
     // Test $abs with positive input and $gt
     filterDoc = db.createDocumentFromString("{\"a.b.pos\": { \"$abs\": {\"$gt\": 5.2}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2] , col.find().filter(filterDoc).getOne().getKey());
     
     // Test $abs with negative input and $eq
     filterDoc = db.createDocumentFromString("{\"a.b.neg\": { \"$abs\": {\"$eq\": 3.80}}}");
     // ### Wrong result on 12.2.0.1
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[0] , col.find().filter(filterDoc).getOne().getKey());
     
       // Test $abs with zero input
       filterDoc = db.createDocumentFromString("{\"a.b.zero\": { \"$abs\": 0 }}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[2] , col.find().filter(filterDoc).getOne().getKey());
     }
     
     // Test $abs with $ne
@@ -2247,32 +2551,32 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $abs with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.neg\": { \"$abs\": {\"$gte\": 5.23}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $abs with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.neg\": { \"$abs\": {\"$lt\": 3.9}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $abs with $lte
     // ### Wrong result on 12.2.0.1
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
       filterDoc = db.createDocumentFromString("{\"a.b.neg\": { \"$abs\": {\"$lte\": 3.8}}}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
 
       // Test $abs with array input 
       filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$abs\":1.2 }}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[2] , col.find().filter(filterDoc).getOne().getKey());
     
       filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$abs\":1.8 }}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     
       filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$abs\":2.4 }}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1003", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     }
     
     // Test $abs with boolean input
@@ -2317,6 +2621,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testType(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -2324,7 +2632,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testType" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -2332,28 +2647,40 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr1 = "{\"a\":{\"b\":{\"string\":\"abcd\", \"number\":-3.8, \"bool\":true }}}";
     String docStr2 = "{\"a\":{\"b\":{\"array\":[1, true, \"abc\"], \"null\":null }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    String[] key = new String[2];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));   
+      key[1] = doc.getKey();   
+    }      
     
     // Test $type with string input
     filterDoc = db.createDocumentFromString("{\"a.b.string\": {\"$type\":\"string\"} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $type with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": {\"$type\":\"number\"} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $type with boolean input
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": {\"$type\": \"boolean\" } }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $type with null input
     filterDoc = db.createDocumentFromString("{\"a.b.null\": {\"$type\": \"null\" } }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $type with array input
     // Note: the following will test if the field is an array. To
@@ -2363,19 +2690,19 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
       filterDoc = db.createDocumentFromString("{\"a.b.array\": {\"$type\": \"array\" } }");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
 
       filterDoc = db.createDocumentFromString("{\"a.b.array[*]\": {\"$type\": \"number\" } }");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
 
       filterDoc = db.createDocumentFromString("{\"a.b.array[*]\": {\"$type\": {\"$eq\":\"boolean\"} } }");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
 
       filterDoc = db.createDocumentFromString("{\"a.b.array[*]\": {\"$type\": {\"$eq\":\"string\"} } }");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     }
     
     // Test $type with object input 
@@ -2424,6 +2751,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testLength(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
     
@@ -2431,7 +2762,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testLength" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -2440,57 +2778,69 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"c\":\"123456\", \"empty_str\":\"\", \"array\":[\"a\", \"ab\"], " +
         "\"number\":100, \"bool\":true, \"null\":null }}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    String[] key = new String[2];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));   
+      key[1] = doc.getKey();   
+    }   
     
     // Test $length with string input
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\":4} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $eq
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$eq\":4} } }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": 6 } }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $ne
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$ne\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $gt
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$gt\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$gte\":6} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$lt\":5} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$length\": {\"$lte\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": {\"$length\": 2 } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $length with empty string
     filterDoc = db.createDocumentFromString("{\"a.b.empty_str\": {\"$length\": 0 } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
    
     // Test $length with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": {\"$length\": {\"$gte\":0} } }");;
@@ -2535,6 +2885,10 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testSize(String contentColumnType) throws Exception {
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
     if (SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) 
       return;
     
@@ -2542,7 +2896,14 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
     
     String colName = "testSize" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     OracleDocument doc = null, filterDoc = null;
     HashSet<String> expectedKeys = new HashSet<String>();
@@ -2551,38 +2912,50 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"c\":[\"a1\", 102, true], \"empty_str\":\"\", \"string\":\"Hello\", " +
             "\"number\":100, \"bool\":true, \"null\":null, \"empty_array\":[]}}}";
 
-    col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
-    col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));
+    String[] key = new String[2];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1001", docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-1002", docStr2));   
+      key[1] = doc.getKey();   
+    }   
     
     // Test $size with array input
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\":4} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $eq
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\":{\"$eq\":4}} }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $ne
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\": {\"$ne\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $gt
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\": {\"$gt\":3} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\": {\"$lt\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $gte
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\": {\"$gte\":4} } }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.c\": {\"$size\": {\"$lte\":4} } }");;
@@ -2591,7 +2964,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     // Test $size with empty array
     filterDoc = db.createDocumentFromString("{\"a.b.empty_array\": {\"$size\": 0} }");;
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     
     // Test $size with non-array input
     filterDoc = db.createDocumentFromString("{\"a.b.empty_str\": {\"$size\": 1 } }");

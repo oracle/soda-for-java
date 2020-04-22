@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -186,6 +186,21 @@ public final class SODAUtils
       return true;
     }
     else if (sqlSyntax_12_2_0_1(sqlSyntaxLevel)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public static boolean sqlSyntaxBelow_19(SQLSyntaxLevel sqlSyntaxLevel)
+  {
+    if (sqlSyntaxBelow_12_2(sqlSyntaxLevel)) {
+      return true;
+    }
+    else if (sqlSyntax_12_2_0_1(sqlSyntaxLevel)) {
+      return true;
+    }
+    else if (sqlSyntax_18(sqlSyntaxLevel)) {
       return true;
     }
 

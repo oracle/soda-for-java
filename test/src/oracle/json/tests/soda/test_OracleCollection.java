@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -36,21 +36,50 @@ import oracle.json.testharness.SodaTestCase;
 public class test_OracleCollection extends SodaTestCase {
   
   public void testFindOne() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("CLIENT").build();
-    OracleCollection col = dbAdmin.createCollection("testFindOne", metaDoc);
+    OracleDocument metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     
-    col.insert(db.createDocumentFromString("id-1", "{ \"data\" : 1 }", null));
-    col.insert(db.createDocumentFromString("id-2", "{ \"data\" : 2 }", null));
-    col.insert(db.createDocumentFromString("id-3", "{ \"data\" : 3 }", null));
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testFindOne", null);
+    } else
+    {
+      col = db.admin().createCollection("testFindOne", metaDoc);
+    }
+    
+    OracleDocument doc = null;
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
+      key[0] = doc.getKey(); 
+      doc = col.insertAndGet(db.createDocumentFromString("{ \"data\" : 2 }"));
+      key[1] = doc.getKey(); 
+      doc = col.insertAndGet(db.createDocumentFromString("{ \"data\" : 3 }"));   
+      key[2] = doc.getKey();  
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString("id-1", "{ \"data\" : 1 }", null));
+      key[0] = doc.getKey(); 
+      doc = col.insertAndGet(db.createDocumentFromString("id-2", "{ \"data\" : 2 }", null));
+      key[1] = doc.getKey(); 
+      doc = col.insertAndGet(db.createDocumentFromString("id-3", "{ \"data\" : 3 }", null));   
+      key[2] = doc.getKey();   
+    }   
+    
     
     // Test with valid key
-    OracleDocument doc = col.findOne("id-2");
-    assertEquals("id-2", doc.getKey());
-    assertEquals("{ \"data\" : 2 }", new String(doc.getContentAsByteArray(), "UTF-8"));
-    
-    // Test with an unknown key
-    assertNull(col.findOne("id-x"));
+    doc = col.findOne(key[1]);
+    assertEquals(key[1], doc.getKey());
+    if (isJDCSMode())
+    {
+         assertEquals("{\"data\":2}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+         assertEquals("{ \"data\" : 2 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+         // Test with an unknown key
+         assertNull(col.findOne("id-x"));
+    }
     
     try {
       // Pass null for key
@@ -66,15 +95,32 @@ public class test_OracleCollection extends SodaTestCase {
   public void testInsert() throws Exception {
     
     // Configured to auto-generate key
-    OracleDocument metaDoc = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("UUID").build();
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } 
+    else
+    {
+      metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("UUID").build();
+    }
+
     OracleCollection col = dbAdmin.createCollection("testInsert", metaDoc);
+
     
     // Pass document without key
     col.insert(db.createDocumentFromString("{ \"data\" : 1234 }"));
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    assertEquals("{ \"data\" : 1234 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
+    else
+    {
+      assertEquals("{ \"data\" : 1234 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }    
     
     // Pass document with key
     try {
@@ -101,6 +147,9 @@ public class test_OracleCollection extends SodaTestCase {
     assertNull(doc.getContentAsByteArray());
     col.insert(doc);
     
+    if (isJDCSMode())
+      return;
+
     // Configured to client-assigned key
     OracleDocument metaDoc2 = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("CLIENT").build();
@@ -158,11 +207,17 @@ public class test_OracleCollection extends SodaTestCase {
   }
  
   public void testInsertAndGet() throws Exception {
-    
     // Configured to auto-generate key
-    OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("GUID").build();
-    
+    }
+
     OracleCollection col = dbAdmin.createCollection("testInsertAndGet", metaDoc);
     
     // Pass document without key
@@ -170,7 +225,13 @@ public class test_OracleCollection extends SodaTestCase {
     verifyNullContentDocument(doc);
     
     doc = col.find().key(doc.getKey()).getOne();
-    assertEquals("{ \"data\" : 1234 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : 1234 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     
     // Pass document with key
     try {
@@ -183,6 +244,8 @@ public class test_OracleCollection extends SodaTestCase {
                                    " but the input document has a key.");
     }
 
+    if (isJDCSMode())
+      return;
     //  Pass document with non-JSON content
     doc = col.insertAndGet(db.createDocumentFromString(null, "non-JSON content", "text/plain"));
     verifyNullContentDocument(doc);
@@ -255,12 +318,18 @@ public class test_OracleCollection extends SodaTestCase {
   }
   
   private void testInsert2(boolean autoCommit) throws Exception {
-
     conn.setAutoCommit(autoCommit);
       
     // Configured to auto-generate key
-    OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("UUID").build();
+    }
     OracleCollection col = dbAdmin.createCollection("testInsert2", metaDoc);
     
     // Pass normal documents without key
@@ -269,13 +338,27 @@ public class test_OracleCollection extends SodaTestCase {
     col.insert(list.iterator());
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     
-    // Pass the list containing documents with null content and non-JSON content
+    // // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    list.add(db.createDocumentFromString(null, "{ \"data\" : \"abcd\" }", null));
-    list.add(db.createDocumentFromString(null, "Hello World", "text/plain"));
-    list.add(db.createDocumentFromString(null, null, null));
+    if (isJDCSMode())
+    {
+      list.add(db.createDocumentFromString("{ \"data\" : \"abcd\" }"));
+      list.add(db.createDocumentFromString("{ \"hello\" : \"world\" }"));
+      list.add(db.createDocumentFromString(null));
+    } else
+    {
+      list.add(db.createDocumentFromString(null, "{ \"data\" : \"abcd\" }", null));
+      list.add(db.createDocumentFromString(null, "Hello World", "text/plain"));
+      list.add(db.createDocumentFromString(null, null, null));
+    }
     
     col.insert(list.iterator());
     assertEquals(4, col.find().count());
@@ -284,8 +367,16 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Pass the documents with key and without key
     list.clear();
-    list.add(db.createDocumentFromString(null, "{ \"data\" : 2000 }", null));
-    list.add(db.createDocumentFromString("id-1", "{ \"data\" : 3000 }", null));
+    if (isJDCSMode())
+    {
+      list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
+      list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
+    } else
+    {
+      list.add(db.createDocumentFromString(null, "{ \"data\" : 2000 }", null));
+      list.add(db.createDocumentFromString("id-1", "{ \"data\" : 3000 }", null));
+    }
+    
 
     try {
       col.insert(list.iterator());
@@ -314,132 +405,162 @@ public class test_OracleCollection extends SodaTestCase {
     // collection is configured with client assigned key
     OracleDocument metaDoc2 = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("CLIENT").build();
-    OracleCollection col2 = dbAdmin.createCollection("testInsert2-2", metaDoc2);
+    
+    OracleCollection col2;
+    if (isJDCSMode())
+    {
+      col2 = dbAdmin.createCollection("testInsert2-2", null);
+    } else
+    {
+      col2 = dbAdmin.createCollection("testInsert2-2", metaDoc2);
+    }
     
     // Test for documents with key
     List<OracleDocument> list2 = new ArrayList<OracleDocument>();
-    list2.add(db.createDocumentFromString("id-1", "{ \"data\" : 1001 }", null));
-    list2.add(db.createDocumentFromString("id-2", "Hello JSON", "text/plain"));
+    String[] key = new String[2];
+    key[0] = "id-1";
+    key[1] = "id-2";
+    if (isJDCSMode())
+    {
+      doc = col2.insertAndGet(db.createDocumentFromString("{\"data\":1001}"));
+      key[0] = doc.getKey();
+      doc = col2.insertAndGet(db.createDocumentFromString("{\"Hello\":\"JSON\"}"));
+      key[1] = doc.getKey();
+    } else
+    {
+      list2.add(db.createDocumentFromString(key[0], "{\"data\":1001}", null));
+      list2.add(db.createDocumentFromString(key[1], "Hello JSON", "text/plain"));
+      col2.insert(list2.iterator());
+    }
     
-    col2.insert(list2.iterator());
     assertEquals(2, col2.find().count());
     
-    OracleDocument doc2 = col2.findOne("id-1");
-    assertEquals("id-1", doc2.getKey());
-    assertEquals("{ \"data\" : 1001 }", new String(doc2.getContentAsByteArray(), "UTF-8"));
+    OracleDocument doc2 = col2.findOne(key[0]);
+    assertEquals(key[0], doc2.getKey());
+    assertEquals("{\"data\":1001}", new String(doc2.getContentAsByteArray(), "UTF-8"));
     
-    doc2 = col2.find().key("id-2").getOne();
-    assertEquals("Hello JSON", new String(doc2.getContentAsByteArray(), "UTF-8"));
+    doc2 = col2.find().key(key[1]).getOne();
+    if (isJDCSMode())
+    {
+      assertEquals("{\"Hello\":\"JSON\"}", new String(doc2.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("Hello JSON", new String(doc2.getContentAsByteArray(), "UTF-8"));
+    }
     
     if (autoCommit == false)
       conn.commit();
     
-    try {
-      // Tests when there are key conflicts between newly inserted document and the existing doc
-      list2.clear();
-      list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", "application/json"));
-      list2.add(db.createDocumentFromString("id-2", "{ \"data\" : 1002 }", "application/json"));
-      col2.insert(list2.iterator());
-      fail("No exception when there are key conflict");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      // ORA-00001: unique constraint (SYS_C0013526) violated
-      Throwable cause = e.getCause();
-      assertTrue(cause.getMessage().contains("ORA-00001"));
-      
-      // for autoCommit on mode, auto rollback should be made
-      if (autoCommit == false)
-        conn.rollback();
-      
-      // all the operations should be rolled back
-      assertEquals(2, col2.find().count());
-    }
+    if (!isJDCSMode())// UUID assigned key won't be conflicted
+    {
+      try {
+        // Tests when there are key conflicts between newly inserted document and the existing doc
+        list2.clear();
+        list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", "application/json"));
+        list2.add(db.createDocumentFromString("id-2", "{ \"data\" : 1002 }", "application/json"));
+        col2.insert(list2.iterator());
+        fail("No exception when there are key conflict");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        // ORA-00001: unique constraint (SYS_C0013526) violated
+        Throwable cause = e.getCause();
+        assertTrue(cause.getMessage().contains("ORA-00001"));
+        
+        // for autoCommit on mode, auto rollback should be made
+        if (autoCommit == false)
+          conn.rollback();
+        
+        // all the operations should be rolled back
+        assertEquals(2, col2.find().count());
+      }    
     
-    try {
-      // Tests when there are key conflicts between documents in the list
-      list2.clear();
-      list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
-      list2.add(db.createDocumentFromString("id-4", "{ \"data\" : 1004 }", null));
-      list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1005 }", null));
-      col2.insert(list2.iterator());
-      fail("No exception when there are key conflict");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      // ORA-00001: unique constraint (SYS_C0013526) violated
-      Throwable cause = e.getCause();
-      assertTrue(cause.getMessage().contains("ORA-00001"));
-      
-      // for autoCommit on mode, auto rollback should be made
-      if (autoCommit == false)
-        conn.rollback();
-      
-      // all the operations should be rolled back
-      assertEquals(2, col2.find().count());
-    }
+      try {
+        // Tests when there are key conflicts between documents in the list
+        list2.clear();
+        list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
+        list2.add(db.createDocumentFromString("id-4", "{ \"data\" : 1004 }", null));
+        list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1005 }", null));
+        col2.insert(list2.iterator());
+        fail("No exception when there are key conflict");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        // ORA-00001: unique constraint (SYS_C0013526) violated
+        Throwable cause = e.getCause();
+        assertTrue(cause.getMessage().contains("ORA-00001"));
+        
+        // for autoCommit on mode, auto rollback should be made
+        if (autoCommit == false)
+          conn.rollback();
+        
+        // all the operations should be rolled back
+        assertEquals(2, col2.find().count());
+      }
     
-    try {
-      // Tests when there is non-JSON data but tagged as "application/json"
-      list2.clear();
-      list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
-      // contentType = null means the content is JSON data
-      list2.add(db.createDocumentFromString("id-4", "{ 1004 }", null));
-      list2.add(db.createDocumentFromString("id-5", "{ \"data\" : 1005 }", null));
-      col2.insert(list2.iterator());
-      fail("No exception when there is non-JSON data but tagged as JSON");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      // ORA-02290: check constraint (SYS_C0014190) violated
-      Throwable cause = e.getCause();
-      assertTrue(cause.getMessage().contains("ORA-02290"));
-      
-      // for autoCommit on mode, auto rollback should be made
-      if (autoCommit == false)
-        conn.rollback();
-      
-      // all the operations should be rolled back
-      assertEquals(2, col2.find().count());
-    }
     
-    try {
-      // Tests when the documents missing key
-      list2.clear();
-      list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
-      list2.add(db.createDocumentFromString(null, "{ \"data\" : 1003 }", null));
-      col2.insert(list2.iterator());
-      fail("No exception when the documents missing key");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      // ORA-01400: cannot insert NULL into ("testInsert2-2"."ID")
-      Throwable cause = e.getCause();
-      assertTrue(cause.getMessage().contains("ORA-01400"));
+      try {
+        // Tests when there is non-JSON data but tagged as "application/json"
+        list2.clear();
+        list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
+        // contentType = null means the content is JSON data
+        list2.add(db.createDocumentFromString("id-4", "{ 1004 }", null));
+        list2.add(db.createDocumentFromString("id-5", "{ \"data\" : 1005 }", null));
+        col2.insert(list2.iterator());
+        fail("No exception when there is non-JSON data but tagged as JSON");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        // ORA-02290: check constraint (SYS_C0014190) violated
+        Throwable cause = e.getCause();
+        assertTrue(cause.getMessage().contains("ORA-02290"));
+        
+        // for autoCommit on mode, auto rollback should be made
+        if (autoCommit == false)
+          conn.rollback();
+        
+        // all the operations should be rolled back
+        assertEquals(2, col2.find().count());
+      }
       
-      // for autoCommit on mode, auto rollback should be made
-      if (autoCommit == false)
-        conn.rollback();
+      try {
+        // Tests when the documents missing key
+        list2.clear();
+        list2.add(db.createDocumentFromString("id-3", "{ \"data\" : 1003 }", null));
+        list2.add(db.createDocumentFromString(null, "{ \"data\" : 1003 }", null));
+        col2.insert(list2.iterator());
+        fail("No exception when the documents missing key");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        // ORA-01400: cannot insert NULL into ("testInsert2-2"."ID")
+        Throwable cause = e.getCause();
+        assertTrue(cause.getMessage().contains("ORA-01400"));
+        
+        // for autoCommit on mode, auto rollback should be made
+        if (autoCommit == false)
+          conn.rollback();
+        
+        // all the operations should be rolled back
+        assertEquals(2, col2.find().count());
+      }
       
-      // all the operations should be rolled back
-      assertEquals(2, col2.find().count());
-    }
-    
-    // Test when collection is configured to read-only
-    OracleDocument metaDoc3 = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("CLIENT").readOnly(true).build();
-    OracleCollection col3 = dbAdmin.createCollection("testInsert2-3", metaDoc3);
-    
-    try {
-      // Try to insert documents into read-only collection
-      List<OracleDocument> list3 = new ArrayList<OracleDocument>();
-      list3.add(db.createDocumentFromString("id-1", "{ \"data\" : 1001 }", null));
-      col3.insert(list3.iterator());
-      fail("No exception when inserting document into a read-only collection");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      assertEquals("Collection testInsert2-3 is read-only, insert not allowed.", e.getMessage());
-      // for autoCommit on mode, auto rollback should be made
-      if (autoCommit == false)
-        conn.rollback();
+      // Test when collection is configured to read-only
+      OracleDocument metaDoc3 = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("CLIENT").readOnly(true).build();
+      OracleCollection col3 = dbAdmin.createCollection("testInsert2-3", metaDoc3);
       
-      assertEquals(0, col3.find().count());
+      try {
+        // Try to insert documents into read-only collection
+        List<OracleDocument> list3 = new ArrayList<OracleDocument>();
+        list3.add(db.createDocumentFromString("id-1", "{ \"data\" : 1001 }", null));
+        col3.insert(list3.iterator());
+        fail("No exception when inserting document into a read-only collection");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        assertEquals("Collection testInsert2-3 is read-only, insert not allowed.", e.getMessage());
+        // for autoCommit on mode, auto rollback should be made
+        if (autoCommit == false)
+          conn.rollback();
+        
+        assertEquals(0, col3.find().count());
+      }
     }
     
     // reset connection auto-commit to the default value  
@@ -466,12 +587,19 @@ public class test_OracleCollection extends SodaTestCase {
   }
   
   private void testInsertAndGet2(boolean autoCommit) throws Exception {
-    
     conn.setAutoCommit(autoCommit);
       
     // Configured to auto-generate key
-    OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
+    OracleDocument metaDoc;
+    if (isJDCSMode())
+    {
+      metaDoc = null;
+    } else
+    {
+      metaDoc = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
         .keyColumnAssignmentMethod("UUID").build();
+    }
+
     OracleCollection col = dbAdmin.createCollection("testInsertAndGet2", metaDoc);
     
     // Pass normal documents without key
@@ -482,31 +610,52 @@ public class test_OracleCollection extends SodaTestCase {
     
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
-    
+    if (isJDCSMode())
+    {
+      assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
+
     // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    list.add(db.createDocumentFromString(null, "{ \"data\" : \"abcd\" }", null));
-    list.add(db.createDocumentFromString(null, "Hello World", "text/plain"));
-    list.add(db.createDocumentFromString(null, null, null));
+    if (isJDCSMode())
+    {
+      list.add(db.createDocumentFromString("{\"data\":\"abcd\"}"));
+      list.add(db.createDocumentFromString("{\"hello\":\"world\"}"));
+      list.add(db.createDocumentFromString(null));
+    } else
+    {
+      list.add(db.createDocumentFromString(null, "{\"data\":\"abcd\"}", null));
+      list.add(db.createDocumentFromString(null, "Hello World", "text/plain"));
+      list.add(db.createDocumentFromString(null, null, null));
+    }
     
     resultList = col.insertAndGet(list.iterator());
     verifyNullContentDocumentList(resultList);
     doc = col.findOne(resultList.get(0).getKey());
-    assertEquals("{ \"data\" : \"abcd\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
-   
+
+    assertEquals("{\"data\":\"abcd\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+
     String lastModified = resultList.get(1).getLastModified();
     doc = ((OracleOperationBuilderImpl)col.find().key(resultList.get(1).getKey())).lastModified(lastModified).getOne();
     assertNotNull(doc);
-    assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
+    if (isJDCSMode())
+      assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
+    else
+      assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
  
     String version = resultList.get(1).getVersion();
     doc = col.find().key(resultList.get(1).getKey()).version(version).getOne();
-    assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+      assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
+    else
+      assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
  
     doc = col.findOne(resultList.get(2).getKey());
     assertEquals(null, ((OracleDocumentImpl) doc).getContentAsStream());
-    
+
     assertEquals(4, col.find().count());
     
     if(autoCommit == false)
@@ -514,8 +663,15 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Pass the documents with key and without key
     list.clear();
-    list.add(db.createDocumentFromString(null, "{ \"data\" : 2000 }", null));
-    list.add(db.createDocumentFromString("id-1", "{ \"data\" : 3000 }", null));
+    if (isJDCSMode())
+    {
+      list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
+      list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
+    } else
+    {
+      list.add(db.createDocumentFromString(null, "{ \"data\" : 2000 }", null));
+      list.add(db.createDocumentFromString("id-1", "{ \"data\" : 3000 }", null));
+    }
     
     try {
       col.insertAndGet(list.iterator());
@@ -537,6 +693,13 @@ public class test_OracleCollection extends SodaTestCase {
       assertEquals("documents argument cannot be null.", e.getMessage());
     }
     
+    if (isJDCSMode()) // no need to test following tests in jdcs mode
+    {
+      if (autoCommit == false)
+        conn.commit();
+      return;
+    }
+
     // Test with 0-length iterator for documents
     list.clear();
     resultList = col.insertAndGet(list.iterator());
@@ -714,9 +877,18 @@ public class test_OracleCollection extends SodaTestCase {
       doc = db.createDocumentFromString("{ \"data\" : \"v1\" }");
       col.save(doc);
       doc = col.find().getOne();
-      assertEquals("{ \"data\" : \"v1\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+      if (isJDCSMode())
+      {
+        assertEquals("{\"data\":\"v1\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      } else
+      {
+        assertEquals("{ \"data\" : \"v1\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }      
     }
     
+    if (isJDCSMode())
+      return;
+
     if(colAdmin.isHeterogeneous()) {
       // Test with non-JSON content
       if(clientAssignedKey) {
@@ -800,15 +972,25 @@ public class test_OracleCollection extends SodaTestCase {
   }
   
   public void testSave() throws Exception {
-
     // Configured to auto-generate key and heterogeneous collection
-    OracleDocument mDoc = client.createMetadataBuilder()
+    OracleDocument mDoc;
+    if (isJDCSMode())
+    {
+      mDoc = null;
+    } else
+    {
+      mDoc = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("GUID").mediaTypeColumnName("Media_Type")
         .keyColumnType("VARCHAR2")
         .build();
+    }
+
     OracleCollection col = dbAdmin.createCollection("testSave", mDoc);
     testSaveWithCol(col, false);
     
+    if (isJDCSMode())
+        return;
+      
     // Configured to client-generate key and heterogeneous collection
     OracleDocument mDoc2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").mediaTypeColumnName("Media_Type")
@@ -871,8 +1053,17 @@ public class test_OracleCollection extends SodaTestCase {
       doc = col.saveAndGet(doc);
       verifyNullContentDocument(doc);
       doc = col.find().key(doc.getKey()).version(doc.getVersion()).getOne();
-      assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+      if (isJDCSMode())
+      {
+        assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      } else
+      {
+        assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }      
     }
+    
+    if (isJDCSMode())
+      return;
     
     if(colAdmin.isHeterogeneous()) {
       // Test with non-JSON content
@@ -972,7 +1163,24 @@ public class test_OracleCollection extends SodaTestCase {
   }
   
   public void testSaveAndGet() throws Exception{
-    
+    // Configured to auto-generate key and non-heterogeneous collection
+    OracleDocument mDoc4 = null;
+    if (isJDCSMode())
+    {
+      // ### replace with new builder once it becomes available
+      mDoc4 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } 
+    else
+    {
+      mDoc4 = client.createMetadataBuilder().keyColumnAssignmentMethod("UUID").build();
+    }
+    OracleCollection col4 = dbAdmin.createCollection("testSaveAndGet4", mDoc4);
+    testSaveAndGetWithCol(col4, false);
+
+    // The following tests cover collection configurations not supported on JDCS 
+    if (isJDCSMode())
+        return;
+
     // Configured to auto-generate key and heterogeneous collection
     OracleDocument mDoc = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("GUID").mediaTypeColumnName("Media_Type")
@@ -980,7 +1188,7 @@ public class test_OracleCollection extends SodaTestCase {
         .build();
     OracleCollection col = dbAdmin.createCollection("testSaveAndGet", mDoc);
     testSaveAndGetWithCol(col, false);
-   
+     
     // Configured to client-generate key and heterogeneous collection
     OracleDocument mDoc2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT").mediaTypeColumnName("Media_Type")
@@ -997,12 +1205,7 @@ public class test_OracleCollection extends SodaTestCase {
     OracleCollection col3 = dbAdmin.createCollection("testSaveAndGet3", mDoc3);
     testSaveAndGetWithCol(col3, true);
     
-    // Configured to auto-generate key and non-heterogeneous collection
-    OracleDocument mDoc4 = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("UUID")
-        .build();
-    OracleCollection col4 = dbAdmin.createCollection("testSaveAndGet4", mDoc4);
-    testSaveAndGetWithCol(col4, false);
+    
     
     // Test to save document to read-only collection
     OracleDocument mDoc5 = client.createMetadataBuilder().readOnly(true).build();
@@ -1018,7 +1221,8 @@ public class test_OracleCollection extends SodaTestCase {
   }
 
   public void testFindFragment() throws Exception {
-    
+    if (isJDCSMode())
+        return;
     // findFragment only work for non-JSON data
     OracleDocument mDoc = client.createMetadataBuilder().
         contentColumnType("BLOB").mediaTypeColumnName("MediaType")

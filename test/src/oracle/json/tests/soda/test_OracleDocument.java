@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -129,11 +129,17 @@ public final class test_OracleDocument extends JsonTestCase {
         }        
     }
     
-    public void testCharsetDetectionCaseSensitivity() throws OracleException {
+    public void testCharsetDetectionCaseSensitivityNeg() throws OracleException {
         for (Charset c : CHARSETS) {
             byte[] json = "[1, 2, 3]".getBytes(c);
             OracleDocument d = db.createDocumentFromByteArray(null, json, "APPLICATION/JSON");
-            assertEquals("[1, 2, 3]", d.getContentAsString());
+            try {
+              d.getContentAsString();
+              fail("Expected exception");
+            }
+            catch (OracleException e) {
+              assertTrue(e.getMessage().contains("getContentAsString() is only supported for JSON documents"));
+            }
         }
     }
     

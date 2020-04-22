@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -30,6 +30,7 @@ import java.sql.Clob;
 
 import oracle.json.logging.OracleLog;
 
+import oracle.json.util.JsonByteArray;
 import oracle.soda.OracleCursor;
 
 import java.util.logging.Logger;
@@ -125,7 +126,7 @@ public class OracleCursorImpl implements OracleCursor
   }
 
   private byte[] getPatchedOrProjectedPayload()
-    throws SQLException
+    throws SQLException, OracleException
   {
     String str = null;
 
@@ -158,6 +159,67 @@ public class OracleCursorImpl implements OracleCursor
 
         break;
       case CollectionDescriptor.BLOB_CONTENT:
+
+        if (desc.hasBinaryFormat())
+        {
+          LobInputStream payloadStream = null;
+          byte[] payload = null;
+
+          Blob loc = resultSet.getBlob(1);
+          if (loc != null) {
+            long datalen = loc.length();
+
+            // ### int is used for a limit, so the document
+            //     size is limited to 2G for now. The assumption
+            //     is that this is OK because the types of documents
+            //     we want to target (PDFs, Word documents, mp3s, etc)
+            //     will not be that huge. Huge documents, such as movies,
+            //     are unlikely to fall within our use-cases.
+            if (datalen > Integer.MAX_VALUE) {
+              loc.free();
+              String key = null;
+              key = resultSet.getString(2);
+              throw SODAUtils.makeException(SODAMessage.EX_2G_SIZE_LIMIT_EXCEEDED,
+                      key,
+                      datalen);
+            }
+
+            int limit = (int) datalen;
+
+            if (datalen == 0) {
+              loc.free();
+              return null;
+            }
+            else {
+              InputStream inp = loc.getBinaryStream();
+
+              if (inp != null) {
+                payloadStream = new LobInputStream(loc, inp, limit);
+                payloadStream.setMetrics(metrics);
+              }
+            }
+          }
+
+          if (payloadStream != null)
+          {
+            try
+            {
+              payload = JsonByteArray.loadStream(payloadStream).toArray();
+            }
+            catch (IOException e)
+            {
+              if (OracleLog.isLoggingEnabled())
+                log.severe(e.toString());
+              // ### Revisit classification of this exception
+              throw new OracleException(e);
+            }
+          }
+
+          return payload;
+        }
+  
+        /* FALLTHROUGH */
+
       case CollectionDescriptor.RAW_CONTENT:
         // RAW content is projected and returned as RAW
         // ### The underlying PL/SQL does UTL_RAW.CAST_TO_RAW;
@@ -294,6 +356,9 @@ public class OracleCursorImpl implements OracleCursor
                 // ### When media type column is present, but the value
                 //     there is null, we could consider streaming.
                 //     Same situation occurs in getFragment() as well.
+                // ### Sept 2018. This logic doesn't seem correct, since ctype has
+                // not been fetched yet. So it will always be null, and stream will
+                // be set to false for single key based operations. Revisit.
                 if (ctype == null)
                 {
                   stream = false;
@@ -352,6 +417,7 @@ public class OracleCursorImpl implements OracleCursor
                       payloadStream = new LobInputStream(loc, inp, limit);
                       payloadStream.setMetrics(metrics);
                     }
+
                   }
                 }
 
@@ -376,10 +442,10 @@ public class OracleCursorImpl implements OracleCursor
           ctype = resultSet.getString(++num);
 
         if (desc.timestampColumnName != null && !patchedContent)
-          mtime = resultSet.getString(++num);
+          mtime = OracleDatabaseImpl.getTimestamp(resultSet, ++num); 
 
         if (desc.creationColumnName != null && !patchedContent)
-          ctime = resultSet.getString(++num);
+          ctime = OracleDatabaseImpl.getTimestamp(resultSet, ++num); 
 
         if (desc.versionColumnName != null && !patchedContent)
           version = resultSet.getString(++num);
@@ -399,6 +465,36 @@ public class OracleCursorImpl implements OracleCursor
 
         ((TableCollectionImpl)operation.getCollection()).setContentType(ctype,
                                                                         result);
+
+        OracleDatabaseImpl dbImpl =((OracleCollectionImpl) operation.getCollection()).getDatabase();
+
+        if (dbImpl.isOracleJsonAvailable())
+        {
+          System.out.println ("Available!");
+          result.setJsonFactory(dbImpl.getJsonFactoryProvider().getJsonFactory());
+        }
+        else
+          System.out.println ("Not available!");
+                                
+        // ### Allow setting thru constructor instead?
+        if (desc.hasBinaryFormat())
+        {
+          // If isOracleJsonAvailable returns false, that means the setJsonFactory
+          // was not invoked on result. For processing binary documents, the json
+          // factory is absolutely required.
+          if (!dbImpl.isOracleJsonAvailable())
+          { 
+             try 
+             {
+               if (!closed)
+                 closeInternal();
+             }
+             catch (Exception e) {}
+
+             throw SODAUtils.makeException(SODAMessage.EX_JSON_FACTORY_MISSING_IN_JDBC);
+          }
+          result.setBinary();
+        }
 
         ++rowCount;
         cumTime += metrics.getTimeDiff(startTime);

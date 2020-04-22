@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2016, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -80,8 +80,17 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   }
   
   private void testSpatialOp1(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
 
-    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    if (isJDCSMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
     
     String colName = "testSpatialOp1" + contentColumnType + (withIndex?"Idx":"");
     if (withIndex) {
@@ -249,8 +258,17 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   }
   
   private void testSpatialOp2(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
 
-    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    if (isJDCSMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB")) 
+        return;
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
     
     String colName = "testSpatialOp2" + contentColumnType + (withIndex?"Idx":"");
     if (withIndex) {
@@ -350,8 +368,17 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   }
   
   private void testSpatialOp3(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
 
-    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    if (isJDCSMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
     
     String colName = "testSpatialOp3" + contentColumnType + (withIndex?"Idx":"");
     if (withIndex) {
@@ -478,7 +505,16 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
-    OracleDocument mDoc = client.createMetadataBuilder().build();
+    OracleDocument mDoc = null;
+
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().build();
+    }
+
     String colName = "testSpatialNeg";
     // to bypass spatial index restriction(bug23542273): 
     // the table name cannot contain spaces or mixed-case letters in a quoted string
@@ -762,8 +798,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     }
     
     // Test duplicate name index on different collection.
-    OracleDocument mDoc2 = client.createMetadataBuilder().build();
-    OracleCollection col2 = db.admin().createCollection("testSpatialNeg2", mDoc2);
+    OracleCollection col2 = db.admin().createCollection("testSpatialNeg2", mDoc);
     try {
       String indexSpec2 = "{\"name\" : \"" + indexName2 + "\", \"spatial\" : \"location2\" }";
       col2.admin().createIndex(db.createDocumentFromString(indexSpec2));
@@ -801,12 +836,22 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   }
   
   private void testContains(String contentColumnType, boolean withIndex) throws Exception {
-    OracleDocument mDoc = null; 
+    if (isJDCSMode())
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
+    OracleDocument mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType)
+        .keyColumnAssignmentMethod("CLIENT").build();
     
-    mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType)
-      .keyColumnAssignmentMethod("CLIENT").build();
     String colName = "testContains" + contentColumnType;
-    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection(colName, null);
+    } else
+    {
+      col = db.admin().createCollection(colName, mDoc);
+    }
     
     String indexName = "testContainsIndex";
     if (withIndex) {
@@ -827,45 +872,61 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     String key1 = "id001", key2 = "id002", key3 = "id003";
     OracleDocument doc, filterDoc;
     HashSet<String> expectedKeys = new HashSet<String>();
-    col.insertAndGet(db.createDocumentFromString(key1, docStr1));
-    col.insertAndGet(db.createDocumentFromString(key2, docStr2));
-    col.insertAndGet(db.createDocumentFromString(key3, docStr3));
+    String[] key = new String[3];
+    if (isJDCSMode()) 
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr3));   
+      key[2] = doc.getKey();  
+    } else
+    {
+      doc = col.insertAndGet(db.createDocumentFromString(key1, docStr1));
+      key[0] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
+      key[1] = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));   
+      key[2] = doc.getKey();   
+    }   
+    
     assertEquals(3, col.find().count());
     
     filterDoc = db.createDocumentFromString("{\"family\" : { \"$contains\" : \"10\" }}");
     assertEquals(3, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add(key1);
-    expectedKeys.add(key2);
-    expectedKeys.add(key3);
+    expectedKeys.add(key[0]);
+    expectedKeys.add(key[1]);
+    expectedKeys.add(key[2]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // doc1 has a 10 as number value
     filterDoc = db.createDocumentFromString("{\"family.id\" : { \"$contains\" : \"10\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // doc2 has a 10 in the array of values
     filterDoc = db.createDocumentFromString("{\"family.ages\" : { \"$contains\" : \"10\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // doc1 and doc3 both have a 10 in family.address value
     filterDoc = db.createDocumentFromString("{\"family.address\" : { \"$contains\" : \"10\" }}");
     assertEquals(2, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add(key1);
-    expectedKeys.add(key3);
+    expectedKeys.add(key[0]);
+    expectedKeys.add(key[2]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // only doc3 have a 10 in family.address.apt value
     filterDoc = db.createDocumentFromString("{\"family.address.apt\" : { \"$contains\" : \"10\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // all 3 docs contain "Street"
@@ -881,7 +942,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     // "25" matches doc3("ages":[25,23]), but not match doc2("250 East Street")
     filterDoc = db.createDocumentFromString("{\"family\" : { \"$contains\" : \"25\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key3, col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // docs have "address" key, but do not contain "address" value
@@ -895,25 +956,30 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // test $contains with skip(), limit(), + $orderby
+
+    // blocked by bug 28996376 since 20181130, will uncomment when the bug is fixed.
+    if (isJDCSMode())
+      return;
+          
     filterDoc = db.createDocumentFromString("{\"$query\":{ \"family\":{\"$contains\":\"Street\"}},"+
                                             " \"$orderby\":{\"family.id\":1} }");
     assertEquals(3, col.find().filter(filterDoc).count());
-    assertEquals(key3, col.find().filter(filterDoc).skip(2).limit(1).getOne().getKey());
+    assertEquals(key[2], col.find().filter(filterDoc).skip(2).limit(1).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc).skip(2).limit(1), withIndex, indexName);
     
     // test $contains with implied $and
     filterDoc = db.createDocumentFromString("{ \"family.address\" : { \"$contains\" : \"10\" }, \n" +
                                               "\"family.ages\" : { \"$contains\" : \"40\" } }");
     assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     
     // test when path is empty
     filterDoc = db.createDocumentFromString("{ \"``\" : { \"$contains\" : \"40\" }}");
     assertEquals(2, col.find().filter(filterDoc).count());
     expectedKeys.clear();
-    expectedKeys.add(key1);
-    expectedKeys.add(key2);
+    expectedKeys.add(key[0]);
+    expectedKeys.add(key[1]);
     checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
 
@@ -924,14 +990,14 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
       // test $contains with $not
       filterDoc = db.createDocumentFromString("{ \"family.address\" : { \"$not\": { \"$contains\" : \"10\" }}}");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals(key2, col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[1], col.find().filter(filterDoc).getOne().getKey());
       chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
 
       // test $contains + $and + ($not + $contains)
       filterDoc = db.createDocumentFromString("{ \"family.address\" : { \"$contains\" : \"10\"}, \n" +
               "\"family.ages\" : { \"$not\" : { \"$contains\" : \"23\" }} }");
       assertEquals(1, col.find().filter(filterDoc).count());
-      assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+      assertEquals(key[0], col.find().filter(filterDoc).getOne().getKey());
       chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc), withIndex, indexName);
     }
     

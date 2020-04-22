@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <!-- 
- Copyright (c) 2014, 2015, 2016, 2017 Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 
    DESCRIPTION
      Common tasks & properties for JSON ANT scripts.
@@ -16,10 +16,11 @@
 
     <property environment="env"/>
 
+    <!-- Compiles with JDK6 to be compatible with an 12.1.0.2 RDBMS deployment -->
     <property name="javac.java.home" value="${env.JAVA_HOME}"/>
     
     <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
-    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda-1.1.0.jar"/>
+    <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda.jar"/>
 
     <!--
        Generic project layout

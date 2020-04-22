@@ -1,18 +1,19 @@
-# Building and running the tests
+#Building and running the tests
 
 To build and execute SODA tests, you must have a live Oracle database
-12.2.0.1 instance, or 12.1.0.2 instance with patch 20885778 applied.
+12.1.0.2 instance, with patch 20885778 applied.
 
-The patch is only necessary for the 12.1.0.2 release, and is available from My Oracle Support ([https://support.oracle.com](https://support.oracle.com)). Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: [https://support.oracle.com/rs?type=patch&id=20885778](https://support.oracle.com/rs?type=patch&id=20885778).
+Obtain the patch from My Oracle Support ([https://support.oracle.com](https://support.oracle.com)). 
+Select tab Patches & Updates. Search for patch number, 20885778 or access it directly at this URL: [https://support.oracle.com/rs?type=patch&id=20885778](https://support.oracle.com/rs?type=patch&id=20885778).
 Make sure you follow all the installation steps specified in the README.txt file included with
 the patch, including the post-installation step.
 
 The test framework is located in the /test directory under the root SODA directory (the root SODA directory is the one containing LICENSE.txt file). It's built with JUnit and driven by Ant. The actual Java test files are in /test/src/oracle/json/tests/soda. To configure the database instance and the test framework, follow these steps (note that some of them require sysdba access).
 
 **(1)** Build the source code (which includes downloading SODA dependencies), as described
-in [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA_HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
+in [Building the source code](https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA6HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
 
-* JDBC jar
+* ojdbc6.jar (the JDBC jar that ships with Oracle database version 12.1.0.2)
 * javax.json-1.0.4.jar (JSR353 jar)
 * junit-3.8.1.jar (JUnit jar)
 * orajsoda.jar (SODA Java jar)
@@ -33,7 +34,7 @@ The directory /path/to/wallet/dir should already exist; if not then you should c
 
     alter system set encryption key authenticated by "mywalletpass";
 
-This creates the wallet with the password mywalletpass and opens it.
+This creates the wallet with the password mypass and opens it.
 
 The above steps are needed only once. After the wallet is created and open, it stays open as long as the database is up (unless it is explicitly closed). If the database is restarted, you have to open the wallet with:
 
@@ -54,13 +55,13 @@ Note: do not use a quoted (case-sensitive) account name.
 **(5)** Provide the database instance connection info to the SODA test framework. Edit datasource.properties
 located in /test/datasource.properties, under the top level SODA directory. The file has the following contents:
 
-    UserName=account
-    Password=password
-    Server=oracleHost
-    Port=oraclePort
-    DBName=oracleServiceName
+    UserName=myaccount
+    Password=mypassword
+    Server=myoraclehost
+    Port=myoracleport
+    DBName=mysid
 
-Replace myaccount and mypassword with the account name and password created in step 3. Replace myoraclehost and myoracleport with the host name and port on which the Oracle instance is running/listening. Replace mydbname with the Oracle Service Name.
+Replace myaccount and mypassword with the account name and password created in step 3. Replace myoraclehost and myoracleport with the host name and port on which the Oracle instance is running/listening. Replace mydbname with the Oracle SID.
 
 **(6)** Supply the directory where sqlplus is located to the test framework by setting the SODA_SQLPLUS environment variable. For example, assume sqlplus is located in /oracle/software/bin. Then, assuming you're on Linux and using the C shell (csh) do:
 

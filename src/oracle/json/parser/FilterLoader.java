@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -30,13 +30,14 @@ import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 import javax.json.stream.JsonParsingException;
 
+import oracle.json.common.JsonFactoryProvider;
+
 public class FilterLoader extends DocumentLoader
 {
-
-  public FilterLoader(InputStream inp)
+  FilterLoader(JsonFactoryProvider jProvider, InputStream inp)
     throws JsonException
   {
-    super(inp);
+    super(jProvider, inp);
   }
 
   private boolean parseOrderBy = false;
@@ -112,7 +113,7 @@ public class FilterLoader extends DocumentLoader
   protected JsonObjectBuilder parseObject(int depth)
     throws JsonParsingException
   {
-    JsonObjectBuilder obuilder = Json.createObjectBuilder();
+    JsonObjectBuilder obuilder = jProvider.createObjectBuilder();
 
     String key = null;
     String val = null;

@@ -1,4 +1,5 @@
-/* Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.*/
+/* Copyright (c) 2015, 2020, Oracle and/or its affiliates. 
+All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -42,16 +43,13 @@ public class DescriptorCache
   public synchronized CollectionDescriptor putIfAbsent(CollectionDescriptor desc)
   {
     String collectionName = desc.getName();
+    return cache.putIfAbsent(collectionName, desc);
+  }
 
-    if (cache.containsKey(collectionName))
-    {
-      return cache.get(collectionName);
-    }
-    else
-    {
-      cache.put(collectionName, desc);
-      return null;
-    }
+  public synchronized CollectionDescriptor put(CollectionDescriptor desc)
+  {
+    String collectionName = desc.getName();
+    return cache.put(collectionName, desc);
   }
 
   public synchronized boolean containsDescriptor(String collectionName)

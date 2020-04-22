@@ -1,31 +1,13 @@
-# SODA 1.1.0
-Simple Oracle Document Access (SODA) is an API which allows you to use the Oracle Database as a NoSQL JSON document store. Although SODA is particularly powerful when it comes to JSON data, data of any other type is supported as well.
+# SODA 1.0.0
+Simple Oracle Document Access (SODA) is a new family of APIs from Oracle that let you create Oracle Database applications at a level of simplicity and ease-of-use typically associated with NoSQL document stores. More specifically, SODA lets you create and store collections of documents in Oracle Database, retrieve them, and query them, without needing to know Structured Query Language (SQL) or how the data in the documents is stored in the database.
 
-With the SODA architecture, your data is stored as documents, and documents are organized into collections. Each document contains the actual data, as well as additional information automatically maintained by SODA, such as unique key, last-modified timestamp, version, type, etc. SODA lets you create and store such collections of documents in the Oracle Database, and perform create, retrive, update, and delete (CRUD) operations on these documents, without needing to know Structured Query Language (SQL), or JDBC, or how the data is stored in the database. Essentially SODA provides a virtual NoSQL document store on top of your Oracle Database. Under the covers, a collection is stored as a regular Oracle Database table, and each document is stored as a row in the table. SQL access to the table using standard tools is still allowed. 
+SODA for Java is a Java library that provides SODA. You can use it to perform create, retrieve, update, and delete (CRUD) operations on documents of any kind, and you can use it to query JSON documents.
 
-SODA for Java, hosted in this repository, is a library which implements SODA for use with Java. 
-SODA for REST, which can be used from any programming language capable of making http requests,
-is also available. SODA for REST is not part of this repository, and is released separately as part 
-of [Oracle Rest Data Serices (ORDS)](http://www.oracle.com/technetwork/developer-tools/rest-data-services/overview/index.html) and
-documented [here](https://docs.oracle.com/cd/E56351_01/doc.30/e58123/toc.htm).
-
-Both SODA for REST and SODA for Java are available on the cloud. Please refer to the cloud [documentation](https://docs.oracle.com/en/cloud/paas/exadata-express-cloud/develop-document-store-applications-using-soda.html) for more info.
-
-SODA for Java supports:
-
-* CRUD operations on documents containing data of any type using unique document keys
-* CRUD operations on documents containing JSON data using QBEs (simple pattern-like queries-by-example expressed in JSON), or unique document keys
-* Bulk read/write operations
-* Optimistic locking
-* Transactions
-* Document collections backed by Oracle Database tables or views
-* Mapping of existing Oracle Database tables or views as document collections
-
-SODA for Java is stable, well-documented, and has a comprehensive test suite. We are actively working on adding new features as well.
-
-SODA for Java is built on top of native JSON support in the Oracle Database.
+With the SODA architecture, a database contains collections, and each collection contains documents. SODA is designed primarily for working with JSON documents, but a document can be of any Multipurpose Internet Mail Extensions (MIME) type.
 
 **This is an open source project maintained by Oracle Corp.**
+
+SODA is built on top of native JSON support in the Oracle database.
 
 See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/application-development/oracle-document-store/index.html) page on the Oracle Technology Network for more info.
 
@@ -77,28 +59,28 @@ while (c.hasNext())
 
 Note that there's no SQL or JDBC programming required. Under the covers, SODA for Java transparently converts operations on document collections into SQL and executes it over JDBC.
 
-See [Getting Started with SODA for Java](https://github.com/oracle/soda-for-java/blob/master/doc/Getting-started-example.md) for a complete introductory example.
+See [Getting Started with SODA for Java](https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Getting-started-example.md) for a complete introductory example.
 
 ### Documentation
 
-* [Introduction to SODA](https://docs.oracle.com/en/database/oracle/oracle-database/18/adsdi/). This book covers subjects common to all SODA impls, such as QBEs and indexing.
-* SODA Java documentation is located [here](http://docs.oracle.com/cd/E63251_01/index.htm).
+The documentation is located [here](http://docs.oracle.com/cd/E63251_01/index.htm).
 
-The Javadoc is located [here](http://oracle.github.io/soda-for-java).
+The Javadoc is located [here](http://oracle.github.io/SODA-FOR-JAVA).
 
 ### Build
 
-SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md) for
+SODA for Java source code is built with Ant and (optionally) Ivy. See [Building the source code](https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-source-code.md) for
 details. 
 
-SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests](https://github.com/oracle/soda-for-java/blob/master/doc/Building-and-running-tests.md) for details.
+SODA for Java comes with a testsuite, built with JUnit and driven by Ant. See [Building and running the tests]
+(https://github.com/oracle/SODA-FOR-JAVA/blob/master/doc/Building-and-running-tests.md) for details.
 
 ### Contributions
 
-SODA is an open source project. See [Contributing](https://github.com/oracle/soda-for-java/blob/master/CONTRIBUTING.md) for details.
+SODA is an open source project. See [Contributing](https://github.com/oracle/SODA-FOR-JAVA/blob/master/CONTRIBUTING.md) for details.
 
 Oracle gratefully acknowledges the contributions to SODA made by the community.
 
 ### Getting in touch
 
-Please open an issue [here](https://github.com/oracle/soda-for-java/issues), or post to the [ORDS, SODA, and JSON in the database forum](https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.
+Please open an issue [here](https://github.com/oracle/SODA-FOR-JAVA/issues), or post to the [ORDS, SODA, and JSON in the database forum] (https://community.oracle.com/community/database/developer-tools/oracle_rest_data_services/) with SODA-FOR-JAVA in the subject line.

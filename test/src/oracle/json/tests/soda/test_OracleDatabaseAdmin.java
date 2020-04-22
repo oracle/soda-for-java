@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 /*
@@ -50,18 +50,26 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     "\"readOnly\":false}";
   
   public void testCreateCollection() throws Exception {
-
     // Test createCollection(...) with an new collectionName
     OracleCollection col = dbAdmin.createCollection("testCreateCollection");
     assertNotNull(col);
     assertEquals("testCreateCollection", col.admin().getName());
     
     // Test createCollection(...) with an known collectionName   
-    OracleDocument metaDoc = db.createDocumentFromString(metaData);
+    OracleDocument metaDoc = null;
     String colName = "testCreateCollectionB";
-    dbAdmin.createCollection(colName, metaDoc);
+    if (isJDCSMode())
+    {
+      dbAdmin.createCollection(colName, null);
+    } else
+    {
+      metaDoc = db.createDocumentFromString(metaData);
+      dbAdmin.createCollection(colName, metaDoc);
+    }
+    
     // Test with an known collectionName and no metadata 
     OracleCollection col2 = dbAdmin.createCollection(colName);
+        
     assertNotNull(col2);
     assertEquals(colName, col2.admin().getName());
    
@@ -69,7 +77,12 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     // Test with an known collectionName and metadata
     OracleDocument metaDoc2 = db.createDocumentFromString(metaData);
-    col2 = dbAdmin.createCollection(colName, metaDoc2);
+    if (isJDCSMode())
+    {
+      col2 = dbAdmin.createCollection(colName, null);
+    } else {
+      col2 = dbAdmin.createCollection(colName, metaDoc2);
+    }
     assertEquals(colName, col2.admin().getName());
  
     // Negative Test
@@ -85,25 +98,35 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testCreateCollection2() throws Exception {
-
     // Test with an new collectionName and null metadata
     String colName1 = "testCreateCollection2";
-
     OracleCollection col = dbAdmin.createCollection(colName1, (OracleDocument)null);
+    
     assertNotNull(col);
     assertEquals(colName1, col.admin().getName());
     
-    OracleDocument metaDoc2 = client.createMetadataBuilder().build();
+    OracleDocument metaDoc2 = null; 
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      metaDoc2 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      metaDoc2 = client.createMetadataBuilder().build();
+    }
+
     String colName2 = "testCreateCollection2-2";
     // Test createCollection(...) with an new collectionName and valid metadata
     OracleCollection col2 = dbAdmin.createCollection(colName2, metaDoc2);
     assertNotNull(col2);
     assertEquals(colName2, col2.admin().getName());
-    
+
     // Test with known collectionName and valid metadata
     col2 = dbAdmin.createCollection(colName2, metaDoc2);
     assertNotNull(col2);
     assertEquals(colName2, col2.admin().getName());
+    
+    if (isJDCSMode())
+      return;
     
     // Test with heterogeneous collection
     OracleDocument metaDoc3 = client.createMetadataBuilder().mediaTypeColumnName("CONTENT_TYPE")
@@ -432,7 +455,13 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     list = dbAdmin.getCollectionNames(5);
     assertEquals(0, list.size());
     
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
+    OracleDocument metaDoc = null; 
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else {
+      metaDoc = client.createMetadataBuilder().build();
+    }
     dbAdmin.createCollection("colName1", metaDoc);
     dbAdmin.createCollection("colName2", metaDoc);
     dbAdmin.createCollection("colName3", metaDoc);
@@ -473,7 +502,15 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     List<String> list = dbAdmin.getCollectionNames();
     int initCount = list.size();
     
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
+    OracleDocument metaDoc = null;
+
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } 
+    else {
+      metaDoc = client.createMetadataBuilder().build();
+    }
     
     dbAdmin.createCollection("colName1", metaDoc);
     dbAdmin.createCollection("colName2", metaDoc);
@@ -532,7 +569,15 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   public void testGetCollectionNames3() throws Exception {     
     List<String> list = null;
 
-    OracleDocument metaDoc = client.createMetadataBuilder().build();
+    OracleDocument metaDoc = null;
+
+    if (isJDCSMode()) {
+      // ### replace with new builder once it becomes available
+      metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      metaDoc = client.createMetadataBuilder().build();
+    }
     
     dbAdmin.createCollection("xxxColName1", metaDoc);
     dbAdmin.createCollection("xxxColName2", metaDoc);
@@ -599,7 +644,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   
 
   private void testExistingViewOrTable(boolean testView) throws Exception {
-  
+    if (isJDCSMode())
+      return;
+
     // cleanup and make sure no other rows polluted test run.
     String deleteSql = "delete from soda_view";
     PreparedStatement stmt = conn.prepareStatement(deleteSql);
@@ -764,28 +811,29 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testExistingView() throws Exception {
-    if (isJDCSMode())
-      return;
-
     testExistingViewOrTable(true);
   }
   
   public void testExistingTable() throws Exception {
-    if (isJDCSMode())
-      return;
-
     testExistingViewOrTable(false);
   }
  
   private void testContColType(String contColType) throws Exception {
-
     OracleRDBMSMetadataBuilder b = client.createMetadataBuilder();
-    if ("BLOB".equals(contColType)) { 
+    if ("BLOB".equals(contColType)) {
       b.mediaTypeColumnName("CONTENT_TYPE");
-    }
+    } 
     OracleDocument mDoc = b.contentColumnType(contColType).build();
-    OracleCollection col = db.admin().createCollection("testContentColumnType" + contColType, mDoc);
     
+    OracleCollection col;
+    if (isJDCSMode())
+    {
+      col = db.admin().createCollection("testContentColumnType" + contColType, null);
+    } else
+    {
+      col = db.admin().createCollection("testContentColumnType" + contColType, mDoc);
+    }
+
     // Test insert/query for JSON data
     String jsonString = 
       "{\n" +
@@ -798,10 +846,13 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals(jsonString.length(), doc.getContentLength());
     col.insertAndGet(doc);
     doc = col.find().getOne();
-    assertEquals(jsonString.length(), doc.getContentLength());
+    if (!isJDCSMode()) // this cannot be tested in JDCS mode since after conversion to binary whitespace is removed
+    {
+      assertEquals(jsonString.length(), doc.getContentLength());
+      assertEquals(jsonString, new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     
     assertEquals("application/json", doc.getMediaType());
-    assertEquals(jsonString, new String(doc.getContentAsByteArray(), "UTF-8"));
     
     // Test insert/query for non JSON data
     if (col.admin().isHeterogeneous()) {
@@ -875,6 +926,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     testContColType("BLOB");
     
     testContColType("CLOB");
+    
     /* ### Oracle Database does not support NVARCHAR2, NCLOB, or RAW storage for JSON
     testContColType("NVARCHAR2");
     
@@ -896,7 +948,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
 
   public void testJSONValidation() throws Exception {
- 
+    if (isJDCSMode())
+        return;
+
     // Test with content column validation = STRICT
     OracleDocument mDoc = client.createMetadataBuilder().
         contentColumnValidation("STRICT").build();
@@ -1079,7 +1133,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testContentMaxLength() throws Exception {
-    
+    if (isJDCSMode())
+        return;
+      
     testContentMaxLength("VARCHAR2");
     /* ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
     testContentMaxLength("NVARCHAR2");
@@ -1095,7 +1151,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when specifying CONTENT_MAX_LENGTH for \"BLOB\" type");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("A maximum length cannot be set for LOB types.", e.getMessage());
+      assertEquals("A maximum length cannot be set for LOB types or JSON type.", e.getMessage());
     }
 
     // Test with negative for CONTENT_MAX_LENGTH
@@ -1128,7 +1184,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when specifying CONTENT_MAX_LENGTH for \"CLOB\" type");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("A maximum length cannot be set for LOB types.", e.getMessage());
+      assertEquals("A maximum length cannot be set for LOB types or JSON type.", e.getMessage());
     }
     
     // Test about specifying CONTENT_MAX_LENGTH for "NCLOB" type
@@ -1148,7 +1204,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
 
   public void testKeyMetadata() throws Exception {
-    
+    if (isJDCSMode())
+        return;
+
     // Test with key column type=VARCHAR2 && max key length=32 && key method=CLIENT
     OracleDocument mDoc = client.createMetadataBuilder()
         .keyColumnType("VARCHAR2").keyColumnMaxLength(32)
@@ -1340,9 +1398,20 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       for (String sqlType : sqlTypeStrings) {
         OracleRDBMSMetadataBuilder mBuilder = client.createMetadataBuilder();
         if(assignmentMethod.equalsIgnoreCase("SEQUENCE"))
+        {
           mBuilder.keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("KEY_SEQ");
-        else
+        } else
+        {
+          if (isJDCSMode())
+          {
+            if (!(assignmentMethod.equalsIgnoreCase("UUID") && sqlType.equalsIgnoreCase("VARCHAR2")))
+            {
+              return;
+            }
+          }
+            
           mBuilder.keyColumnAssignmentMethod(assignmentMethod);
+        }
         
         OracleDocument mDoc = mBuilder.build();
         OracleCollection col = dbAdmin.createCollection("testKeyMetadata2-" + counter, mDoc);
@@ -1367,12 +1436,26 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleCursor cursor = col.find().key(key).getCursor();
     doc = cursor.next();
     assertEquals(key, doc.getKey());
-    assertEquals("{ \"data\" : 10 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    JsonString sqlTypeJsonStr = (JsonString) getValue(col.admin().getMetadata(), path("contentColumn", "sqlType"));
+    
+    if (isJDCSMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
+    {
+      assertEquals("{\"data\":10}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : 10 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     cursor.close();
     
     OracleDocument filterDoc = db.createDocumentFromString(null, "{ \"$id\" : [\"" + key + "\"] }", null);
     doc = col.find().filter(filterDoc).getOne();
-    assertEquals("{ \"data\" : 10 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
+    {
+      assertEquals("{\"data\":10}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"data\" : 10 }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     
     String fStr = "{ \"$query\" : {\"data\" : {\"$gt\" : 15 }}, \"$orderby\" : {\"data\" : 1} }";
     filterDoc = db.createDocumentFromString(fStr);
@@ -1381,7 +1464,6 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testSecureFileMetadata() throws Exception {
-
     // ### Oracle Database does not support NVARCHAR2 or NCLOB storage for JSON
     //final String[] sqlTypes = { "BLOB", "CLOB", "NCLOB"};
     final String[] sqlTypes = { "BLOB", "CLOB"};
@@ -1390,31 +1472,43 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     final String[] encryptions = {"3DES168", "AES128", "AES192", "AES256"};
     int counter = 0;
     
-    // cross tests for LOB types
-    for (String sqlType : sqlTypes) {
-      for (String compression : compressions) {
-        for (boolean caching : cachings) {
-          for (String encryption : encryptions) {
+    if (isJDCSMode())
+    {
+      counter++;
+      OracleCollection col = null;
 
-            OracleDocument mDoc = client.createMetadataBuilder()
-                .contentColumnType(sqlType).contentColumnCompress(compression)
-                .contentColumnCache(caching).contentColumnEncrypt(encryption)
-                .build();
-            counter++;
-            OracleCollection col = null;
+      col = dbAdmin.createCollection("testSecureFileMetadata" + counter, null);
+      testBasicOperations(col);
+    } else {
+      // cross tests for LOB types
+      for (String sqlType : sqlTypes) {
+        for (String compression : compressions) {
+          for (boolean caching : cachings) {
+            for (String encryption : encryptions) {
 
-            try {
-              col = dbAdmin.createCollection("testSecureFileMetadata" + counter, mDoc);
-              testBasicOperations(col);
-            } catch (Exception ex) {
-              throw ex;
-            } // end for try catch
-            
+              OracleDocument mDoc = client.createMetadataBuilder()
+                  .contentColumnType(sqlType).contentColumnCompress(compression)
+                  .contentColumnCache(caching).contentColumnEncrypt(encryption)
+                  .build();
+              counter++;
+              OracleCollection col = null;
+
+              try {
+                col = dbAdmin.createCollection("testSecureFileMetadata" + counter, mDoc);
+                testBasicOperations(col);
+              } catch (Exception ex) {
+                throw ex;
+              } // end for try catch
+              
+            }
           }
         }
       }
     } // end for "for lobTypes" loop
  
+    if (isJDCSMode())
+        return;
+
     // ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
     //final String[] nonLobTypes = { "VARCHAR2", "NVARCHAR2", "RAW"};
     final String[] nonLobTypes = { "VARCHAR2" };
@@ -1494,7 +1588,16 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       key = doc.getKey();
     }
     doc = col.findOne(key);
-    assertEquals("{ \"key\": \"val1\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    
+    JsonString sqlTypeJsonStr = (JsonString) getValue(col.admin().getMetadata(), path("contentColumn", "sqlType"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"key\":\"val1\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"key\": \"val1\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
+    
     if(version)
       assertNotNull(doc.getVersion());
     if(createdOn) {
@@ -1514,7 +1617,14 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       key = doc.getKey();
     }
     doc = col.find().key(key).getOne();
-    assertEquals("{ \"key\": \"val2\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"key\":\"val2\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"key\": \"val2\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
+    
     if(version)
       assertNotNull(doc.getVersion());
    
@@ -1533,7 +1643,13 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     doc = db.createDocumentFromString("{ \"key\": \"val3\" }");
     assertTrue(col.find().key(key).replaceOne(doc));
     doc = col.findOne(key);
-    assertEquals("{ \"key\": \"val3\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"key\":\"val3\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"key\": \"val3\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     if(version)
       assertNotNull(doc.getVersion());
     
@@ -1553,7 +1669,13 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleCursor cursor = col.find().key(key).getCursor();
     assertTrue(cursor.hasNext());
     doc = cursor.next();
-    assertEquals("{ \"key\": \"val4\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isJDCSMode())
+    {
+      assertEquals("{\"key\":\"val4\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    } else
+    {
+      assertEquals("{ \"key\": \"val4\" }", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
     if(version)
       assertNotNull(doc.getVersion());
     if(createdOn) {
@@ -1565,7 +1687,12 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   
   // Test method for the collection without any optional columns
   public void testMiniCol() throws Exception {
-    
+    OracleCollection colDefault = dbAdmin.createCollection("testMiniColDefault", null);
+    basicTestforMiniCol(colDefault, false, false, false, false);
+
+    if (isJDCSMode())
+        return;
+
     // Test with key/content and client-assigned key collection
     OracleDocument mDoc = client.createMetadataBuilder()
         .removeOptionalColumns()
@@ -1653,7 +1780,15 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   public void testMetadataCheck() throws Exception {
     OracleDocument descDoc = null;
     JsonString jStr = null;
- 
+
+    OracleCollection colDefault = dbAdmin.createCollection("testMetadataCheckDefault", null);
+    assertEquals("testMetadataCheckDefault", colDefault.admin().getName());
+    descDoc = colDefault.admin().getMetadata();
+    jStr = (JsonString) getValue(descDoc, path("schemaName"));
+    assertEquals(schemaName.toUpperCase(), jStr.getString());
+    
+    if (isJDCSMode())
+        return;
 
     // Test with missing schemaName
     String mData1 =
@@ -1763,7 +1898,12 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid keyColumn sqlType is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownSqlType\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownSqlType\".", e.getMessage());
+      else
+      {
+        assertTrue(e.getCause().getMessage().contains("Key column type 'UnknownSqlType' is not valid."));
+      }
     }
 
     // Test with invalid keyColumn maxLength
@@ -1775,7 +1915,14 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleDocument mDoc10 = db.createDocumentFromString(mData10);
     try {
       OracleCollection col10 = dbAdmin.createCollection("testMetadataCheck10", mDoc10);
-      fail("No exception when invalid keyColumn maxLength is presented");
+      // If above 19, we're relying on RDBMS defaulting, and it's more lax. This and
+      // similar cases, where the value is invalid, are not errors. Instead, invalid
+      // field value is treated as NULL (because RDBMS defaulting is relying on json_table
+      // with null on error), and then the default for that value is set in the metadata.
+      // ### Should we do more to maintain the old behavior at SODA Java level?
+      // Or make enforcement stricter on RDBMS side?
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        fail("No exception when invalid keyColumn maxLength is presented");
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals("Invalid value for \"maxLength\" in the collection metadata.", e.getMessage());
@@ -1793,7 +1940,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid keyColumn assignmentMethod is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownAssignmentMethod\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownAssignmentMethod\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Key assignment method 'UnknownAssignmentMethod' is not valid."));
     }
 
     // Test with invalid contentColumn sqlType
@@ -1808,7 +1958,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid contentColumn sqlType is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownSqlType\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownSqlType\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Content column type 'UnknownSqlType' is not valid."));
     }
 
     // Test with invalid contentColumn compress
@@ -1823,7 +1976,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid contentColumn compress is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownCompression\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownCompression\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Content column compress setting 'UnknownCompression' is not valid."));
     }
  
     // Test with invalid contentColumn cache
@@ -1838,7 +1994,11 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid contentColumn cache is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid value for \"cache\" in the collection metadata.", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid value for \"cache\" in the collection metadata.", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Content column LOB cache setting '100' is not valid (must be 'true' or 'false')."));
+
     }
 
     // Test with invalid contentColumn encrypt
@@ -1853,7 +2013,11 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid contentColumn encrypt is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownEncryption\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownEncryption\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Content column LOB encrypt setting 'UnknownEncryption' is not valid."));
+ 
     }
 
     // Test with invalid contentColumn validation
@@ -1868,7 +2032,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid contentColumn validation is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownValidation\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownValidation\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Content column validation mode 'UnknownValidation' is not valid."));
     }
 
     // Test with invalid versionColumn method
@@ -1883,7 +2050,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid versionColumn method is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid argument value \"UnknownVersionMethod\".", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid argument value \"UnknownVersionMethod\".", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Versioning method 'UnknownVersionMethod' is not valid."));
     }
 
     // Test with invalid readOnly value
@@ -1898,7 +2068,10 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       fail("No exception when invalid readOnly value is presented");
     } catch (OracleException e) {
       // Expect an OracleException
-      assertEquals("Invalid value for \"readOnly\" in the collection metadata.", e.getMessage());
+      if (SODAUtils.sqlSyntaxBelow_19(sqlSyntaxLevel))
+        assertEquals("Invalid value for \"readOnly\" in the collection metadata.", e.getMessage());
+      else
+        assertTrue(e.getCause().getMessage().contains("Read-only setting is not valid (must be 'true' or 'false')."));
     }
 
   }
@@ -1910,6 +2083,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
 
     OracleCollection col1 = dbAdmin.createCollection("col1");
     OracleCollection col2 = dbAdmin.createCollection("col2");
+    
     Connection conn1 = dbAdmin.getConnection();
     conn1.setAutoCommit(false);
     col1.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));

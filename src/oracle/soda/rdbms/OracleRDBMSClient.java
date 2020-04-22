@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda.rdbms;
@@ -19,10 +19,15 @@ import oracle.soda.OracleException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import oracle.jdbc.OracleConnection;
 
 import java.util.Properties;
+import java.util.logging.Logger;
+
+import oracle.json.logging.OracleLog;
 
 /**
  *  Oracle RDBMS implementation of {@link oracle.soda.OracleClient}.
@@ -47,6 +52,12 @@ public class OracleRDBMSClient implements OracleClient
 
     private final MetricsCollector mcollector;
 
+    private static final String SELECT_USER_NAME =
+      "select SYS_CONTEXT('USERENV','CURRENT_USER') from SYS.DUAL";
+
+    private static final Logger log =
+      Logger.getLogger(OracleRDBMSClient.class.getName());
+
     public OracleRDBMSClient() {
         mcollector = new MetricsCollector();
     }
@@ -70,7 +81,6 @@ public class OracleRDBMSClient implements OracleClient
         this();
 
         if (props != null) {
-
             String sharedMetadataCacheProp = props.getProperty("oracle.soda.sharedMetadataCache");
             String localMetadataCacheProp = props.getProperty("oracle.soda.localMetadataCache");
 
@@ -139,38 +149,63 @@ public class OracleRDBMSClient implements OracleClient
         throws OracleException {
         OracleConnection oconn = null;
 
-        String name;
+        String name = null;
 
-        try {
-            if (connection instanceof OracleConnection)
-                oconn = (OracleConnection)connection;
-            else if (connection.isWrapperFor(oracle.jdbc.OracleConnection.class))
-                oconn = (OracleConnection)connection.unwrap(oracle.jdbc.OracleConnection.class);
-            else
-                throw SODAUtils.makeException(SODAMessage.EX_NOT_ORACLE_CONNECTION);
-
-            // To create the cache key, get the database URL,
-            // and append the schema name to it. It's not sufficient
-            // to just use the schema name, because connections
-            // could be coming from multiple databases with
-            // the same schema.
-            DatabaseMetaData dbmd = oconn.getMetaData();
-            name = dbmd.getURL();
-            name += "/";
-            name += oconn.getCurrentSchema();
-
+        try
+        {
+          if (connection instanceof OracleConnection)
+            oconn = (OracleConnection)connection;
+          else if (connection.isWrapperFor(oracle.jdbc.OracleConnection.class))
+            oconn = (OracleConnection)connection.unwrap(oracle.jdbc.OracleConnection.class);
+          else
+            throw SODAUtils.makeException(SODAMessage.EX_NOT_ORACLE_CONNECTION);
         }
-        catch (SQLException e) {
-            throw new OracleException(e);
-        }
-
-        if (name == null && cacheOfDescriptorCaches != null) {
-            throw SODAUtils.makeException(SODAMessage.EX_SCHEMA_NAME_IS_NULL);
+        catch (SQLException e)
+        {
+          throw new OracleException(e);
         }
 
         DescriptorCache cache = null;
 
         if (cacheOfDescriptorCaches != null) {
+
+            // To create the cache key, get the database URL,
+            // and append the current username to it. It's not sufficient
+            // to just use the current username by itself, because connections
+            // could be coming from multiple databases with
+            // the same username.
+            PreparedStatement stmt = null;
+            ResultSet rows = null;
+            try {
+              DatabaseMetaData dbmd = oconn.getMetaData();
+              name = dbmd.getURL();
+              name += "/";
+
+              stmt = oconn.prepareStatement(SELECT_USER_NAME);
+              rows = stmt.executeQuery();
+              stmt.setFetchSize(1);
+              if (rows.next())
+                name += rows.getString(1);
+              else 
+                name = null;
+            }
+            catch (SQLException e)
+            {
+              throw new OracleException(e);
+            }
+            finally
+            {
+              for (String message : SODAUtils.closeCursor(stmt, rows))
+              {
+                if (OracleLog.isLoggingEnabled())
+                  log.severe(message);
+              }
+            }
+
+            if (name == null) {
+              throw SODAUtils.makeException(SODAMessage.EX_UNABLE_TO_FETCH_USER_NAME);
+            }
+
             cache = cacheOfDescriptorCaches.putIfAbsentAndGet(name);
         }
 

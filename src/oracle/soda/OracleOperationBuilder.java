@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
 All rights reserved.*/
 
 package oracle.soda;
@@ -71,7 +71,7 @@ public interface OracleOperationBuilder
    * @throws OracleException       if <code>keys</code> is <code>null</code>,
    *                               or doesn't return any elements.
    */
-  public OracleOperationBuilder keys(Set<String> keys)
+  OracleOperationBuilder keys(Set<String> keys)
     throws OracleException;
 
   /**
@@ -97,7 +97,7 @@ public interface OracleOperationBuilder
    * @return                       <code>OracleOperationBuilder</code>
    * @throws OracleException       if the key is <code>null</code>
    */
-  public OracleOperationBuilder key(String key)
+  OracleOperationBuilder key(String key)
     throws OracleException;
 
   /**
@@ -155,7 +155,7 @@ public interface OracleOperationBuilder
    *
    * @see <a href="https://docs.oracle.com/database/121/SQLRF/conditions007.htm#SQLRF52141">LIKE Condition</a>
    */
-  public OracleOperationBuilder keyLike(String pattern, String escape)
+  OracleOperationBuilder keyLike(String pattern, String escape)
     throws OracleException;
 
   /**
@@ -172,7 +172,26 @@ public interface OracleOperationBuilder
    * @throws OracleException       if the <code>filterSpecification</code>
    *                               is <code>null</code> or invalid.
    */
-  public OracleOperationBuilder filter(OracleDocument filterSpecification)
+  OracleOperationBuilder filter(OracleDocument filterSpecification)
+    throws OracleException;
+  
+  
+  /**
+   * Finds documents matching a filter specification
+   * (a query-by-example expressed in JSON).  Calling this method is equivalent
+   * to the following:
+   * <pre>
+   * <code>
+   *   filter(db.createDocumentFromString(filterSpecification));
+   * </code>
+   * </pre>
+   * @param filterSpecification    the filter specification. Cannot
+   *                               be <code>null</code>
+   * @return                       <code>OracleOperationBuilder</code>
+   * @throws OracleException       if the <code>filterSpecification</code>
+   *                               is <code>null</code> or invalid.
+   */
+  OracleOperationBuilder filter(String filterSpecification)
     throws OracleException;
 
   /**
@@ -198,7 +217,7 @@ public interface OracleOperationBuilder
    * @return                        <code>OracleOperationBuilder</code>
    * @throws OracleException        if the provided version is <code>null</code>
    */
-  public OracleOperationBuilder version(String version)
+  OracleOperationBuilder version(String version)
     throws OracleException;
 
   /**
@@ -212,7 +231,7 @@ public interface OracleOperationBuilder
    * @throws OracleException        if there's an error creating
    *                                the cursor
    */
-  public OracleCursor getCursor() throws OracleException;
+  OracleCursor getCursor() throws OracleException;
 
   /**
    * Replaces a document.
@@ -245,7 +264,7 @@ public interface OracleOperationBuilder
    *                                 or (2) there's an error replacing the input
    *                                 <code>document</code>. 
    */
-  public OracleDocument replaceOneAndGet(OracleDocument document)
+  OracleDocument replaceOneAndGet(OracleDocument document)
     throws OracleException;
 
   /**
@@ -275,7 +294,7 @@ public interface OracleOperationBuilder
    *                                 or (2) there's an error replacing the input
    *                                 <code>document</code>. 
    */
-  public boolean replaceOne(OracleDocument document)
+  boolean replaceOne(OracleDocument document)
     throws OracleException;
 
   /**
@@ -300,7 +319,7 @@ public interface OracleOperationBuilder
    * @return                        count of the number of documents
    *                                removed.
    */
-  public int remove()
+  int remove()
     throws OracleException;
 
   /**
@@ -309,7 +328,10 @@ public interface OracleOperationBuilder
    * This is a non-terminal method, and, as such, it does
    * not cause operation execution.
    * <p>
-   * This interface assumes the results are ordered (e.g. by key).
+   * This method requires that the results are ordered.  If an order is not 
+   * explicitly specified using the {@link #filter(OracleDocument) filter()} method,
+   * the documents will be ordered by the document key. See also 
+   * {@link #startKey(String, Boolean, Boolean) startKey()}
    * <p>
    * This method should only be invoked as part of building a
    * read operation. If it's invoked as part of building a write operation
@@ -323,7 +345,7 @@ public interface OracleOperationBuilder
    *
    * @throws OracleException        if the <code>limit</code> is not positive.
    */
-  public OracleOperationBuilder limit(int limit)
+  OracleOperationBuilder limit(int limit)
     throws OracleException;
 
   /**
@@ -349,7 +371,7 @@ public interface OracleOperationBuilder
    *
    * @throws OracleException        if the <code>skip</code> is negative
    */
-  public OracleOperationBuilder skip(long skip)
+  OracleOperationBuilder skip(long skip)
     throws OracleException;
 
   /**
@@ -376,7 +398,7 @@ public interface OracleOperationBuilder
    *
    * @return                       this <code>OracleOperationBuilder</code>
    */
-  public OracleOperationBuilder headerOnly();
+  OracleOperationBuilder headerOnly();
 
   /**
    * Counts the number of documents.
@@ -387,7 +409,7 @@ public interface OracleOperationBuilder
    * @return                        document count
    * @throws OracleException        if there is an error getting the count
    */
-  public long count()
+  long count()
     throws OracleException;
 
   /**
@@ -413,7 +435,167 @@ public interface OracleOperationBuilder
    * @throws OracleException        if there is an error retrieving the
    *                                <code>OracleDocument</code>
    */
-  public OracleDocument getOne()
+  OracleDocument getOne()
     throws OracleException;
 
+  /**
+   * Indicates that the operation should lock the documents.
+   * <p>
+   * This is a non-terminal method, and, as such, it does
+   * not cause operation execution.
+   * <p>
+   * This method should only be invoked as part of building a
+   * read operation. If it's invoked as part of building a write operation
+   * (e.g. with replace, remove, etc.), it will have no effect.
+   * It is an error to specify this method in conjunction with
+   * a {@link #count()} terminal, {@link #skip(long)} non-terminal, and
+   * {@link #limit(int)} non-terminal.
+   * <p>
+   * In order to use this method, ensure that the JDBC connection associated
+   * with this operation builder object is not in auto-commit mode. 
+   * Otherwise, the acquired lock will be immediately unlocked by the automatic
+   * commit performed after the read operation. In other words, locking will 
+   * have no effect if the connection is in auto-commit mode.
+   * <p>
+   * 
+   * @return                        <code>OracleOperationBuilder</code>
+   *
+   * @throws OracleException        if {@link #skip(long)} or {@link #limit(int)} are
+   *                                already specified on this {@link OracleOperationBuilder} object
+   */
+  OracleOperationBuilder lock() throws OracleException;
+
+  /**
+   * Adds execution hints to the operation
+   * @param hints                   contains one or more hints, cannot be <code>null</code>
+   * @return                        <code>OracleOperationBuilder</code>
+   * @throws OracleException        If <code>hint</code> is null or invalid.
+   */
+  OracleOperationBuilder hint(String hints) throws OracleException;
+  
+  /**
+   * Merges the specified document into an existing one.  The two documents are 
+   * merged using the algorithm described in
+   * <a href="https://tools.ietf.org/html/rfc7396">RFC7396 - JSON Merge Patch</a>.
+   * For example, merging the document <code>{"count":42, "color":"red"}</code> into an 
+   * existing document <code>{"name":"apple", "count":12}</code> produces a new
+   * merged document <code>{"name":"apple", "count":42, "color":"red"}</code>. 
+   * 
+   * <p>
+   * This method is used in conjunction with <code>key(...)</code>,
+   * and (optionally) <code>version(...)</code> methods.  
+   * <p>
+   * For example:
+   * <pre>
+   * // Replace a document with the key "k1" and version "v1"
+   * // with the input document 'd1'.
+   * col.find().key("k1").version("v1").mergeOne(d1)
+   * </pre>
+   * <p>
+   * Note that the key and version information (if any) in the input
+   * document 'd1' is ignored.
+   * <p>
+   * This is a terminal method, and, as such, it causes operation
+   * execution.
+   *
+   * @param document                 input document. Cannot be <code>null</code>
+   * @return                         <code>true</code> if the document was
+   *                                 replaced successfully, <code>false</code>
+   *                                 otherwise
+   * @throws OracleException         if (1) the input document is <code>null</code>,
+   *                                 or (2) there's an error replacing the existing
+   *                                 <code>document</code>. 
+   * @see <a href="https://tools.ietf.org/html/rfc7396">RFC7396 - JSON Merge Patch</a>
+   */
+  boolean mergeOne(OracleDocument document)
+    throws OracleException;
+  
+  /**
+   * Merges a document.
+   * <p>
+   * This method is the same as {@link #mergeOne(OracleDocument)} but additionally
+   * returns the modified document.  The {@link #mergeOne(OracleDocument)} method may 
+   * avoid the additional cost of transferring the document back to the caller. 
+   * <p>
+   * This is a terminal method, and, as such, it causes operation
+   * execution. 
+   * <p>
+   *
+   * @param document                 input document. Cannot be <code>null</code>
+   * @return                         result document which contains the
+   *                                 key and (if present) the created-on
+   *                                 timestamp, last-modified timestamp,
+   *                                 and version only. The input document's
+   *                                 content is not returned as part of the
+   *                                 result document.
+   * @throws OracleException         if (1) the input document is <code>null</code>,
+   *                                 or (2) there's an error replacing the input
+   *                                 <code>document</code>. 
+   */
+  OracleDocument mergeOneAndGet(OracleDocument document)
+    throws OracleException;
+
+  
+  /**
+   * Specifies that only keys that come after (or alternatively before) the
+   * specified key. The total ordering over key values in a collection is
+   * guaranteed stable and consistent. The ordering may depend on the underlying
+   * key storage type and default the collation settings of the database.
+   * 
+   * <p>
+   * This method is expected to be used with the {@link #limit(int)} method to do
+   * pagination over a, possibly {@link #filter(OracleDocument) filtered}, set of
+   * documents.  Calling {@link #limit(int)} by itself will ensure that the 
+   * documents are returned in key order.  For example:
+   * </p>
+   * 
+   * <pre>
+   * <code>
+   * 
+   *   // find the first 10 documents where the "count" property is greater than 20
+   *   String filter = "{\"count\": {\"$gt\" : 20}}";
+   *   OracleCursor cursor = col.find()
+   *                            .filter()
+   *                            .limit(10)
+   *                            .getCursor();
+   * 
+   *   String key = null;
+   *   while (cursor.hasNext()) {
+   *      OracleDocument doc = cursor.next();
+   *      key = doc.getKey();
+   *      ...
+   *   }
+   *   ...
+   *   
+   *   // use startKey() to get the next 10 documents with count greater than 20
+   *   cursor = col.find()
+   *               .filter(filter)
+   *               .startKey(key, true, false)
+   *               .limit(10)
+   *               .getCursor();
+   * </code>
+   * </pre>
+   * 
+   * <p>
+   * This is a non-terminal method, and, as such, it does not cause operation
+   * execution. This method should only be invoked as part of building a read
+   * operation. If it's invoked as part of building a write operation (e.g. with
+   * replace, remove, etc.), it will have no effect.
+   * </p>
+   *
+   * @param startKey  the starting key.
+   * @param ascending when true, returns documents in ascending order following
+   *                  the startKey. When false, returns documents preceding the
+   *                  startKey in descending order.
+   * @param inclusive when true, the document with the startKey value, if it
+   *                  exists, is included in the result.
+   * 
+   * @return this <code>OracleOperationBuilder</code>
+   *
+   * @throws OracleException if startKey is null
+   */
+  OracleOperationBuilder startKey(String startKey, Boolean ascending, Boolean inclusive)
+    throws OracleException;
 }
+
+  
