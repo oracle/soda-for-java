@@ -214,7 +214,7 @@ This table schema corresponds to the default collection configuration, but SODA 
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
-    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.0.4.jar:." testSODA drop
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.1.4.jar:." testSODA drop
 
 The output will now be different from before, since the same three documents will be inserted again. But, at the end, the collection will be dropped, and the underlying table removed.
 
