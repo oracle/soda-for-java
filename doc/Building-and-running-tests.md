@@ -13,7 +13,7 @@ The test framework is located in the /test directory under the root SODA directo
 in [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA_HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
 
 * JDBC jar
-* javax.json-1.0.4.jar (JSR353 jar)
+* javax.json-1.1.4.jar (JSR353 jar)
 * junit-3.8.1.jar (JUnit jar)
 * orajsoda.jar (SODA Java jar)
       
