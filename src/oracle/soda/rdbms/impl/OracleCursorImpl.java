@@ -470,11 +470,8 @@ public class OracleCursorImpl implements OracleCursor
 
         if (dbImpl.isOracleJsonAvailable())
         {
-          System.out.println ("Available!");
           result.setJsonFactory(dbImpl.getJsonFactoryProvider().getJsonFactory());
         }
-        else
-          System.out.println ("Not available!");
                                 
         // ### Allow setting thru constructor instead?
         if (desc.hasBinaryFormat())
