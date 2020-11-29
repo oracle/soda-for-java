@@ -158,9 +158,9 @@ Copy and paste this code into a file called testSODA.java. Then modify the "url"
 
 To compile and run SODA Java applications, you need the following jars:
 
-*   A JDBC 8 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html).
+*   A JDBC 6 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html). If you're still on JDK7 or even JDK6, you can use ojdbc7.jar or ojdbc6.jar respectively. These ship with Oracle Database 12.1.0.2, and are downloadable from [this page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html). 
 
-*    javax.json-1.1.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.1.4/javax.json-1.1.4.jar).
+*    javax.json-1.0.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar).
 
 *    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/soda-for-java/releases).
 
@@ -214,7 +214,7 @@ This table schema corresponds to the default collection configuration, but SODA 
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
-    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.1.4.jar:." testSODA drop
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.0.4.jar:." testSODA drop
 
 The output will now be different from before, since the same three documents will be inserted again. But, at the end, the collection will be dropped, and the underlying table removed.
 

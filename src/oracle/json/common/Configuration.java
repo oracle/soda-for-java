@@ -1,7 +1,7 @@
-/* $Header: xdk/src/java/json/src/oracle/json/common/Configuration.java /main/17 2016/05/07 08:27:02 dmcmahon Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/json/common/Configuration.java /st_xdk_soda1/1 2020/09/08 00:25:02 morgiyan Exp $ */
 
-/* Copyright (c) 2014, 2016, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -29,7 +29,7 @@ All rights reserved.*/
  */
 
 /**
- *  @version $Header: xdk/src/java/json/src/oracle/json/common/Configuration.java /main/17 2016/05/07 08:27:02 dmcmahon Exp $
+ *  @version $Header: xdk/src/java/json/src/oracle/json/common/Configuration.java /st_xdk_soda1/1 2020/09/08 00:25:02 morgiyan Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -50,6 +50,7 @@ public class Configuration
   public static final String PARAM_DROP_DISABLED = "soda.disableDropCollection";
   public static final String PARAM_MAX_LIMIT = "soda.maxLimit";
   public static final String PARAM_DEFAULT_LIMIT = "soda.defaultLimit";
+  public static final String PARAM_PRINT_DEBUG_TO_SCREEN = "debug.printDebugToScreen";
 
   // ### Should these be in a central location?
   // ### Note: this is currently replicated in util/ByteArray.java
@@ -102,6 +103,7 @@ public class Configuration
   private boolean debugMode = false;
   private boolean cacheEnabled = false;
   private boolean dropDisabled = false;
+  private boolean printDebugToScreen = false;
 
   // ORDS service linkage
 
@@ -238,6 +240,7 @@ public class Configuration
     setLimitMaxParam(p_params.getProperty(PARAM_MAX_LIMIT));
     setCacheEnabledParam(p_params.getProperty(PARAM_CACHING_ENABLED));
     setDropDisabledParam(p_params.getProperty(PARAM_DROP_DISABLED));
+    setPrintDebugToScreenParam(p_params.getProperty(PARAM_PRINT_DEBUG_TO_SCREEN));
   }
 
   /** Warning: Called from ORDS plugin */
@@ -276,6 +279,15 @@ public class Configuration
      setDropDisabled(Boolean.valueOf(value));
   }
 
+  /** Warning: Called from ORDS plugin */
+  public void setPrintDebugToScreenParam(String value)
+  {
+     if (value == null)
+         return;
+
+     setPrintDebugToScreen(Boolean.valueOf(value));
+  }
+
   public void setCacheEnabled(boolean value)
   {
     cacheEnabled = value;
@@ -284,6 +296,11 @@ public class Configuration
   public void setDropDisabled(boolean value)
   {
     dropDisabled = value;
+  }
+
+  public void setPrintDebugToScreen(boolean value)
+  {
+    printDebugToScreen = value;
   }
 
   public void setLimitMax(int max) {
@@ -374,6 +391,11 @@ public class Configuration
   public boolean isDropDisabled()
   {
     return (dropDisabled);
+  }
+
+  public boolean isPrintDebugToScreen()
+  {
+    return (printDebugToScreen);
   }
 
   public String getContainerType()

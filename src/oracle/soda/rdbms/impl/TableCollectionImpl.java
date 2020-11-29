@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -912,7 +912,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + sqltext);
       throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
@@ -1070,9 +1070,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
     catch (SQLException e)
     {
-      OracleBatchException bE = SODAUtils.makeBatchExceptionWithSQLText(e,
-                                                                        rowCount,
-                                                                        null);
+      OracleBatchException bE = SODAUtils.makeBatchException(e, rowCount);
 
       bE.setNextException(completeTxnAndRestoreAutoCommit(conn,
                                                           manageTransaction,
@@ -1371,7 +1369,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                                           false));
 
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + sqltext);
       throw bE;
     }
     catch (RuntimeException e)
@@ -1573,7 +1571,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
       }
       else
       {
-        data = document.getContentAsByteArray();
+        if (((OracleDocumentImpl) document).isBinary() && options.hasJsonType())
+        {
+          data = ((OracleDocumentImpl) document).getBinaryContentAsByteArray();
+        }
+        else
+        {
+          data = document.getContentAsByteArray();
+        }
       }
 
       String sdata = null;
@@ -1602,6 +1607,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         case CollectionDescriptor.RAW_CONTENT:
           stmt.setBytes(++num, data);
+          break;
+
+        case CollectionDescriptor.JSON_CONTENT:
+          db.setBytesForJson(stmt, ++num, data);
           break;
 
         case CollectionDescriptor.BLOB_CONTENT:
@@ -1669,6 +1678,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
         case CollectionDescriptor.BLOB_CONTENT:
           setPayloadBlobWorkaround(stmt, ++num, data);
+          break;
+
+        case CollectionDescriptor.JSON_CONTENT:
+          db.setBytesForJson(stmt, ++num, data);
           break;
 
         default:
@@ -1781,7 +1794,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                                           manageTransaction,
                                                           false));
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + sqltext);
       throw(oE);
     }
     catch (RuntimeException e)
@@ -2397,6 +2410,10 @@ public class TableCollectionImpl extends OracleCollectionImpl
       setPayloadBlob(stmt, parameterIndex, dataBytes);
       break;
 
+    case CollectionDescriptor.JSON_CONTENT:
+      db.setBytesForJson(stmt, parameterIndex, dataBytes);
+      break;
+
     default:
       throw new IllegalStateException();
     }
@@ -2418,7 +2435,14 @@ public class TableCollectionImpl extends OracleCollectionImpl
     }
     else 
     {
-      return document.getContentAsByteArray();
+      if (((OracleDocumentImpl) document).isBinary() && options.hasJsonType())
+      {
+        return ((OracleDocumentImpl) document).getBinaryContentAsByteArray();
+      }
+      else
+      {
+        return document.getContentAsByteArray();
+      }
     }
   }
 }

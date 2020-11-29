@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2019, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 package oracle.soda.rdbms;
 
@@ -28,6 +28,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import oracle.json.logging.OracleLog;
+import java.lang.reflect.Method;
 
 /**
  *  Oracle RDBMS implementation of {@link oracle.soda.OracleClient}.
@@ -57,6 +58,10 @@ public class OracleRDBMSClient implements OracleClient
 
     private static final Logger log =
       Logger.getLogger(OracleRDBMSClient.class.getName());
+
+    private static final Method GET_USER_NAME_METHOD;
+  
+    public static final Class<? extends Connection> ORACLE_CONNECTION;
 
     public OracleRDBMSClient() {
         mcollector = new MetricsCollector();
@@ -180,21 +185,26 @@ public class OracleRDBMSClient implements OracleClient
               DatabaseMetaData dbmd = oconn.getMetaData();
               name = dbmd.getURL();
               name += "/";
-
-              stmt = oconn.prepareStatement(SELECT_USER_NAME);
-              rows = stmt.executeQuery();
-              stmt.setFetchSize(1);
-              if (rows.next())
-                name += rows.getString(1);
-              else 
-                name = null;
+              // If this connection has a getUserName method, attempt it
+              if (GET_USER_NAME_METHOD != null)
+                name += (String)GET_USER_NAME_METHOD.invoke(oconn);
+              else
+              {
+                stmt = oconn.prepareStatement(SELECT_USER_NAME);
+                rows = stmt.executeQuery();
+                stmt.setFetchSize(1);
+                if (rows.next())
+                  name += rows.getString(1);
+                else 
+                  name = null;
+              }
             }
-            catch (SQLException e)
+            catch (Exception e)
             {
               throw new OracleException(e);
             }
             finally
-            {
+            { 
               for (String message : SODAUtils.closeCursor(stmt, rows))
               {
                 if (OracleLog.isLoggingEnabled())
@@ -229,5 +239,30 @@ public class OracleRDBMSClient implements OracleClient
      */
     public OracleRDBMSMetadataBuilder createMetadataBuilder() {
         return CollectionDescriptor.createStandardBuilder();
+    }
+     
+    static {
+        Method m;
+        Class<? extends Connection> connectionClass = null;
+
+        try {
+            connectionClass = Class.forName("oracle.jdbc.OracleConnection").asSubclass(Connection.class);
+        }
+        catch (ClassNotFoundException e) {
+            connectionClass = null;
+        }
+
+        ORACLE_CONNECTION = connectionClass;
+        // Get the getUserName method if available
+        try {
+            if (connectionClass == null)
+              m = null;
+            else
+              m = connectionClass.getMethod("getUserName");
+        }
+        catch (NoSuchMethodException e) {
+            m = null;
+        }
+        GET_USER_NAME_METHOD = m;           
     }
 }

@@ -76,7 +76,6 @@ public class SodaTestCase extends DatabaseTestCase {
       }
       catch(Exception ex)
       {
-        System.out.println(" Failed to drop the collection: " + colName);
         ex.printStackTrace();
       }
     }

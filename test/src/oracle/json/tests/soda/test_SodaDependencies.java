@@ -39,7 +39,7 @@ public final class test_SodaDependencies extends DatabaseTestCase {
         OracleDatabaseAdmin dba = database.admin();
         OracleDocument metaDoc = null;
 
-        if (isJDCSMode()) {
+        if (isJDCSOrATPMode()) {
           // ### replace with new builder once it becomes available
           metaDoc = database.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
         }

@@ -158,7 +158,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
 
   private void testFilter(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     // Blocked by bug 28996376 since 20181130 (uncomment this following line once the bug is fixed).
     // if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
@@ -167,7 +167,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").contentColumnType(contentColumnType).build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testFilter" + (withIndex?"Idx":""), null);
     } else
@@ -177,7 +177,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     String[] key = new String[10];
     OracleDocument doc;
     for (int i = 1; i <= 10; i++) {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
         key[i-1] = doc.getKey();
@@ -204,8 +204,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     //### marked in 20190102, some of these tests needs to be revisited in non-JDCS mode as
     //### well, because order of IDs returned by queries is not guaranteed.
-    //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSMode() check after the tests are modified.
-    if (!isJDCSMode())
+    //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSOrATPMode() check after the tests are modified.
+    if (!isJDCSOrATPMode())
     {
         builder = col.find().filter(filterDoc);
         assertEquals(3, builder.count());
@@ -293,8 +293,8 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       assertEquals("Invalid filter condition.", e.getMessage());
       //### marked in 20190102, some of these tests needs to be revisited in non-JDCS mode as
       //### well, because order of IDs returned by queries is not guaranteed.
-      //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSMode() check after the tests are modified.
-      if (!isJDCSMode()) //### will uncomment isJDCSMode() check after the above tests(#line208) are modified.
+      //### The doc sequence is going to be random in non-jdcs as well, will uncomment isJDCSOrATPMode() check after the tests are modified.
+      if (!isJDCSOrATPMode()) //### will uncomment isJDCSOrATPMode() check after the above tests(#line208) are modified.
         cursor.close();
     }
     
@@ -323,7 +323,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
  
  private void testFilter2(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+    if (isJDCSOrATPMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSOrATPMode())' once the bug is fixed.
       return;
 
     OracleDocument doc = null, mDoc = null;
@@ -335,7 +335,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testFilter2" + contentColumnType + (withIndex?"Idx":""), null);
     } else
@@ -693,7 +693,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    }
 
    OracleCollection col;
-   if (isJDCSMode())
+   if (isJDCSOrATPMode())
    {
      col = db.admin().createCollection("testFilter3" + contentColumnType + (withIndex?"Idx":""), null);
    } else
@@ -823,9 +823,9 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   private void testFilter3OrderBy(String contentColumnType, boolean withIndex) throws Exception {
 
    // Blocked by bug 28996376 
-   // Remove isJDCSMode check the bug is fixed (test should be
+   // Remove isJDCSOrATPMode check the bug is fixed (test should be
    // runnaing in JDCS mode then).
-   if (isJDCSMode())
+   if (isJDCSOrATPMode())
      return;
 
    OracleDocument mDoc = null; 
@@ -837,7 +837,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    }
 
    OracleCollection col;
-   if (isJDCSMode())
+   if (isJDCSOrATPMode())
    {
      col = db.admin().createCollection("testFilter3OrderBy" + contentColumnType + (withIndex?"Idx":""), null);
    } else
@@ -1011,7 +1011,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
      col = db.admin().createCollection("testFilterNeg" + contentColumnType, null);
     } else
@@ -1171,7 +1171,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
      col = db.admin().createCollection("testFilter4" + contentColumnType + (withIndex?"Idx":""), null);
     } else
@@ -1361,7 +1361,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
      col = db.admin().createCollection("testFilter5" + contentColumnType + (withIndex?"Idx":""), null);
     } else
@@ -1535,7 +1535,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   private void testFilter6(String contentColumnType, boolean withIndex) throws Exception {
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         if (!contentColumnType.equalsIgnoreCase("BLOB"))
             return;
@@ -1555,7 +1555,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleDocument d;
 
     String[] key = new String[6];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       d = col.insertAndGet(db.createDocumentFromString("{\"b\" : 1}"));
       key[0] = d.getKey();
@@ -1649,7 +1649,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   public void testFilter6() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
-      if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+      if (isJDCSOrATPMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSOrATPMode())' once the bug is fixed.
         return;
 
       testFilter6(columnSqlType, false);
@@ -1659,7 +1659,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   // Test $ge and $le (synonyms for $gte and $lte)
   private void testFilter7(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode()) // client assigned key is not supported in jdcs mode
+    if (isJDCSOrATPMode()) // client assigned key is not supported in jdcs mode
         return;
 
     OracleCollection col = db.admin().createCollection("testFilter7" + contentColumnType + (withIndex?"Idx":""),
@@ -1734,7 +1734,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   private void testFilter8(String contentColumnType, boolean withIndex) throws Exception {
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         if (!contentColumnType.equalsIgnoreCase("BLOB"))
             return;
@@ -1754,7 +1754,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleDocument d;
 
     String[] key = new String[6];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       d = col.insertAndGet(db.createDocumentFromString("{\"b\":\"true\"}"));
       key[0] = d.getKey();
@@ -1853,7 +1853,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     // null constent
     // Blocked by bug 28996376 since 20181130
-    if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+    if (isJDCSOrATPMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSOrATPMode())' once the bug is fixed.
       return;
 
     checkSingleResult("{\"b\":null}", key[5], col, withIndex);
@@ -1922,7 +1922,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   private void testFilter9(String contentColumnType, boolean withIndex) throws Exception {
     OracleCollection col;
     OracleDocument mDoc = null; 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       if (contentColumnType.equalsIgnoreCase("BLOB")) 
       {
@@ -2001,10 +2001,10 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
 
     // test "$orderby" (match doc3, 2, 1)
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
     {
       //blocked by bug 28996376 since 20181130, will uncomment the jdcs check after fixed.
-      if (isJDCSMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSMode())' once the bug is fixed.
+      if (isJDCSOrATPMode())// Blocked by bug 28996376 since 20181130, will remove 'if (isJDCSOrATPMode())' once the bug is fixed.
         return;
 
       filterDoc = db.createDocumentFromString(orderby);
@@ -2118,7 +2118,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
   private void testFilterWithSkipAndLimit(boolean withIndex) throws Exception {
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         col = db.admin().createCollection("testFilterSL" + (withIndex?"Idx":""), null);
     } else
@@ -2131,7 +2131,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
 
     for (int i = 0; i < 50; i++)
     {
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         d = db.createDocumentFromString(null,
                                       "{\"num\" : " + i + "}");
@@ -2165,13 +2165,13 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       if (i > 31)
           fail("Limit was 10, so the last should be the one with key equals to 31");
       r = c.next();
-      if (!isJDCSMode())
+      if (!isJDCSOrATPMode())
       {
           assertEquals(r.getKey(), String.valueOf(i)); 
       }
       i++;
     }
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals(32, i); 
     }
@@ -2457,7 +2457,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       }
     }
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         assertEquals("{\"value\":\"v3\"}", col.find().key(key3).version(version3).getOne().getContentAsString());
     } else
@@ -2467,7 +2467,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().key(key3).version(version3).remove());
     assertNull(col.find().key(key3).version(version3).getOne());
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         assertEquals("{\"value\":\"v5\"}", col.find().key(key5).version(version5).getOne().getContentAsString());
     } else
@@ -2477,7 +2477,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     assertEquals(1, col.find().key(key5).version(version5).remove());
     assertNull(col.find().key(key5).version(version5).getOne());
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         assertEquals("{\"value\":\"v1\"}", col.find().key(key1).version(version1).getOne().getContentAsString());
     } else
@@ -2498,7 +2498,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
 
    OracleCollection col;
-   if (isJDCSMode())
+   if (isJDCSOrATPMode())
    {
       col = db.admin().createCollection("testRemove", null);
    } else
@@ -2510,7 +2510,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    OracleDocument doc;
    String[] key = new String[10];
    for (int i = 1; i <= 10; i++) {
-     if (isJDCSMode()) 
+     if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
         key[i-1] = doc.getKey();
@@ -2549,7 +2549,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(7, col.find().count());
    
    // Test with startKey()
-   if (!isJDCSMode()) // the order is not in sequence in jdcs mode
+   if (!isJDCSOrATPMode()) // the order is not in sequence in jdcs mode
    {
        assertEquals(3, ((OracleOperationBuilderImpl)col.find()).startKey(key[4], true, true).remove());
        assertNull(col.findOne(key[5]));
@@ -2564,7 +2564,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertEquals(0, ((OracleOperationBuilderImpl)col.find()).timeRange(null, lastModified1, true).remove());
    assertEquals(2, ((OracleOperationBuilderImpl)col.find()).timeRange(lastModified1, lastModified4, true).remove());
    
-   if (!isJDCSMode()) // some docs haven't been deleted in jdcs mode
+   if (!isJDCSOrATPMode()) // some docs haven't been deleted in jdcs mode
    {
         assertEquals(1, col.find().count());
        // only id-10 is left
@@ -2574,10 +2574,10 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    //key().lastModified()
    assertEquals(0, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified1).remove());
    assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified10).remove());
-   if (!isJDCSMode()) // some docs haven't been deleted in jdcs mode
+   if (!isJDCSOrATPMode()) // some docs haven't been deleted in jdcs mode
        assertEquals(0, col.find().count());
    
-   if (isJDCSMode())
+   if (isJDCSOrATPMode())
    {
         OracleCollection colDefalut = dbAdmin.createCollection("testRemoveDefault", null);
         basicRemoveTest(colDefalut, false);
@@ -2613,7 +2613,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    OracleCollection col6 = dbAdmin.createCollection("testRemove6", mDoc6);
    basicRemoveTest(col6, false);
   
-   if (!isJDCSMode()) {
+   if (!isJDCSOrATPMode()) {
      // the creation of "SODATBL" table(see sodatestsetup.sql) is blocked by jdcs lockdown.
      // Test with versionMethod = "NONE"
      OracleDocument mDoc7 = client.createMetadataBuilder()
@@ -2669,7 +2669,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
       assertTrue(col.find().key(key2).version(version2).replaceOne(doc));
     
     doc = col.findOne(key2);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":\"v2\"}", doc.getContentAsString());
     } else
@@ -2701,7 +2701,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
     
     doc = col.findOne(key2);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":\"v2-2\"}", doc.getContentAsString());
     } else
@@ -2710,7 +2710,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }    
     
     // Test with document having non-JSON data
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
         if(col.admin().isHeterogeneous()) {
           // updated JSON data to non-JSON data
           doc = db.createDocumentFromString(null, "new data v4", "text/plain");
@@ -2775,7 +2775,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     }
     
     doc = col.findOne(key5);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":\"v5\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -2853,7 +2853,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
   
   public void testReplaceOne() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         OracleCollection colDefalut = dbAdmin.createCollection("testReplaceOneDefalut", null);
         testReplaceOneWithCol(colDefalut, false, false);
@@ -2904,7 +2904,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleCollection col5 = dbAdmin.createCollection("testReplaceOne5", mDoc5);
     testReplaceOneWithCol(col5, true, false);
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // "SODATBL" and "SODA_TABLE"'s creating(see sodatestsetup.sql) is blocked by jdcs lockdown.
       return;
     }
@@ -2961,7 +2961,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
   }
  
   public void testReplaceOneAndGet() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         OracleCollection colDefalut = dbAdmin.createCollection("testReplaceOneDefalut", null);
         testReplaceOneWithCol(colDefalut, false, true);
@@ -3010,7 +3010,7 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     OracleCollection col5 = dbAdmin.createCollection("testReplaceOneAndGet5", mDoc5);
     testReplaceOneWithCol(col5, true, true);
    
-    if (!isJDCSMode()) {
+    if (!isJDCSOrATPMode()) {
       // "SODATBL" table's creating(see sodatestsetup.sql) is blocked by jdcs lockdown.  
       // Test with keyColumnAssignmentMethod="UUID", versionColumnMethod="NONE"
       OracleDocument mDoc6 = client.createMetadataBuilder()

@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -720,8 +720,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     {
       if (OracleLog.isLoggingEnabled())
       {
-        log.severe(e.toString());
-        log.severe(operation.getSqlText());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       }
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
@@ -873,7 +872,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       {
         // Nothing to do, this IOException follows
         // another exception.
-        log.fine(ioE.getMessage());
+        if (OracleLog.isLoggingEnabled())
+          log.fine(ioE.getMessage());
       }
 
       throw e;
@@ -889,7 +889,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       {
         // Nothing to do, this IOException follows
         // another exception.
-        log.fine(ioE.getMessage());
+        if (OracleLog.isLoggingEnabled())
+          log.fine(ioE.getMessage());
       }
 
       throw e;
@@ -1781,7 +1782,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + sqltext);
       throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
@@ -1796,7 +1797,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private int bindMergePatch(PreparedStatement stmt, int parameterIndex) throws SQLException, OracleException {
     parameterIndex++;
-    if (options.hasBinaryFormat()) 
+    if (options.hasBinaryFormat() && !options.hasJsonType()) 
       // workaround bug 30702558 by binding patch as textual json
       ((TableCollectionImpl)collection)
         .bindPayloadColumn(stmt, parameterIndex, patchSpec.getContentAsByteArray());
@@ -1919,7 +1920,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     else
     {
       if (terminal == Terminal.MERGE_ONE && 
-          options.hasBinaryFormat()) {
+          options.hasBinaryFormat() &&
+          !options.hasJsonType()) {
         // workaround bug 30702558 by binding patch as textual json 
         ((TableCollectionImpl)collection)
             .bindPayloadColumn(stmt, ++num, document.getContentAsByteArray());
@@ -2198,7 +2200,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
     finally
@@ -2244,7 +2246,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
     finally
@@ -2281,7 +2283,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
     finally
@@ -2408,7 +2410,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
     finally
@@ -2456,7 +2458,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.toString() + "\n" + operation.getSqlText());
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
     }
     finally
@@ -3412,9 +3414,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   {
     if (selectPatchedDoc)
     {
-      if (options.hasBinaryFormat())
+      if (options.hasBinaryFormat() || options.hasJsonType())
       {
-        if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT)
+        // Sanity check
+        if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
+            options.hasBinaryFormat())
         {
           throw new IllegalStateException();
         }
@@ -3423,7 +3427,13 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         //     in 18c or above. Expand later.
         sb.append("json_patch(");
         appendAliasedColumn(sb, options.contentColumnName, tAlias);
-        sb.append(",? returning blob format oson");
+        if (options.hasJsonType()) {
+          sb.append(",? ");
+        }
+        else {
+          sb.append(",? returning blob format oson");
+        }
+
         if (!patchSpecExceptionOnly)
         {
           sb.append(" error on error),");
@@ -3472,16 +3482,28 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
     else if (addProjection)
     {
-      if (options.hasBinaryFormat())
+      if (options.hasBinaryFormat() || options.hasJsonType())
       {
-        if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT)
+        // Sanity check
+        if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
+            options.hasBinaryFormat())
         {
           throw new IllegalStateException();
         }
 
+        // ### json_patch can be used for all collections (not just with binary format),
+        //     in 18c or above. Expand later.
         sb.append("json_patch(");
         appendAliasedColumn(sb, options.contentColumnName, tAlias);
-        sb.append(",? project returning blob format oson");
+        if (options.hasJsonType())
+        {
+          sb.append(",? project ");
+        }
+        else
+        {
+          sb.append(",? project returning blob format oson");
+        }
+
         if (!skipProjErrors)
         {
           sb.append(" error on error),");
@@ -3585,7 +3607,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   private void appendMergePatchExpression(StringBuilder sb, String tAlias) {
-    if (options.hasBinaryFormat())
+    if (options.hasBinaryFormat() || options.hasJsonType())
     {
       // Sanity check
       if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
@@ -3598,7 +3620,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       //     in 18c or above. Expand later.
       sb.append("json_mergepatch(");
       appendAliasedColumn(sb, options.contentColumnName, tAlias);
-      sb.append(",? returning blob format oson");
+      if (options.hasJsonType())
+      {
+        sb.append(",? ");
+      }
+      else
+      {
+        sb.append(",? returning blob format oson");
+      }
 
       if (!patchSpecExceptionOnly)
       {

@@ -60,7 +60,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   }
   
   private void testNot(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -72,7 +72,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     
     String colName = "testNot" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -105,7 +105,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
         "{ \"name\": \"Young Men and Fire\", \"price\": 10.88, \"quantity\": 2}, \n" + 
         "{ \"name\": \"Tina Fey\", \"price\": 13.57, \"quantity\": 3} \n" +
         "] } }";
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -217,7 +217,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   }
   
   private void testOrderby(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -229,7 +229,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     
     String colName = "testOrderby" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -245,7 +245,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     String docStr4 = "{\"orderno\":102, \"date\":\"2017-05-01\", \"time\":\"2017-05-01T09:00:00\", \"string\": \"abd002\"}";
     String docStr5 = "{\"orderno\":103, \"date\":\"2017-07-15\", \"time\":\"2017-07-15T09:18:00\", \"string\": \"abc001\"}";
     
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -543,7 +543,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                 boolean withFilter)
     throws Exception
   {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
       
@@ -551,7 +551,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("orderByCol" + contentColumnType, null);
     } else
@@ -566,7 +566,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
 
     OracleDocument doc = null;
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -614,7 +614,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
 
     OracleDocument d;
 
-    if (isJDCSMode()) //// Blocked by bug 28996376 since 20181130 (remove this if() line once the bug is fixed).
+    if (isJDCSOrATPMode()) //// Blocked by bug 28996376 since 20181130 (remove this if() line once the bug is fixed).
         return;
 
     if (withFilter) {
@@ -670,7 +670,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                       boolean withFilter)
     throws Exception
   {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -681,7 +681,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("orderByCol" + contentColumnType, null);
     } else
@@ -695,7 +695,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
 
     String key1="k1", key2="k2", key3="k3";
     OracleDocument doc = null;
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -772,7 +772,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                    boolean withFilter)
     throws Exception
   {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -783,7 +783,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("orderByCol" + contentColumnType, null);
     } else
@@ -801,7 +801,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     String key1="k1", key2="k2", key3="k3";
     OracleDocument doc = null;
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -909,7 +909,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
                                      boolean withFilter)
     throws Exception
   {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -917,7 +917,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       .contentColumnType(contentColumnType).build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("orderByCol" + contentColumnType, null);
     } else
@@ -930,7 +930,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     String key1="k1", key2="k2", key3="k3";
     OracleDocument doc = null;
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();

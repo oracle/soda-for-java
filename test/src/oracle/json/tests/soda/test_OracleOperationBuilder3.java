@@ -82,7 +82,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   private void testSpatialOp1(String contentColumnType, boolean withIndex) throws Exception {
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
       // ### replace with new builder once it becomes available
@@ -260,7 +260,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   private void testSpatialOp2(String contentColumnType, boolean withIndex) throws Exception {
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       if (!contentColumnType.equalsIgnoreCase("BLOB")) 
         return;
       // ### replace with new builder once it becomes available
@@ -370,7 +370,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   private void testSpatialOp3(String contentColumnType, boolean withIndex) throws Exception {
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
       // ### replace with new builder once it becomes available
@@ -507,7 +507,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
 
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }
@@ -836,7 +836,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
   }
   
   private void testContains(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -845,7 +845,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     
     String colName = "testContains" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -873,7 +873,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     OracleDocument doc, filterDoc;
     HashSet<String> expectedKeys = new HashSet<String>();
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -958,7 +958,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     // test $contains with skip(), limit(), + $orderby
 
     // blocked by bug 28996376 since 20181130, will uncomment when the bug is fixed.
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
           
     filterDoc = db.createDocumentFromString("{\"$query\":{ \"family\":{\"$contains\":\"Street\"}},"+

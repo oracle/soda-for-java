@@ -46,7 +46,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     OracleDocument metaDoc1 = client.createMetadataBuilder()
             .mediaTypeColumnName("CONTENT_TYPE").contentColumnType("BLOB").build();
     OracleCollection col1;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col1 = dbAdmin.createCollection("cacheTests", null);
     } else
@@ -62,7 +62,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     // (collection exists already)
     // OracleCollection col1_2 = dbAdmin.createCollection("cacheTests", metaDoc1);
     OracleCollection col1_2 ;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col1_2 = dbAdmin.createCollection("cacheTests", null);
     } else
@@ -89,7 +89,7 @@ public class test_OracleSodaCache extends SodaTestCase {
       fail("No exception when mismatch on collection metadata");
     } catch (OracleException e) {
       // Expect an OracleException
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
         assertTrue(e.getCause().getMessage().contains(
                    "ORA-40774: Metadata component contentColumn.sqlType" +
                    " has value VARCHAR2 which differs from expected value BLOB"));
@@ -199,7 +199,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     assertNull(colB1);
     
     //1.2 create and open collection in databaseA
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       dbAdminA.createCollection("cacheTestsWithMultipleDbObjs1", null);
     } else
@@ -212,7 +212,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     
     //1.3 create the collection in databaseB (collection
     //created already so this should open it).
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       colB1 = dbAdminB.createCollection("cacheTestsWithMultipleDbObjs1", null);
     } else
@@ -254,7 +254,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     assertEquals(0, dbAdminB.getCollectionNames().size());
     
     //3.2 create collection and getCollectionNames in databaseA
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       dbAdminA.createCollection("cacheTestsWithMultipleDbObjs2", null);
     } else
@@ -358,7 +358,7 @@ public class test_OracleSodaCache extends SodaTestCase {
     
     OracleDocument metaDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }

@@ -133,7 +133,7 @@ public interface OracleCollection
    *                               and the key is provided in the input document,
    *                               or (5) an error during insertion occurs or
    *                               (6) the value of the hint supplied through options
-   *                               is not of string type or contains substring "/*" or "*&#47;"
+   *                               is not of string type or contains substring "/*" or "\*\/"
    */
   public OracleDocument insertAndGet(OracleDocument document, Map<String, ?> options)
     throws OracleException;
@@ -233,7 +233,7 @@ public interface OracleCollection
    *                               for this collection, and the key is provided in the input
    *                               document, or (4) an error during insertion occurs 
    *                               or (5) the value of the hint supplied through options
-   *                               is not of string type or contains substring "/*" or "*&#47;"
+   *                               is not of string type or contains substring "/*" or "\*\/"
    */
   public OracleDocument saveAndGet(OracleDocument document, Map<String, ?> options)
     throws OracleException;
@@ -362,7 +362,7 @@ public interface OracleCollection
    *                                    during insertion occurs or (6) the value
    *                                    of the hint supplied through options
    *                                    is not of string type or contains substring
-   *                                    "/*" or "*&#47;"
+   *                                    "/*" or "\*\/"
    */
   public List<OracleDocument> insertAndGet(Iterator<OracleDocument> documents, Map<String, ?> options)
     throws OracleBatchException;

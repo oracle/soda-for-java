@@ -1,7 +1,7 @@
-/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/SODAMessage.java /st_xdk_soda1/3 2020/02/28 18:58:42 kzhou Exp $ */
+/* $Header: xdk/src/java/json/src/oracle/soda/rdbms/impl/SODAMessage.java /st_xdk_soda1/5 2020/10/12 03:03:40 morgiyan Exp $ */
 
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -105,6 +105,7 @@ public final class SODAMessage extends Message
   // Not part of a public API.
   // ### Public for OracleRDBMSClient
   public static final SODAMessage EX_UNABLE_TO_FETCH_USER_NAME   = create(2061);
+  static final SODAMessage EX_VALIDATION_INVALID_FOR_JSON_TYPE   = create(2064);
   static final SODAMessage EX_INVALID_TYPE_MAPPING               = create(2065);
   static final SODAMessage EX_INVALID_HINT                       = create(2066);  
 

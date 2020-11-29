@@ -69,7 +69,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testBetween(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -81,7 +81,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testBetween" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -110,7 +110,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr3 = "{\"a\":{\"b\":{\"number\":121, \"str\":\"a03\", \"double\":4.1405," +
         "\"time\":\"2017-03-22T12:43:07.076112Z\", \"number1\":-5, \"array\":[1,2,3,4,5]}}}";
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -365,7 +365,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   // Tests for $instr and $hasSubstring
   private void testInstr(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -377,7 +377,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testInstr" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -392,7 +392,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"number\":101, \"str1\":\"you are welcome \", \"str2\":\"a001A\"}}}";
     String docStr3 = "{\"a\":{\"b\":{\"boolean\":true, \"str1\":\"WELCOME!!!\", \"str2\":\"a001a\"}}}";
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -559,7 +559,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   // Tests for $like
   private void testLike(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -571,7 +571,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testLike" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -586,7 +586,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"number\":101, \"str\":\"You Are Welcome\"}}}";
     String docStr3 = "{\"a\":{\"b\":{\"boolean\":true, \"str\":\"are \"}}}";
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key1 = doc.getKey();
@@ -742,7 +742,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       if (!contentColumnType.equalsIgnoreCase("BLOB"))  
         return;
 
@@ -866,7 +866,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testTimestamp(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -878,7 +878,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testTimestamp" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -899,7 +899,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         // the generated timestamp value is like: "2016-01-01T00:00:00.100002"
         docStr = "{\"order\" : { \"orderDateTime\": \"" + timestamp + "\" } }";  
       }
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
         key[num] = doc.getKey();
@@ -980,7 +980,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
 
     docStr = "{\"order\" : { \"orderDateTime\": \"" + dateTime1 + "\", \"string\":\"abc\"," +
             "\"booleean\":true,\"object\":{\"key\":\"value\"},\"array\":[1,2,3],\"null\":null}}";
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
       {
         col.insertAndGet(db.createDocumentFromString(docStr));
       } else
@@ -1110,7 +1110,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testDate(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1123,7 +1123,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testDate" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -1151,7 +1151,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         String dateTime = format.format(cal.getTime());
         docStr = "{\"order\" : { \"orderDate\": \"" + dateTime + "\" } }";
       }
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
         key[num-1] = doc.getKey();
@@ -1226,7 +1226,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     chkExplainPlan(col.find().filter(filterDoc), indexType, dateIndexName);
     
     docStr = "{\"order\" : { \"orderDate\": \"2017-01-02\", \"str\":\"\", \"num\":20170102 }}";
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       col.insertAndGet(db.createDocumentFromString(docStr));
     } else
@@ -1349,7 +1349,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testNumber(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1361,7 +1361,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testNumber" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -1397,7 +1397,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":11, \"string\": \"11." + number + "\", \"float\":3.0001," +
         "\"bool\":true, \"array\":[101, 100] }}}";
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
       } else
@@ -1412,7 +1412,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"number\":13, \"string\":\"12.2\", \"float\":3.0003," +
         "\"bool\":false, \"array\":[103, 100, 110], \"invalid_str\":\"abc\", \"empty_str\":\"\", \"null\":null }}}";
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[1000] = doc.getKey();
@@ -1579,7 +1579,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testString(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1592,7 +1592,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testString" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -1627,7 +1627,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String[] key = new String[1000];
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":11, \"string\":" + (11.0 + (number/1000.0)) + "}}}";
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         col.insertAndGet(db.createDocumentFromString(docStr));
       } else
@@ -1640,7 +1640,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"number\":12.0, \"string\":\"12.2\", \"bool\":false, \"array\":[103, 104, 105], " +
             "\"empty_str\":\"\", \"null\":null }}}";
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       col.insertAndGet(db.createDocumentFromString(docStr1));
       col.insertAndGet(db.createDocumentFromString(docStr2));
@@ -1659,54 +1659,54 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       expectedKeys.clear();
       expectedKeys.add("id-1001");
       expectedKeys.add("id-1002");
-      if (!isJDCSMode())
+      if (!isJDCSOrATPMode())
         checkKeys(col, filterDoc, expectedKeys);
     }
     else {
       assertEquals(1, col.find().filter(filterDoc).count());
       expectedKeys.clear();
       expectedKeys.add("id-1001");
-      if (!isJDCSMode())
+      if (!isJDCSOrATPMode())
         checkKeys(col, filterDoc, expectedKeys);
     }
     
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": \"11.999\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-999", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": \"12.2\"}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with boolean input
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$string\": {\"$eq\": \"true\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1001", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.bool\": { \"$string\": {\"$eq\": \"false\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     // Test $string with array input
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"103\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"104\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     filterDoc = db.createDocumentFromString("{\"a.b.array\": { \"$string\": \"105\" }}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-1002", col.find().filter(filterDoc).getOne().getKey());
     
     // Test $string with $ne
@@ -1726,7 +1726,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.add("id-999");
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
@@ -1737,21 +1737,21 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.add("id-999");
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       checkKeys(col, filterDoc, expectedKeys);
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $lt
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": {\"$lt\": \"11.001\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
     // Test $string with $lte
     filterDoc = db.createDocumentFromString("{\"a.b.string\": { \"$string\": {\"$lte\": \"11.0\"}}}");
     assertEquals(1, col.find().filter(filterDoc).count());
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       assertEquals("id-0", col.find().filter(filterDoc).getOne().getKey());
     chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
     
@@ -1761,7 +1761,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.clear();
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       checkKeys(col, filterDoc, expectedKeys);
     // $startsWith does not support the functional index
     //chkExplainPlan(col.find().filter(filterDoc), indexType, stringIndexName);
@@ -1772,7 +1772,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     expectedKeys.clear();
     expectedKeys.add("id-1001");
     expectedKeys.add("id-1002");
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
       checkKeys(col, filterDoc, expectedKeys);
     
     // Test $string with empty string input
@@ -1848,7 +1848,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testDouble(String contentColumnType, boolean withIndex) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1860,7 +1860,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testDouble" + contentColumnType + (withIndex?"Idx":"");
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -1887,7 +1887,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "\"empty_str\":\"\", \"null\":null, \"invalid_str\":\"abc\" }}}";
 
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2025,7 +2025,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testUpperAndLower(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2037,7 +2037,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testUpperAndLower" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2054,7 +2054,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "\"array\":[\"Hello\", \" World!\"], \"empty_str\":\"\", \"null\":null, \"number\":100 }}}";
 
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2278,7 +2278,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testCeilingAndFloor(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2290,7 +2290,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testCeilingAndFloor" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2306,7 +2306,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "\"empty_str\":\"\", \"null\":null, \"string\":\"abc\" }}}";
 
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2480,7 +2480,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testAbs(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2492,7 +2492,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testAbs" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2508,7 +2508,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "\"array\":[-1.2, 1.8, -2.4], \"number_str\":\"-2.5\", \"non_number_str\":\"abc\" }}}";
 
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2621,7 +2621,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testType(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2633,7 +2633,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testType" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2648,7 +2648,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     String docStr2 = "{\"a\":{\"b\":{\"array\":[1, true, \"abc\"], \"null\":null }}}";
 
     String[] key = new String[2];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2751,7 +2751,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testLength(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2763,7 +2763,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testLength" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2779,7 +2779,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         "\"number\":100, \"bool\":true, \"null\":null }}}";
 
     String[] key = new String[2];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();
@@ -2885,7 +2885,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   }
   
   private void testSize(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -2897,7 +2897,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     String colName = "testSize" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2913,7 +2913,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
             "\"number\":100, \"bool\":true, \"null\":null, \"empty_array\":[]}}}";
 
     String[] key = new String[2];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString(docStr1));
       key[0] = doc.getKey();

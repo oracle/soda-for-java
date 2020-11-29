@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -64,6 +64,7 @@ public class CollectionDescriptor
   static final byte BLOB_CONTENT  = 4; // Content is a BLOB
   static final byte CLOB_CONTENT  = 5; // Content is a CLOB
   static final byte NCLOB_CONTENT = 6; // Content is an NCLOB
+  static final byte JSON_CONTENT  = 7; // Content is JSON type
 
   // LOB compress level
   static final byte LOB_COMPRESS_NONE   = 0;
@@ -95,10 +96,11 @@ public class CollectionDescriptor
   static final byte DBOBJECT_VIEW      = 1;
   static final byte DBOBJECT_PACKAGE   = 2;
   
-  static final byte VALIDATION_LAX      = 0;
-  static final byte VALIDATION_STANDARD = 1; // Known as 'strict' mode in 
+  static final byte VALIDATION_NONE     = 0; // No validation
+  static final byte VALIDATION_LAX      = 1;
+  static final byte VALIDATION_STANDARD = 2; // Known as 'strict' mode in 
                                              // JSON SQL. 
-  static final byte VALIDATION_STRICT   = 2; // Known as 'strict with
+  static final byte VALIDATION_STRICT   = 3; // Known as 'strict with
                                              // unique keys' mode in JSON SQL.
 
   private static final int VAR_KEY_TYPE_DEFAULT_LENGTH      = 255;
@@ -250,6 +252,16 @@ public class CollectionDescriptor
            contentDataType == CLOB_CONTENT ||
            contentDataType == NCLOB_CONTENT;
   }
+
+  private static boolean isJsonType(int contentDataType)
+  {
+    return contentDataType == JSON_CONTENT;
+  }
+
+  private static boolean isLobOrJsonType(int contentDataType)
+  {
+    return (isLobType(contentDataType) || isJsonType(contentDataType));
+  }
   
   private static boolean keyTypeSupportsLength(int keyType)
   {
@@ -273,6 +285,8 @@ public class CollectionDescriptor
       return "CLOB";
     case NCLOB_CONTENT:
       return "NCLOB";
+    case JSON_CONTENT:
+      return "JSON";
     default:
       throw new IllegalStateException();
     }
@@ -460,6 +474,15 @@ public class CollectionDescriptor
   }
 
   /**
+   * Returns true if using the JSON SQL type
+   * Not part of the public API
+   */
+  public boolean hasJsonType()
+  {
+    return (contentDataType == JSON_CONTENT);
+  }
+
+  /**
    * Compare two strings, even if one or both are null.
    */
   private boolean compareStrings(String s1, String s2)
@@ -632,7 +655,7 @@ public class CollectionDescriptor
       builder.appendValue(getLobEncryption());
     }
 
-    if (jsonFormat == null)
+    if (!getContentDataType().equals("JSON") && (jsonFormat == null))
     {
       builder.appendComma();
       builder.appendValue("validation");
@@ -1186,7 +1209,7 @@ public class CollectionDescriptor
      */
     private int effectiveContentLength() 
     {
-      if (!isLobType(contentColumnType) && contentColumnLength == 0)
+      if (!isLobOrJsonType(contentColumnType) && contentColumnLength == 0)
       {
         switch (contentColumnType)
         {
@@ -1207,7 +1230,7 @@ public class CollectionDescriptor
     private void validate() throws OracleException 
     {
       // content column type is LOB and max length specified
-      if (contentColumnLength > 0 && isLobType(contentColumnType))
+      if (contentColumnLength > 0 && isLobOrJsonType(contentColumnType))
         throw SODAUtils.makeException(SODAMessage.EX_MAX_LEN_LOB_TYPE);
       
       // content column type does not support a maximum length
@@ -1233,6 +1256,11 @@ public class CollectionDescriptor
       {
         throw SODAUtils.makeException(SODAMessage.EX_SECURE_FILE_NOT_LOB, 
                                       contentTypeToString(contentColumnType));
+      }
+
+      if (isJsonType(contentColumnType) && (validationMode != VALIDATION_NONE))
+      {
+        throw SODAUtils.makeException(SODAMessage.EX_VALIDATION_INVALID_FOR_JSON_TYPE);
       }
 
       // If the assignment method is "SEQUENCE",
@@ -1332,6 +1360,8 @@ public class CollectionDescriptor
         type = BLOB_CONTENT;
       else if (sqlType.equalsIgnoreCase("clob"))
         type = CLOB_CONTENT;
+      else if (sqlType.equalsIgnoreCase("json"))
+        type = JSON_CONTENT;
       else
         throw SODAUtils.makeException(SODAMessage.EX_INVALID_ARG_VALUE, sqlType);
 
@@ -1344,6 +1374,11 @@ public class CollectionDescriptor
       }
       else
       {
+        if (contentColumnType == JSON_CONTENT) {
+          this.contentColumnLength = 0;
+          this.validationMode = VALIDATION_NONE;
+        }
+
         this.contentLobCompress = LOB_COMPRESS_NONE;
         this.contentLobCache = false;
         this.contentLobEncrypt = LOB_ENCRYPT_NONE;

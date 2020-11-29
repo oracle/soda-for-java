@@ -49,7 +49,6 @@ public final class ConnectionFactory {
   }
 
   public static OracleConnection createConnection(String user, String pass) throws SQLException {
-    System.out.println ("Connection string " + connectionString(user, pass));
     return (OracleConnection) DriverManager.getConnection(connectionString(user, pass));
   }
 

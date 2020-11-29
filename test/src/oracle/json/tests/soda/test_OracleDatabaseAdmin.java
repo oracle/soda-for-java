@@ -14,6 +14,7 @@ package oracle.json.tests.soda;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Iterator;
 
@@ -58,7 +59,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     // Test createCollection(...) with an known collectionName   
     OracleDocument metaDoc = null;
     String colName = "testCreateCollectionB";
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       dbAdmin.createCollection(colName, null);
     } else
@@ -77,7 +78,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     // Test with an known collectionName and metadata
     OracleDocument metaDoc2 = db.createDocumentFromString(metaData);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col2 = dbAdmin.createCollection(colName, null);
     } else {
@@ -106,7 +107,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals(colName1, col.admin().getName());
     
     OracleDocument metaDoc2 = null; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       metaDoc2 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }
@@ -125,7 +126,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertNotNull(col2);
     assertEquals(colName2, col2.admin().getName());
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
     
     // Test with heterogeneous collection
@@ -456,7 +457,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals(0, list.size());
     
     OracleDocument metaDoc = null; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
@@ -504,7 +505,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     OracleDocument metaDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } 
@@ -571,7 +572,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
 
     OracleDocument metaDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }
@@ -644,7 +645,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   
 
   private void testExistingViewOrTable(boolean testView) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     // cleanup and make sure no other rows polluted test run.
@@ -826,7 +827,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleDocument mDoc = b.contentColumnType(contColType).build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testContentColumnType" + contColType, null);
     } else
@@ -846,7 +847,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals(jsonString.length(), doc.getContentLength());
     col.insertAndGet(doc);
     doc = col.find().getOne();
-    if (!isJDCSMode()) // this cannot be tested in JDCS mode since after conversion to binary whitespace is removed
+    if (!isJDCSOrATPMode()) // this cannot be tested in JDCS mode since after conversion to binary whitespace is removed
     {
       assertEquals(jsonString.length(), doc.getContentLength());
       assertEquals(jsonString, new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -948,7 +949,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
 
   public void testJSONValidation() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // Test with content column validation = STRICT
@@ -1133,7 +1134,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
   
   public void testContentMaxLength() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
       
     testContentMaxLength("VARCHAR2");
@@ -1204,7 +1205,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
   }
 
   public void testKeyMetadata() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // Test with key column type=VARCHAR2 && max key length=32 && key method=CLIENT
@@ -1402,7 +1403,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
           mBuilder.keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("KEY_SEQ");
         } else
         {
-          if (isJDCSMode())
+          if (isJDCSOrATPMode())
           {
             if (!(assignmentMethod.equalsIgnoreCase("UUID") && sqlType.equalsIgnoreCase("VARCHAR2")))
             {
@@ -1438,7 +1439,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     assertEquals(key, doc.getKey());
     JsonString sqlTypeJsonStr = (JsonString) getValue(col.admin().getMetadata(), path("contentColumn", "sqlType"));
     
-    if (isJDCSMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
+    if (isJDCSOrATPMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
     {
       assertEquals("{\"data\":10}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1449,7 +1450,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     
     OracleDocument filterDoc = db.createDocumentFromString(null, "{ \"$id\" : [\"" + key + "\"] }", null);
     doc = col.find().filter(filterDoc).getOne();
-    if (isJDCSMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
+    if (isJDCSOrATPMode() || sqlTypeJsonStr.getString().equalsIgnoreCase("JSON"))
     {
       assertEquals("{\"data\":10}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1472,7 +1473,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     final String[] encryptions = {"3DES168", "AES128", "AES192", "AES256"};
     int counter = 0;
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       counter++;
       OracleCollection col = null;
@@ -1506,7 +1507,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       }
     } // end for "for lobTypes" loop
  
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // ### Oracle Database does not support NVARCHAR2 or RAW storage for JSON
@@ -1590,7 +1591,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     doc = col.findOne(key);
     
     JsonString sqlTypeJsonStr = (JsonString) getValue(col.admin().getMetadata(), path("contentColumn", "sqlType"));
-    if (isJDCSMode())
+    // in ATP run(isJDCSOrATPMode() return true), heterogeneous collection is allowed, and but "OSON" format will not be used.
+    // for non-heterogeneous collection(without mediaTypeColumn), "OSON" format will be enabled for content column.
+    if (isJDCSOrATPMode() && !colAdmin.isHeterogeneous())
     {
       assertEquals("{\"key\":\"val1\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1617,7 +1620,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
       key = doc.getKey();
     }
     doc = col.find().key(key).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode() && !colAdmin.isHeterogeneous())
     {
       assertEquals("{\"key\":\"val2\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1643,7 +1646,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     doc = db.createDocumentFromString("{ \"key\": \"val3\" }");
     assertTrue(col.find().key(key).replaceOne(doc));
     doc = col.findOne(key);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode() && !colAdmin.isHeterogeneous())
     {
       assertEquals("{\"key\":\"val3\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1669,7 +1672,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     OracleCursor cursor = col.find().key(key).getCursor();
     assertTrue(cursor.hasNext());
     doc = cursor.next();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode() && !colAdmin.isHeterogeneous())
     {
       assertEquals("{\"key\":\"val4\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1700,6 +1703,9 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
         .build();
     OracleCollection col = dbAdmin.createCollection("testMiniCol", mDoc);
     basicTestforMiniCol(col, true, false, false, false);
+
+    if (isATPMode())
+        return;
 
     // Test with key/content and auto-generated key collection
     OracleDocument mDoc2 = client.createMetadataBuilder()
@@ -1787,7 +1793,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     jStr = (JsonString) getValue(descDoc, path("schemaName"));
     assertEquals(schemaName.toUpperCase(), jStr.getString());
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // Test with missing schemaName
@@ -2107,7 +2113,7 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
       return;
 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     OracleCollection col1 = dbAdmin.createCollection("col1");
@@ -2136,4 +2142,297 @@ public class test_OracleDatabaseAdmin extends SodaTestCase {
     stmt.execute();
     stmt.close();
   }
+
+  public void testCreateCollectionForATP() throws Exception {
+    if (!isATPMode())
+      return;
+    
+    // Verify the metadata of the default collection
+    OracleCollection col1 = dbAdmin.createCollection("testCreateCollectionForATP1");
+    OracleCollectionAdmin col1Admin = col1.admin();
+    OracleDocument metaDoc = col1Admin.getMetadata();
+    assertNotNull(metaDoc);
+    
+    JsonString jStr = null;
+    JsonValue jVal = null;
+    JsonNumber jNum = null;
+    
+    jStr = (JsonString) getValue(metaDoc, path("schemaName"));
+    assertEquals(schemaName.toUpperCase(), jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("tableName"));
+    assertEquals("testCreateCollectionForATP1", jStr.getString());
+    
+    jStr = (JsonString) getValue(metaDoc, path("contentColumn", "name"));
+    assertEquals("JSON_DOCUMENT", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("contentColumn", "sqlType"));
+    assertEquals("BLOB", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("contentColumn", "jsonFormat"));
+    assertEquals("OSON", jStr.getString());
+   
+    jStr = (JsonString) getValue(metaDoc, path("keyColumn", "name"));
+    assertEquals("ID", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("keyColumn", "sqlType"));
+    assertEquals("VARCHAR2", jStr.getString());
+    jNum = (JsonNumber) getValue(metaDoc, path("keyColumn", "maxLength"));
+    assertEquals(255, jNum.intValue());
+    jStr = (JsonString) getValue(metaDoc, path("keyColumn", "assignmentMethod"));
+    assertEquals("UUID", jStr.getString());
+    
+    jStr = (JsonString) getValue(metaDoc, path("creationTimeColumn", "name"));
+    assertEquals("CREATED_ON", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("lastModifiedColumn", "name"));
+    assertEquals("LAST_MODIFIED", jStr.getString());
+    
+    jStr = (JsonString) getValue(metaDoc, path("versionColumn", "name"));
+    assertEquals("VERSION", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("versionColumn", "type"));
+    assertEquals("String", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc, path("versionColumn", "method"));
+    assertEquals("UUID", jStr.getString());
+    
+    jVal = getValue(metaDoc, path("readOnly"));
+    assertEquals(JsonValue.FALSE, jVal);
+    
+    // Test with contentColumnType="BLOB"
+    OracleDocument meta2 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"} }");
+    // "jsonFormat":"OSON" will be added automatically if contentColumnType="BLOB"
+    OracleCollection col2a = dbAdmin.createCollection("testCreateCollectionForATP2", meta2);
+    
+    OracleDocument metaDoc2 = col2a.admin().getMetadata();
+    
+    jStr = (JsonString) getValue(metaDoc2, path("contentColumn", "name"));
+    assertEquals("JSON_DOCUMENT", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc2, path("contentColumn", "sqlType"));
+    assertEquals("BLOB", jStr.getString());
+    jStr = (JsonString) getValue(metaDoc2, path("contentColumn", "jsonFormat"));
+    assertEquals("OSON", jStr.getString());
+    
+    col2a.admin().drop();
+    
+    // Negative Tests
+    
+    // Test with contentColumnType="VARCHAR2"
+    OracleDocument metaDoc3 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"VARCHAR2\"} }");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP3", metaDoc3);
+      fail("No exception when creating collection with contentColumnType=\"VARCHAR2\".");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40774: Metadata component contentColumn.sqlType has value VARCHAR2 which differs from expected value BLOB"
+      assertTrue(sqlException.getMessage().contains("ORA-40774"));
+    }
+    
+    // Test with contentColumnType="CLOB"
+    OracleDocument metaDoc4 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"CLOB\"} }");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP4", metaDoc4);
+      fail("No exception when creating collection with contentColumnType=\"CLOB\".");
+    } catch (OracleException e ) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40774: Metadata component contentColumn.sqlType has value CLOB which differs from expected value BLOB."
+      assertTrue(sqlException.getMessage().contains("ORA-40774"));
+    }
+    
+    // Test with contentColumnType="JSON"
+    OracleDocument metaDoc5 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"JSON\"} }");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP5", metaDoc5);
+      fail("No exception when creating collection with contentColumnType=\"JSON\".");
+    } catch (OracleException ex ) {
+      SQLException sqlException = (SQLException) ex.getCause();
+      // expect "ORA-40636: Content column type 'JSON' is not valid."
+      assertTrue(sqlException.getMessage().contains("ORA-40636"));
+    }
+    
+    // Test with contentColumn compress setting
+    OracleDocument metaDoc6 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"compress\":\"HIGH\"}}");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP6", metaDoc6);
+      fail("No exception when creating collection with compress=\"HIGH\".");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40822: SecureFile LOB settings cannot be used when the content column stores binary JSON."
+      assertTrue(sqlException.getMessage().contains("ORA-40822"));
+    }
+    
+    // Test with contentColumn cache setting
+    OracleDocument metaDoc7 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"cache\":true}}");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP7", metaDoc7);
+      fail("No exception when creating collection with \"cache\"=true.");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40822: SecureFile LOB settings cannot be used when the content column stores binary JSON."
+      assertTrue(sqlException.getMessage().contains("ORA-40822"));
+    }
+    
+    // Test with contentColumn encrypt setting
+    OracleDocument metaDoc8 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"encrypt\":\"NONE\"}}");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP8", metaDoc8);
+      fail("No exception when creating collection with \"encrypt\"=\"NONE\".");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40774: Metadata component contentColumn.encrypt has value NONE which differs from expected value NULL."
+      assertTrue(sqlException.getMessage().contains("ORA-40774"));
+    }
+    
+    // Test with contentColumn validation setting
+    OracleDocument metaDoc9 = db.createDocumentFromString("{\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"validation\":\"STANDARD\"}}");
+    try {
+      dbAdmin.createCollection("testCreateCollectionForATP9", metaDoc9);
+      fail("No exception when creating collection with \"validation\"=\"STANDARD\".");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      // expect "ORA-40823: Validation cannot be specified when the content column stores binary JSON."
+      assertTrue(sqlException.getMessage().contains("ORA-40823"));
+    }
+ 
+  }
+
+  public void testHeterogeneousCollectionForATP() throws Exception {
+    if (!isATPMode())
+      return;
+    
+    OracleDocument metaDoc = client.createMetadataBuilder().mediaTypeColumnName("MediaType")
+        .keyColumnAssignmentMethod("CLIENT").build();
+    OracleCollection col = dbAdmin.createCollection("testHeterogeneousCollectionForATP", metaDoc);
+
+    // check the collection's isHeterogeneous property
+    assertTrue(col.admin().isHeterogeneous());
+
+    // insert JSON and nonJSON data into the collection
+    String nonJSONData = "Hello World!";
+    col.insert(db.createDocumentFromString("id-1", nonJSONData, "text/plain"));
+    String JSONData = "{ \"a\" : 100 }";
+    col.insert(db.createDocumentFromString("id-2", JSONData));
+    
+    OracleDocument doc = col.find().key("id-1").getOne(); 
+    assertEquals(nonJSONData, new String(doc.getContentAsByteArray(), "UTF-8"));
+    assertFalse(((OracleDocumentImpl)doc).isBinary());
+ 
+    // "OSON" format will not be used for heterogeneous collection
+    // so those meaningless white space chars will not be discarded when JSON document is inserted. 
+    doc = col.find().key("id-2").getOne(); 
+    assertEquals(JSONData, new String(doc.getContentAsByteArray(), "UTF-8"));
+    assertFalse(((OracleDocumentImpl)doc).isBinary());
+    
+    // remove the documents
+    col.admin().truncate();
+    
+    col.admin().drop();
+  }
+  
+  private void testBasicOperationsForATP(OracleCollection col, boolean clientAssignedKey, boolean versionExist) throws Exception {
+    OracleCollectionAdmin colAdmin = col.admin();
+    
+    // insert documents
+    OracleDocument doc;
+    String key1, key2, version2=null;
+    String docStr1 = "{\"name\":\"Mike\",\"num\":1001,\"birthday\":\"1990-08-21\",\"loggingtime\":\"2004-05-23T14:25:10\"}";
+    String docStr2 = "{\"name\":\"Kate\",\"num\":1002,\"birthday\":\"1993-01-01\",\"loggingtime\":\"2010-10-23T18:00:00\"}";
+    String docStr3 = "{\"name\":\"Taylor\",\"num\":1003,\"birthday\":\"\"}";
+    if (clientAssignedKey) {
+      doc = col.insertAndGet(db.createDocumentFromString("id-01", docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString("id-02", docStr2));
+      key2 = doc.getKey();
+      if (versionExist) {
+        version2 = doc.getVersion();
+      }
+      col.insertAndGet(db.createDocumentFromString("id-03", docStr3));
+    } else {
+      doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+      key1 = doc.getKey();
+      doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+      key2 = doc.getKey();
+      if (versionExist) {
+        version2 = doc.getVersion();
+      }
+      col.insertAndGet(db.createDocumentFromString(docStr3));
+    }
+   
+    assertEquals(3, col.find().count());
+    
+    // create index on the specified field
+    String indexSpec1 = "{ \"name\":\"index1\", \n" +
+        "  \"lax\" : true, \n" +
+        "  \"fields\": [\n" +
+        "    { \"path\":\"name\", \"datatype\":\"string\", \"maxLength\":100, \"order\":\"desc\"} ] "
+        + "}";
+    colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+    
+    // create data guide index
+    OracleDocument indexSpec2 = db.createDocumentFromString(
+        new String("{\"name\" : \"index2\", \"dataguide\" : \"on\"}"));
+    colAdmin.createIndex(indexSpec2);
+
+    // fetch document1 by key1
+    doc = col.find().key(key1).getOne();
+    assertEquals(docStr1, doc.getContentAsString());
+    assertTrue(((OracleDocumentImpl)doc).isBinary());
+ 
+    // fetch document2 by key2 && version2
+    if (versionExist) {
+      doc = col.find().key(key2).version(version2).getOne();
+    } else {
+      doc = col.find().key(key2).getOne();
+    }
+    assertEquals(docStr2, doc.getContentAsString());
+    assertTrue(((OracleDocumentImpl)doc).isBinary());
+ 
+    // fetch document3 by QBE
+    OracleDocument filterDoc = db.createDocumentFromString("{\"name\":\"Taylor\"}");
+    doc = col.find().filter(filterDoc).getOne();
+    assertEquals(docStr3, doc.getContentAsString());
+    assertTrue(((OracleDocumentImpl)doc).isBinary());
+    
+    // drop the index
+    colAdmin.dropIndex("index1");
+    colAdmin.dropIndex("index2");
+    
+    // remove all the documents
+    colAdmin.truncate();
+    
+    return;
+  }
+  
+  public void testCollectionOperationsForATP() throws Exception {
+    if (!isATPMode())
+      return;
+  
+    // Test the default collection
+    OracleCollection col1 = dbAdmin.createCollection("testCollectionOperationsForATP1");
+    testBasicOperationsForATP(col1, false, true);
+    col1.admin().drop();
+    
+    // Test the collection without optional version, lastModified, creationTime columns
+    String metadata2 = "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},"
+        + "\"contentColumn\":{\"name\":\"JSON_DOCUMENT\", \"sqlType\":\"BLOB\",\"jsonFormat\":\"OSON\"},\"readOnly\":false}";
+    OracleDocument metaDoc2 = db.createDocumentFromString(metadata2);
+    OracleCollection col2 = dbAdmin.createCollection("testCollectionOperationsForATP2", metaDoc2);
+    testBasicOperationsForATP(col2, false, false);
+    col2.admin().drop();
+    
+    // Test the collection with timestamp version method
+    String metadata3 = "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"GUID\"},"
+        + "\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"jsonFormat\" : \"OSON\"},"
+        + "\"versionColumn\":{\"name\":\"VERSION\",\"type\":\"Integer\",\"method\":\"TIMESTAMP\"},"
+        + "\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},"
+        + "\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}";
+    OracleDocument metaDoc3 = db.createDocumentFromString(metadata3);
+    OracleCollection col3 = dbAdmin.createCollection("testCollectionOperationsForATP3", metaDoc3);
+    testBasicOperationsForATP(col3, false, true);
+    col3.admin().drop();
+    
+    // Test the collection with client assigned key
+    String metadata4 = "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},"
+        + "\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"jsonFormat\":\"OSON\"},"
+        + "\"versionColumn\":{\"name\":\"VERSION\",\"type\":\"String\",\"method\":\"MD5\"},"
+        + "\"readOnly\":false}";
+    OracleDocument metaDoc4 = db.createDocumentFromString(metadata4);
+    OracleCollection col4 = dbAdmin.createCollection("testCollectionOperationsForATP4", metaDoc4);
+    testBasicOperationsForATP(col4, true, true);
+    col4.admin().drop();
+  } 
 }

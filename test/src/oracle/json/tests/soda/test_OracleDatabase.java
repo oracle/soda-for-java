@@ -29,7 +29,7 @@ public class test_OracleDatabase extends SodaTestCase {
   public void testOpenCollection() throws OracleException {
    
     OracleDocument metaDoc = null;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -78,7 +78,7 @@ public class test_OracleDatabase extends SodaTestCase {
       throw new Exception("unknown input parameter: " + from);
     
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       metaDoc = null;
     } else
@@ -102,7 +102,7 @@ public class test_OracleDatabase extends SodaTestCase {
     col.insertAndGet(doc);
     assertNotNull(doc);
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
     
     OracleDocument metaDoc2 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();

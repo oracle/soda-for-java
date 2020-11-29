@@ -31,7 +31,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testkeys", null);
     } else
@@ -43,7 +43,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument doc = null;
     for (int i = 1; i <= 10; i++) 
     {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{\"d\":" + i + "}"));  
         key[i-1] = doc.getKey();
@@ -57,7 +57,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test keys(...) with known and unknown keys
     HashSet<String> keySet = new HashSet<String>();
     keySet.add(key[1]); // known key
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7"); // unknown key
     } else
@@ -117,7 +117,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
       keySet0.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
       assertEquals(0, col.find().keys(keySet0).count());
 
-    if (!isJDCSMode()) // client assigned keys are not used in JDCS mode
+    if (!isJDCSOrATPMode()) // client assigned keys are not used in JDCS mode
     {
       // Test when the length of keys is more than 16
       for (int i = 24; i > 0; i--) {
@@ -163,7 +163,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
   public void testStartKey() throws Exception {
     OracleDocument mDoc; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}"); 
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
@@ -196,7 +196,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test startKey(...) with known key, ascending=false, inclusive=false
     builder = ((OracleOperationBuilderImpl) col.find()).startKey("id-11", false, false);
     assertEquals(1, builder.count());
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       assertEquals("{\"d\":" + 1 + "}", new String(builder.getOne()
           .getContentAsByteArray(), "UTF-8"));
     } else {
@@ -209,7 +209,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     builder = ((OracleOperationBuilderImpl) col.find()).startKey("id-18", true, false);
     assertEquals(4, builder.count());
     OracleCursor cursor = builder.getCursor();
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // 1st document should be "id-2"
       assertEquals("{\"d\":" + 2 + "}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
       // 2rd document should be "id-3"
@@ -265,7 +265,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testKey", null);
     } else
@@ -277,7 +277,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument doc = null;
     for (int i = 1; i <= 10; i++) 
     {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{\"v\":" + i + "}"));  
         key[i-1] = doc.getKey();
@@ -342,7 +342,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("SeqOnKeyColumn").build();  
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testTimeRange", null);
     } else
@@ -371,7 +371,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp for since and until
     OracleOperationBuilderImpl builderImpl = (OracleOperationBuilderImpl) col.find();
     doc = builderImpl.timeRange(lastModified10, lastModified10, true).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"v\":" + 10 + "}",
         new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -384,7 +384,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // Test with null since and valid time stamp for until
     OracleCursor cursor = builderImpl.timeRange(null, lastModified1, true).getCursor();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"v\":" + 1 + "}", new String(cursor.next()
         .getContentAsByteArray(), "UTF-8"));
@@ -447,12 +447,12 @@ public class test_OracleOperationBuilder extends SodaTestCase {
       assertTrue(t.getMessage().contains("ORA-01840"));
     }
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     // test when no lastModified column
     OracleDocument mDoc2;
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       mDoc2 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
       mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
@@ -477,7 +477,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testVersion", null);
     } else
@@ -490,7 +490,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     String version1 = null, version7 = null, version10 = null;
     String[] key = new String[10];
     for (int i = 1; i <= 10; i++) {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{ \"v\" : " + i + " }"));
         key[i-1] = doc.getKey();
@@ -511,7 +511,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // Test with known version
     doc = col.find().version(version1).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         assertEquals("{\"v\":" + 1 + "}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -521,7 +521,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // Test with known version and key
     doc = col.find().version(version7).key(key[6]).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
         assertEquals("{\"v\":" + 7 + "}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -562,7 +562,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col2;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col2 = dbAdmin.createCollection("testVersion2", null);
       doc = col2.insertAndGet(db.createDocumentFromString("{ \"data\" : " + 1 + " }"));
@@ -588,7 +588,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("GUID").lastModifiedColumnIndex("index_lastModified").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testLastModified", null);
     } else
@@ -611,7 +611,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp
     assertEquals(1, ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified5).count());
     doc = ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified5).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"v\":" + 5 + "}",
         new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -624,7 +624,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp and key
     OracleCursor cursor = ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified1).key(key1)
         .getCursor();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"v\":" + 1 + "}", new String(cursor.next()
         .getContentAsByteArray(), "UTF-8"));
@@ -672,7 +672,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
       assertTrue(t.getMessage().contains("ORA-01858"));
     }
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // JDCS mode expected lastModifiedColumn.name to be LAST_MODIFIED
       // ORA-40774: Metadata component lastModifiedColumn.name has value NULL which differs from expected value LAST_MODIFIED.
       return;
@@ -696,7 +696,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // Test with the specified index on lastModified column
     OracleDocument mDoc3; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       mDoc3 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
       mDoc3 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
@@ -733,7 +733,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   
   public void testGetCursor () throws Exception {
     OracleDocument mDoc; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
@@ -751,7 +751,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     while(cursor.hasNext())
     {
-      if (isJDCSMode()) {
+      if (isJDCSOrATPMode()) {
         assertEquals("{\"value\":" + i + "}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
       } else {
         assertEquals("{ \"value\" : " + i + " }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
@@ -783,7 +783,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
   public void testLimit() throws Exception {
     OracleDocument mDoc = null;
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
@@ -863,7 +863,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   
   public void testSkip() throws Exception {
     OracleDocument mDoc; 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
@@ -887,7 +887,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     // after skip and order,  the left document should be id-8 and id-9
     assertEquals("id-8", cursor.next().getKey());
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       assertEquals("{\"value\":9}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     } else {
       assertEquals("{ \"value\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
@@ -1081,7 +1081,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     OracleDocument mDoc = null;
 
-    if (isJDCSMode()) {
+    if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }
@@ -1135,7 +1135,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc2 = client.createMetadataBuilder().removeOptionalColumns().build();
     
     OracleCollection col2;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col2 = dbAdmin.createCollection("testHeaderOnly2", null);
     } else
@@ -1151,7 +1151,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     cursor = col2.find().key(key2).headerOnly().getCursor();
     doc = cursor.next();
     assertEquals(key2, doc.getKey());
-    if (!isJDCSMode()) // no need to assert it in jdcs mode
+    if (!isJDCSOrATPMode()) // no need to assert it in jdcs mode
     {
       assertNull(doc.getLastModified());
       assertNull(((OracleDocumentImpl) doc).getContentAsStream());
@@ -1166,7 +1166,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testCount", null);
     } else
@@ -1178,7 +1178,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     String[] key = new String[10];
     for (int i = 1; i <= 10; i++) {
       OracleDocument doc;
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{ \"content\" : " + i + " }"));
         key[i-1] = doc.getKey();
@@ -1195,7 +1195,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     }
 
     // Call it when the operation returns 0 document
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       assertEquals(0, col.find().key("7BA79AB96D4C44F8A37DF7FD138EC0F7").count());
     }
@@ -1212,7 +1212,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // Call it when the operation returns 1+ document
     assertEquals(10, col.find().count());
-    if (!isJDCSMode()) 
+    if (!isJDCSOrATPMode()) 
     {
       // startKey("id:3", false) should return "id:1", "id:10", "id:2"
       assertEquals(3, ((OracleOperationBuilderImpl) col.find()).startKey(key[2], false, false).count());
@@ -1232,7 +1232,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testGetOne", null);
     } else
@@ -1243,7 +1243,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     String[] key = new String[10];
     for (int i = 1; i <= 10; i++) {
       OracleDocument doc;
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{\"content\":" + i + "}"));
         key[i-1] = doc.getKey();
@@ -1280,7 +1280,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testReadOperations", null);
     } else
@@ -1293,7 +1293,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     String[] key = new String[20];
     for (int i = 1; i <= 20; i++) {
       OracleDocument doc;
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{\"data\":" + i + "}"));
         key[i-1] = doc.getKey();
@@ -1357,7 +1357,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     keySet.add(key[4]);
     keySet.add(key[6]);
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F8");
@@ -1379,7 +1379,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // col.find().headerOnly().keys(keys).limit(5).getCursor()
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1406,7 +1406,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertNull(((OracleDocumentImpl) doc).getContentAsStream());
 
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1421,7 +1421,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // test with col.find().key(k1).keys(keys). count();
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1441,7 +1441,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // test col.find().timeRange(since, until).keys(keys).limit(n).getCursor()
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1480,7 +1480,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // test with col.find().keys(keys).limit(10).getCursor()
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1505,7 +1505,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(false, cursor.hasNext());
     
     // col.find().startKey(k1).count()
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
     {
       assertEquals(8, ((OracleOperationBuilderImpl) col.find()).startKey("id:2", true, false).count());
       assertEquals(6, ((OracleOperationBuilderImpl) col.find()).startKey("id:3", true, false).count());
@@ -1525,7 +1525,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // test with col.find().key(k1).keys(keys).skip(5). count();
     // Negative test.
     keySet.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       keySet.add("7BA79AB96D4C44F8A37DF7FD138EC0F7");
     }
@@ -1559,7 +1559,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("seq_key_column").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testReadOperations2", null);
     } else
@@ -1636,7 +1636,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // test with col.find().key().lastModified().getOne();
     doc = ((OracleOperationBuilderImpl) col.find().key(key4)).lastModified(lastModified4).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":4}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1670,7 +1670,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   private void testKeyLikeWithColumnType(String columnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     OracleDocument mDoc = client.createMetadataBuilder()
@@ -1712,7 +1712,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleRDBMSMetadataBuilder b;
     OracleDocument mDoc;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = dbAdmin.createCollection("testKeyLike", null);
     } else
@@ -1742,7 +1742,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   public void testKeyLikeNeg() throws Exception {
-    if (isJDCSMode()) // only one test needed in jdcs mode
+    if (isJDCSOrATPMode()) // only one test needed in jdcs mode
     {
       testKeyLikeWithColumnTypeNeg(null, null);
       return;
@@ -1760,7 +1760,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
       OracleDocument mDoc = null;
  
-      if (isJDCSMode()) {
+      if (isJDCSOrATPMode()) {
         // ### replace with new builder once it becomes available
         mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
       }
@@ -1851,7 +1851,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   public void testLockVARCHAR2() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     testLockWithColumnType("VARCHAR2");
@@ -1859,7 +1859,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
 
   public void testLockCLOB() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     testLockWithColumnType("CLOB");

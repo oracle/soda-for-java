@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -237,6 +237,8 @@ public class OracleCursorImpl implements OracleCursor
        // ### Instead, we use the toString() method. Therefore, for now,
        // ### use the default case (below).
        ***/
+      case CollectionDescriptor.JSON_CONTENT:
+        return OracleDatabaseImpl.getBytesForJson(resultSet, 1);
       default:
         // All other projections return VARCHAR2
         str = resultSet.getString(1);
@@ -433,6 +435,10 @@ public class OracleCursorImpl implements OracleCursor
             case CollectionDescriptor.RAW_CONTENT:
               payload = resultSet.getBytes(++num);
               break;
+
+            case CollectionDescriptor.JSON_CONTENT:
+              payload = OracleDatabaseImpl.getBytesForJson(resultSet, ++num);
+              break;
           }
         }
 
@@ -469,15 +475,10 @@ public class OracleCursorImpl implements OracleCursor
         OracleDatabaseImpl dbImpl =((OracleCollectionImpl) operation.getCollection()).getDatabase();
 
         if (dbImpl.isOracleJsonAvailable())
-        {
-          System.out.println ("Available!");
           result.setJsonFactory(dbImpl.getJsonFactoryProvider().getJsonFactory());
-        }
-        else
-          System.out.println ("Not available!");
                                 
         // ### Allow setting thru constructor instead?
-        if (desc.hasBinaryFormat())
+        if (desc.hasBinaryFormat() || desc.hasJsonType())
         {
           // If isOracleJsonAvailable returns false, that means the setJsonFactory
           // was not invoked on result. For processing binary documents, the json

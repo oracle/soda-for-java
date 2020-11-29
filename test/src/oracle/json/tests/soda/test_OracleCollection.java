@@ -39,7 +39,7 @@ public class test_OracleCollection extends SodaTestCase {
     OracleDocument metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testFindOne", null);
     } else
@@ -49,7 +49,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     OracleDocument doc = null;
     String[] key = new String[3];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString("{ \"data\" : 1 }"));
       key[0] = doc.getKey(); 
@@ -71,7 +71,7 @@ public class test_OracleCollection extends SodaTestCase {
     // Test with valid key
     doc = col.findOne(key[1]);
     assertEquals(key[1], doc.getKey());
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
          assertEquals("{\"data\":2}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -96,7 +96,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -113,7 +113,7 @@ public class test_OracleCollection extends SodaTestCase {
     col.insert(db.createDocumentFromString("{ \"data\" : 1234 }"));
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
     }
@@ -147,7 +147,7 @@ public class test_OracleCollection extends SodaTestCase {
     assertNull(doc.getContentAsByteArray());
     col.insert(doc);
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     // Configured to client-assigned key
@@ -209,7 +209,7 @@ public class test_OracleCollection extends SodaTestCase {
   public void testInsertAndGet() throws Exception {
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       metaDoc = null;
     } else
@@ -225,7 +225,7 @@ public class test_OracleCollection extends SodaTestCase {
     verifyNullContentDocument(doc);
     
     doc = col.find().key(doc.getKey()).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -244,7 +244,7 @@ public class test_OracleCollection extends SodaTestCase {
                                    " but the input document has a key.");
     }
 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
     //  Pass document with non-JSON content
     doc = col.insertAndGet(db.createDocumentFromString(null, "non-JSON content", "text/plain"));
@@ -322,7 +322,7 @@ public class test_OracleCollection extends SodaTestCase {
       
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       metaDoc = null;
     } else
@@ -338,7 +338,7 @@ public class test_OracleCollection extends SodaTestCase {
     col.insert(list.iterator());
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -348,7 +348,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     // // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       list.add(db.createDocumentFromString("{ \"data\" : \"abcd\" }"));
       list.add(db.createDocumentFromString("{ \"hello\" : \"world\" }"));
@@ -367,7 +367,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Pass the documents with key and without key
     list.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
       list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
@@ -407,7 +407,7 @@ public class test_OracleCollection extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col2;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col2 = dbAdmin.createCollection("testInsert2-2", null);
     } else
@@ -420,7 +420,7 @@ public class test_OracleCollection extends SodaTestCase {
     String[] key = new String[2];
     key[0] = "id-1";
     key[1] = "id-2";
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       doc = col2.insertAndGet(db.createDocumentFromString("{\"data\":1001}"));
       key[0] = doc.getKey();
@@ -440,7 +440,7 @@ public class test_OracleCollection extends SodaTestCase {
     assertEquals("{\"data\":1001}", new String(doc2.getContentAsByteArray(), "UTF-8"));
     
     doc2 = col2.find().key(key[1]).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"Hello\":\"JSON\"}", new String(doc2.getContentAsByteArray(), "UTF-8"));
     } else
@@ -451,7 +451,7 @@ public class test_OracleCollection extends SodaTestCase {
     if (autoCommit == false)
       conn.commit();
     
-    if (!isJDCSMode())// UUID assigned key won't be conflicted
+    if (!isJDCSOrATPMode())// UUID assigned key won't be conflicted
     {
       try {
         // Tests when there are key conflicts between newly inserted document and the existing doc
@@ -591,7 +591,7 @@ public class test_OracleCollection extends SodaTestCase {
       
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       metaDoc = null;
     } else
@@ -610,7 +610,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -620,7 +620,7 @@ public class test_OracleCollection extends SodaTestCase {
 
     // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       list.add(db.createDocumentFromString("{\"data\":\"abcd\"}"));
       list.add(db.createDocumentFromString("{\"hello\":\"world\"}"));
@@ -641,14 +641,14 @@ public class test_OracleCollection extends SodaTestCase {
     String lastModified = resultList.get(1).getLastModified();
     doc = ((OracleOperationBuilderImpl)col.find().key(resultList.get(1).getKey())).lastModified(lastModified).getOne();
     assertNotNull(doc);
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
     else
       assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
  
     String version = resultList.get(1).getVersion();
     doc = col.find().key(resultList.get(1).getKey()).version(version).getOne();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
     else
       assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
@@ -663,7 +663,7 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Pass the documents with key and without key
     list.clear();
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
       list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
@@ -693,7 +693,7 @@ public class test_OracleCollection extends SodaTestCase {
       assertEquals("documents argument cannot be null.", e.getMessage());
     }
     
-    if (isJDCSMode()) // no need to test following tests in jdcs mode
+    if (isJDCSOrATPMode()) // no need to test following tests in jdcs mode
     {
       if (autoCommit == false)
         conn.commit();
@@ -877,7 +877,7 @@ public class test_OracleCollection extends SodaTestCase {
       doc = db.createDocumentFromString("{ \"data\" : \"v1\" }");
       col.save(doc);
       doc = col.find().getOne();
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         assertEquals("{\"data\":\"v1\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
       } else
@@ -886,7 +886,7 @@ public class test_OracleCollection extends SodaTestCase {
       }      
     }
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
 
     if(colAdmin.isHeterogeneous()) {
@@ -974,7 +974,7 @@ public class test_OracleCollection extends SodaTestCase {
   public void testSave() throws Exception {
     // Configured to auto-generate key and heterogeneous collection
     OracleDocument mDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       mDoc = null;
     } else
@@ -988,7 +988,7 @@ public class test_OracleCollection extends SodaTestCase {
     OracleCollection col = dbAdmin.createCollection("testSave", mDoc);
     testSaveWithCol(col, false);
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
       
     // Configured to client-generate key and heterogeneous collection
@@ -1053,7 +1053,7 @@ public class test_OracleCollection extends SodaTestCase {
       doc = col.saveAndGet(doc);
       verifyNullContentDocument(doc);
       doc = col.find().key(doc.getKey()).version(doc.getVersion()).getOne();
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
       } else
@@ -1062,7 +1062,7 @@ public class test_OracleCollection extends SodaTestCase {
       }      
     }
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       return;
     
     if(colAdmin.isHeterogeneous()) {
@@ -1165,7 +1165,7 @@ public class test_OracleCollection extends SodaTestCase {
   public void testSaveAndGet() throws Exception{
     // Configured to auto-generate key and non-heterogeneous collection
     OracleDocument mDoc4 = null;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       mDoc4 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -1178,7 +1178,7 @@ public class test_OracleCollection extends SodaTestCase {
     testSaveAndGetWithCol(col4, false);
 
     // The following tests cover collection configurations not supported on JDCS 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // Configured to auto-generate key and heterogeneous collection
@@ -1221,7 +1221,7 @@ public class test_OracleCollection extends SodaTestCase {
   }
 
   public void testFindFragment() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
     // findFragment only work for non-JSON data
     OracleDocument mDoc = client.createMetadataBuilder().

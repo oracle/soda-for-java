@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -580,9 +580,9 @@ public abstract class OracleCollectionImpl implements OracleCollection
   {
     sb.setLength(0);
 
-    sb.append("create index \"");
-    sb.append(indexName);
-    sb.append("\" on ");
+    sb.append("create index ");
+    appendSanitizedName(sb, indexName);
+    sb.append(" on ");
     appendTable(sb);
     sb.append(" (JSON_VALUE(\"");
     sb.append(options.contentColumnName);
@@ -621,9 +621,9 @@ public abstract class OracleCollectionImpl implements OracleCollection
     if (!is121TextIndexWithLang)
     {
       sb.setLength(0);
-      sb.append("create index \"");
-      sb.append(indexName);
-      sb.append("\" on ");
+      sb.append("create index ");
+      appendSanitizedName(sb, indexName);
+      sb.append(" on ");
       appendTable(sb);
       sb.append(" (\"");
       sb.append(options.contentColumnName);
@@ -653,9 +653,9 @@ public abstract class OracleCollectionImpl implements OracleCollection
 
       sb.setLength(0);
 
-      sb.append("create index \"");
-      sb.append(indexName);
-      sb.append("\" on ");
+      sb.append("create index ");
+      appendSanitizedName(sb, indexName);
+      sb.append(" on ");
       appendTable(sb);
       sb.append(" (\"");
       sb.append(options.contentColumnName);
@@ -752,11 +752,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
   private String dropIndexDDL(String indexName, boolean forceFlag)
   {
     sb.setLength(0);
-    sb.append("drop index \"");
-    // Assumed to a valid identifier (already passed
-    // through CollectionDescriptor.stringToIdentifier())
-    sb.append(indexName);
-    sb.append("\"");
+    sb.append("drop index ");
+    appendSanitizedName(sb, indexName);
     if (forceFlag) sb.append(" force");
     return(sb.toString());
   }
@@ -776,11 +773,9 @@ public abstract class OracleCollectionImpl implements OracleCollection
     sb.append("create ");
     if (unique)
       sb.append("unique ");
-    sb.append("index \"");
-    // Assumed to a valid identifier (already passed
-    // through CollectionDescriptor.stringToIdentifier())
-    sb.append(indexName);
-    sb.append("\" on ");
+    sb.append("index ");
+    appendSanitizedName(sb, indexName);
+    sb.append(" on ");
     appendTable(sb);
     sb.append(" (");
     
@@ -937,6 +932,16 @@ public abstract class OracleCollectionImpl implements OracleCollection
     }
   }
 
+  private void appendSanitizedName(StringBuilder builder, String name) {
+    // stringToIdentifier will replace any double quotes in the string
+    // with underscores. And then we surround the resulting name with
+    // double quotes on both sides. Thus SQL injection via name is not
+    // possible.
+    builder.append("\"");
+    builder.append(CollectionDescriptor.stringToIdentifier(name));
+    builder.append("\"");
+  }
+
   /**
    * Create an index
    */
@@ -960,8 +965,6 @@ public abstract class OracleCollectionImpl implements OracleCollection
     if (indexName == null)
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
                                     "indexName");
-
-    indexName = CollectionDescriptor.stringToIdentifier(indexName);
 
     String sqltext = null;
 
@@ -1062,7 +1065,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.warning(e.toString());
+        log.severe(e.toString() + "\n" + sqltext);
 
       if (e.getErrorCode() == ORA_SQL_OBJECT_EXISTS)
       {
@@ -1125,7 +1128,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       else
       {
         if (OracleLog.isLoggingEnabled())
-          log.warning(e.toString());
+          log.severe(e.toString() + "\n" + sqltext);
         throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
       }
     }
@@ -1230,7 +1233,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       else
       {
         if (OracleLog.isLoggingEnabled())
-          log.warning(e.toString());
+          log.severe(e.toString());
         throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
       }
     }

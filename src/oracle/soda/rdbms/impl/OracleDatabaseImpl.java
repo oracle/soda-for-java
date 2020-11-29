@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -1419,6 +1419,9 @@ public class OracleDatabaseImpl implements OracleDatabase
     }
     catch (SQLException e)
     {
+      if (OracleLog.isLoggingEnabled())
+        log.severe(e.getMessage());
+
       throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
     }
     finally
@@ -1466,7 +1469,7 @@ public class OracleDatabaseImpl implements OracleDatabase
     catch (SQLException e)
     {
       if (OracleLog.isLoggingEnabled())
-        log.severe(e.toString());
+        log.severe(e.getMessage());
     }
     finally
     {

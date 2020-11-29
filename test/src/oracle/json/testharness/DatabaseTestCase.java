@@ -29,6 +29,8 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     // if there's no property with "jdcs.mode" specified, false will be returned.
     protected static final boolean JDCS_MODE = Boolean.getBoolean("jdcs.mode");
 
+    protected static final boolean ATP_MODE = Boolean.getBoolean("atp.mode");
+
     // Project and patch tests only execute when running against 18 and above.
     // Project and patch first appeared in 12.2.0.1, but was unusable due to
     // a number of bugs. This property can be used to run project and patch tests
@@ -72,6 +74,14 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     // when it's true, all explicit create/delete table/view/sequence SQL will fail.
     public static boolean isJDCSMode() {
       return JDCS_MODE;
+    }
+
+    public static boolean isATPMode() {
+      return ATP_MODE;
+    }
+
+    public static boolean isJDCSOrATPMode() {
+      return JDCS_MODE || ATP_MODE;
     }
     
     // the method to check whether DB's character set is UTF8 or not

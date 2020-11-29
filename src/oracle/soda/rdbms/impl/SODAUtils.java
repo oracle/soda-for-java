@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -66,6 +66,13 @@ public final class SODAUtils
   {
     return new OracleBatchException(msg.get(params),
                                     msg.getKey(),
+                                    processedCount);
+  }
+
+  static OracleBatchException makeBatchException(Throwable cause,
+                                                 int processedCount)
+  {
+    return new OracleBatchException(cause,
                                     processedCount);
   }
 

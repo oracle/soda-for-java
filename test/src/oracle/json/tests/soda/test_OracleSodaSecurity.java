@@ -31,7 +31,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
         .mediaTypeColumnName("MediaType")
         .build();
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testSQLInjection", null);
     } else
@@ -42,7 +42,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     String version1 = null;
     OracleDocument doc = null;
     for (int i = 1; i <= 10; i++) {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
       } else
@@ -55,7 +55,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
     
     // Tests about query operations
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
     {
       assertEquals(0, col.find().key("xxx or 1=1 ").count());
       assertEquals(0, col.find().key("xxx ) or ( 1=1 ").count());
@@ -87,7 +87,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     + "begin execute immediate 'create table tbl_by_SQLInjection ( c1 number )' end;";
     
     String[] key = new String[10];
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       try 
       {
@@ -103,7 +103,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
       }
     } 
 
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.insertAndGet(db.createDocumentFromString("{\"originalField\" :\"" + createTblStr + "\"}"));
       key[0]  = doc.getKey();
@@ -119,7 +119,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
       assertEquals(createTblStr, new String(col.findOne(key[1]).getContentAsByteArray(), "UTF-8"));
     }
     
-    if (isJDCSMode()) 
+    if (isJDCSOrATPMode()) 
     {
       doc = col.find().key(key[0]).replaceOneAndGet(db.createDocumentFromString("{\"sql\" :\"" + createTblStr + "\"}"));
       key[0]  = doc.getKey();
@@ -132,7 +132,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     assertEquals("{\"sql\":\"" + createTblStr + "\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
     assertEquals("application/json", doc.getMediaType());
     
-    if (!isJDCSMode()) 
+    if (!isJDCSOrATPMode()) 
     {
       col.save(db.createDocumentFromString("id-1", createTblStr, "text/plain"));
       doc = col.findOne("id-1");
@@ -155,7 +155,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
       .keyColumnAssignmentMethod("CLIENT")
       .build();
     OracleCollection col2;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col2 = dbAdmin.createCollection("testSQLInjection2", null);
     } else
@@ -164,7 +164,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
 
     for (int i = 1; i <= 10; i++) {
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col2.insertAndGet(db.createDocumentFromString("{ \"dataValue\" : " + i + " }"));
         key[i-1] = doc.getKey();
@@ -199,7 +199,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
     else {
       OracleCollection col3;
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         col3 = db.admin().createCollection(colName3.toUpperCase(), null);
         doc = col3.insertAndGet(db.createDocumentFromString("{ \"dataValue\" : 1001 }"));
@@ -215,7 +215,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
     
     // Test with attacks via key column name
-    if (!isJDCSMode()) 
+    if (!isJDCSOrATPMode()) 
     {
       final String keyColumnStr = "CREATED_ON\" is not null) or 1=1 or (\"VERSION";
       OracleDocument metaDoc4 = client.createMetadataBuilder().keyColumnSequenceName(keyColumnStr)
@@ -242,7 +242,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
       }
     }
     else {
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         col5 = db.admin().createCollection("testSQLInjection5", null);
       } else
@@ -271,7 +271,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
       }
     }
     else {
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         col6 = db.admin().createCollection("testSQLInjection6", null);
         doc = col6.insertAndGet(db.createDocumentFromString("{ \"dataValue\" : 1001 }"));
@@ -289,7 +289,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
     
     // Tests with attacks via version parameter
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
     {
       OracleDocument metaDoc7 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
@@ -320,7 +320,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     // Tests when sql injection attack happen in path filed
     OracleDocument metaDoc8 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();        
     OracleCollection col8;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col8 = db.admin().createCollection("testSQLInjection8", null);
     } else
@@ -330,7 +330,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     String version2 = null;
 
     for (int i = 1; i <= 10; i++) {
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         doc = col8.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
         key[0] = doc.getKey();
@@ -375,7 +375,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     }
 
     // Tests when sql injection attack happen in "id" values
-    if (!isJDCSMode())
+    if (!isJDCSOrATPMode())
     {
       filter = db.createDocumentFromString("{\"$id\" : [\"id-0)or(1=1\"]}");
       assertEquals(0, col8.find().filter(filter).count());
@@ -394,7 +394,7 @@ public class test_OracleSodaSecurity extends SodaTestCase {
     OracleDocument metaDoc9 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     String docStr1 = "{\"location\" : {\"type\": \"Point\", \"coordinates\": [33.7243,-118.1579]} }";
     OracleCollection col9;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col9 = db.admin().createCollection("testSQLInjection9", null);
       doc = col9.insertAndGet(db.createDocumentFromString(docStr1));

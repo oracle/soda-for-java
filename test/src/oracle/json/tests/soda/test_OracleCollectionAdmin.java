@@ -36,7 +36,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   
   public void testGetName() throws Exception {
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -53,7 +53,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
 
   public void testIsHeterogeneous() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       OracleCollection col = dbAdmin.createCollection("testIsHeterogeneous", null);
       assertEquals(false, col.admin().isHeterogeneous());
@@ -168,7 +168,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   public void testIsReadOnly() throws Exception {
     // Test with READONLY = false
     OracleDocument metaDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       metaDoc = null;
     } else
@@ -181,7 +181,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     col.insert(db.createDocumentFromString(null, "{ \"data\" : 1001 }", null));
     assertEquals(1, col.find().count());
     
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     // Test with READONLY = true
@@ -217,7 +217,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   "}";
   
   public void testGetDescription() throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
     OracleDocument metaDoc = db.createDocumentFromString(colSpecExample);
     
@@ -302,11 +302,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   public void testDrop() throws Exception {
     OracleDocument metaDoc = null;
 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
-    } else if (isJDCSMode()) {
+    } else if (isJDCSOrATPMode()) {
       metaDoc = null;
     } else
     {
@@ -333,7 +333,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin2.drop();
     
     // Test to drop the collection mapping to the existing table
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
 
     OracleDocument metaDoc3 = client.createMetadataBuilder()
@@ -348,7 +348,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   public void testTruncate() throws Exception {
     OracleDocument metaDoc = null;
 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -374,7 +374,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     assertEquals(0, col.find().count());
     
     // Test it with existing table
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
     OracleDocument metaDoc2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
@@ -387,7 +387,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin2.truncate();
     assertEquals(0, col2.find().count());
 
-    if (!isJDCSMode()) {
+    if (!isJDCSOrATPMode()) {
       // the creation of "SODA_VIEW"(see sodatestsetup.sql) is blocked by jdcs lockdown.
  
       // Test it with existing view
@@ -439,7 +439,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
   public void testDropIndex() throws Exception {
     OracleDocument mDoc = null;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
@@ -664,7 +664,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     OracleCollection col = dbAdmin.createCollection("testIndexAll1");
     testJsonSearchIndexWithCol(col);
 
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
         return;
     
     // Test with contentColumnType=CLOB
@@ -725,7 +725,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
  
   public void testCreateIndex() throws Exception {
     OracleDocument mDoc;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       mDoc = null;
     } else
@@ -1675,7 +1675,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   
   // tests about string/number functional index used in sql rewrite
   private void testFuncIndexInPlan1(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1688,7 +1688,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
 
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testFuncIndexInPlan1" + contentColumnType, null);
     } else
@@ -1709,7 +1709,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       }
 
       docStr = "{\"order\" : { \"orderName\": \"" + name + "\", \"orderNum\": " + num + " } }";
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
         key[num] = doc.getKey();
@@ -1889,7 +1889,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   
   //tests about "date"/"datetime" functional index used in sql rewrite
   private void testFuncIndexInPlan2(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
 
@@ -1902,7 +1902,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection("testFuncIndexInPlan2" + contentColumnType, null);
     } else
@@ -1921,7 +1921,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       } else {
         docStr = "{\"order\" : { \"orderDate\": \"" + date + "\", \"orderDateTime\": \"" + dateTime + "\" } }";  
       }
-      if (isJDCSMode()) 
+      if (isJDCSOrATPMode()) 
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
         key[num] = doc.getKey();
@@ -2185,7 +2185,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   }
   
   private void testJsonSearchIndex2(String contentColumnType) throws Exception {
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
       if (!contentColumnType.equalsIgnoreCase("BLOB"))
         return;
     
@@ -2196,7 +2196,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
         .contentColumnType(contentColumnType).build();
     String colName = "testOrderby" + contentColumnType;
     OracleCollection col;
-    if (isJDCSMode())
+    if (isJDCSOrATPMode())
     {
       col = db.admin().createCollection(colName, null);
     } else
@@ -2210,7 +2210,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     String[] key = new String[1000];
     for (int number = 0; number < 1000; number++) {
       String docStr = "{\"a\":{\"b\":{\"number\":" + number + ", \"string\": \"11." + number + "\"}}}";
-      if (isJDCSMode())
+      if (isJDCSOrATPMode())
       {
         doc = col.insertAndGet(db.createDocumentFromString(docStr));
         key[number] = doc.getKey();

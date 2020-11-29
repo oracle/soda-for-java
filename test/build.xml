@@ -47,6 +47,8 @@
 
     <property name="test.match" value=""/>
     <property name="patch.version" value=""/>
+    <property name="jdcs.mode" value="false"/>
+    <property name="atp.mode" value="false"/>
     <property name="install.plsql" value="false"/>
  
     <import file="../json.xml"/>
