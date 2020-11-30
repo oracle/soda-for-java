@@ -26,7 +26,6 @@ import oracle.soda.rdbms.OracleRDBMSClient;
 
 import oracle.soda.OracleDatabase;
 import oracle.soda.OracleCursor;
-import oracle.soda.OracleCollection;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
 
@@ -48,11 +47,11 @@ public class testSODA {
     props.setProperty("user", "schemaName");
     props.setProperty("password", "password");
 
-    OracleConnection conn = null;
+    Connection conn = null;
 
     try {
         // Get a JDBC connection to an Oracle instance
-        conn = (OracleConnection) DriverManager.getConnection(url, props);
+        conn = DriverManager.getConnection(url, props);
 
         // Enable JDBC implicit statement caching
         conn.setImplicitCachingEnabled(true);
