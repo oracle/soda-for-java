@@ -61,7 +61,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   private static final int MAX_NUM_OF_KEYS = 1000;
 
   private static final Logger log =
-    Logger.getLogger(OracleOperationBuilderImpl.class.getName());
+          Logger.getLogger(OracleOperationBuilderImpl.class.getName());
 
   private String key;
 
@@ -97,9 +97,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private String asOfTimestamp = null;
 
-  private List<SpatialClause>  spatialClauses  = null;
+  private List<SpatialClause> spatialClauses = null;
   private List<ContainsClause> containsClauses = null;
-  private List<SqlJsonClause>  sqlJsonClauses  = null;
+  private List<SqlJsonClause> sqlJsonClauses = null;
 
   boolean headerOnly;
 
@@ -119,8 +119,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private final JsonFactoryProvider jProvider;
 
-  private enum Terminal
-  {
+  private enum Terminal {
     COUNT,
     GET_ONE,
     GET_CURSOR,
@@ -128,11 +127,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     REPLACE_ONE_AND_GET,
     REPLACE_ONE,
     MERGE_ONE,
+    MERGE_ONE_AND_GET,
     // The rest of these are not part of a public API
     PATCH_ONE,
+    PATCH_ONE_AND_GET,
     PATCH,
     EXPLAIN_PLAN
-  };
+  }
+
+  ;
 
   // Stores the value of the new version (unless it's sequential,
   // or none) computed in bindUpdate for a replace operation.
@@ -148,17 +151,16 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   // These flags serve to signal whether PLSQL patch or merge
   // functions should be used during select generation.
   private boolean selectPatchedDoc = false;
-  private boolean selectMergedDoc  = false;
+  private boolean selectMergedDoc = false;
 
   private boolean patchSpecExceptionOnly = false;
 
   private OracleDocument patchSpec = null;
-  
+
   private String hints = null;
 
   OracleOperationBuilderImpl(OracleCollectionImpl collection,
-                             Connection connection)
-  {
+                             Connection connection) {
     this.collection = collection;
     this.jProvider = collection.getDatabase().getJsonFactoryProvider();
 
@@ -187,8 +189,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
    * <p/>
    * Switch on/off save mode for internal SQL.
    */
-  public void returnQuery(boolean enableReturn)
-  {
+  public void returnQuery(boolean enableReturn) {
     return_query = enableReturn;
     if (enableReturn)
       return_sql_json = new JsonByteArray(SODAConstants.SQL_STATEMENT_SIZE);
@@ -196,30 +197,26 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       return_sql_json = null;
   }
 
-  private void beginQueryRecord(String sqltext)
-  {
+  private void beginQueryRecord(String sqltext) {
     return_sql_json.appendOpenBrace();
     return_sql_json.appendValue("sql");
     return_sql_json.appendColon();
     return_sql_json.appendValue(sqltext);
   }
 
-  private void recordNamedBind(String name, String value)
-  {
+  private void recordNamedBind(String name, String value) {
     return_sql_json.appendComma();
     return_sql_json.appendValue(name);
     return_sql_json.appendColon();
     return_sql_json.appendValue(value);
   }
 
-  private void recordQueryBind(int pos, ValueTypePair item)
-  {
+  private void recordQueryBind(int pos, ValueTypePair item) {
     return_sql_json.appendComma();
     return_sql_json.appendValue("B" + Integer.toString(pos));
     return_sql_json.appendColon();
 
-    switch (item.getType())
-    {
+    switch (item.getType()) {
       case ValueTypePair.TYPE_NUMBER:
         return_sql_json.append(item.getNumberValue().toString());
         break;
@@ -239,14 +236,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
   }
 
-  private void recordJsonValueBind(int pos, ValueTypePair item)
-  {
+  private void recordJsonValueBind(int pos, ValueTypePair item) {
     return_sql_json.appendComma();
     return_sql_json.appendValue("JV" + Integer.toString(pos));
     return_sql_json.appendColon();
 
-    switch (item.getType())
-    {
+    switch (item.getType()) {
       case ValueTypePair.TYPE_NUMBER:
         return_sql_json.append(item.getNumberValue().toString());
         break;
@@ -260,8 +255,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
   }
 
-  private void recordQueryKey(int pos, String key)
-  {
+  private void recordQueryKey(int pos, String key) {
     return_sql_json.appendComma();
     return_sql_json.appendValue("key_" + Integer.toString(pos));
     return_sql_json.appendColon();
@@ -272,18 +266,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   public OracleOperationBuilder keyLike(String pattern, String escape)
-    throws OracleException
-  {
-    if (pattern == null)
-    {
+          throws OracleException {
+    if (pattern == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "pattern");
+              "pattern");
     }
 
     if ((options.keyAssignmentMethod != CollectionDescriptor.KEY_ASSIGN_CLIENT) ||
-        ((options.keyDataType != CollectionDescriptor.STRING_KEY) &&
-         (options.keyDataType != CollectionDescriptor.NCHAR_KEY)))
-    {
+            ((options.keyDataType != CollectionDescriptor.STRING_KEY) &&
+                    (options.keyDataType != CollectionDescriptor.NCHAR_KEY))) {
       throw SODAUtils.makeException(SODAMessage.EX_KEY_LIKE_CANNOT_BE_USED);
     }
 
@@ -304,13 +295,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     return this;
   }
 
-  public OracleOperationBuilder key(String key) throws OracleException
-  {
+  public OracleOperationBuilder key(String key) throws OracleException {
 
-    if (key == null)
-    {
+    if (key == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "key");
+              "key");
     }
 
     this.key = collection.canonicalKey(key);
@@ -334,24 +323,20 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   public OracleOperationBuilder keys(Set<String> keys)
-          throws OracleException
-  {
-    if (keys == null)
-    {
+          throws OracleException {
+    if (keys == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "keys");
+              "keys");
     }
 
-    if (keys.isEmpty())
-    {
+    if (keys.isEmpty()) {
       throw SODAUtils.makeException(SODAMessage.EX_SET_IS_EMPTY,
-                                    "keys");
+              "keys");
     }
 
-    if (keys.contains(null))
-    {
+    if (keys.contains(null)) {
       throw SODAUtils.makeException(SODAMessage.EX_SET_CONTAINS_NULL,
-                                    "keys");
+              "keys");
     }
     this.keys = new HashSet<String>();
     for (String k : keys) {
@@ -380,12 +365,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   public OracleOperationBuilder startKey(String startKey,
                                          Boolean ascending,
                                          Boolean inclusive)
-          throws OracleException
-  {
-    if (startKey == null)
-    {
+          throws OracleException {
+    if (startKey == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "startKey");
+              "startKey");
     }
 
     //### Revisit empty start key
@@ -394,21 +377,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     key = collection.canonicalKey(startKey);
 
-    if (ascending != null)
-    {
+    if (ascending != null) {
       this.ascending = ascending;
-    }
-    else
-    {
+    } else {
       this.ascending = true;
     }
 
-    if (inclusive != null)
-    {
+    if (inclusive != null) {
       this.startKeyInclusive = inclusive;
-    }
-    else
-    {
+    } else {
       this.startKeyInclusive = true;
     }
 
@@ -423,18 +400,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   public OracleOperationBuilder timeRange(String since,
                                           String until,
                                           Boolean inclusive)
-    throws OracleException
-  {
-    if (options.timestampColumnName == null)
-    {
+          throws OracleException {
+    if (options.timestampColumnName == null) {
       throw SODAUtils.makeException(SODAMessage.EX_NO_TIMESTAMP,
-                                    options.uriName);
+              options.uriName);
     }
 
-    if ((since == null) && (until == null))
-    {
+    if ((since == null) && (until == null)) {
       throw SODAUtils.makeException(
-        SODAMessage.EX_SINCE_AND_UNTIL_CANNOT_BE_NULL);
+              SODAMessage.EX_SINCE_AND_UNTIL_CANNOT_BE_NULL);
     }
 
     // If the inbound timestamps include a trailing Z for UTC,
@@ -450,12 +424,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     this.since = since;
     this.until = until;
 
-    if (inclusive != null)
-    {
+    if (inclusive != null) {
       timeRangeInclusive = inclusive;
-    }
-    else
-    {
+    } else {
       timeRangeInclusive = true;
     }
 
@@ -476,8 +447,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   /* Not part of the public API */
-  public OracleOperationBuilder asOfTimestamp(String tstamp)
-  {
+  public OracleOperationBuilder asOfTimestamp(String tstamp) {
     // This is done just to make sure it's not a bad string
     // Avoid any chance of SQL injection if it cannot be a bind variable
     long lstamp = ComponentTime.stringToStamp(tstamp);
@@ -488,33 +458,27 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     return this;
   }
-  
+
   @Override
-  public OracleOperationBuilder filter(String filterSpec) throws OracleException 
-  {
+  public OracleOperationBuilder filter(String filterSpec) throws OracleException {
     return filter(new OracleDocumentImpl(filterSpec));
   }
-  
-  
+
+
   @Override
   public OracleOperationBuilder filter(OracleDocument filterSpec)
-    throws OracleException
-  {
+          throws OracleException {
     specChecks(filterSpec, "filterSpec");
 
-    if (collection.admin().isHeterogeneous())
-    {
+    if (collection.admin().isHeterogeneous()) {
       throw SODAUtils.makeException(SODAMessage.EX_NO_QBE_ON_HETERO_COLLECTIONS);
     }
 
-    try
-    {
+    try {
       tree = AndORTree.createTree(jProvider,
-                       ((OracleDocumentImpl) filterSpec).getContentAsStream());
+              ((OracleDocumentImpl) filterSpec).getContentAsStream());
       tree.generateJsonExists();
-    }
-    catch (QueryException e)
-    {
+    } catch (QueryException e) {
       if (OracleLog.isLoggingEnabled())
         log.warning(e.toString());
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_FILTER, e);
@@ -532,42 +496,34 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
    */
   public OracleOperationBuilder project(OracleDocument projectionSpec,
                                         boolean skipErrors)
-    throws OracleException
-  {
+          throws OracleException {
 
     specChecks(projectionSpec, "projectionSpec");
 
     proj = new ProjectionSpec(jProvider,
-                 ((OracleDocumentImpl) projectionSpec).getContentAsStream());
+            ((OracleDocumentImpl) projectionSpec).getContentAsStream());
 
-    try
-    {
+    try {
       projString = proj.getAsString();
 
       // Validate the projection specification
       boolean validated = proj.validate(true);
-      if (!validated)
-      {
+      if (!validated) {
         throw SODAUtils.makeException(SODAMessage.EX_INVALID_PROJ_SPEC, "validation");
       }
       // Disallow mixed include/exclude proj spec
-      else if (proj.hasIncludeRules() && proj.hasExcludeRules())
-      {
+      else if (proj.hasIncludeRules() && proj.hasExcludeRules()) {
         throw SODAUtils.makeException(SODAMessage.EX_PROJ_SPEC_MIXED);
       }
       // Disallow array steps
-      else if (proj.hasArraySteps())
-      {
+      else if (proj.hasArraySteps()) {
         throw SODAUtils.makeException(SODAMessage.EX_ARRAY_STEPS_NOT_ALLOWED_IN_PROJ);
       }
       // Disallow overlapping paths (i.e. where one path is a prefix of another).
-      else if (proj.hasOverlappingPaths())
-      {
+      else if (proj.hasOverlappingPaths()) {
         throw SODAUtils.makeException(SODAMessage.EX_OVERLAPPING_PATHS_NOT_ALLOWED_IN_PROJ);
       }
-    }
-    catch (QueryException e)
-    {
+    } catch (QueryException e) {
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_PROJ_SPEC, e);
     }
 
@@ -580,16 +536,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   public OracleOperationBuilder project(OracleDocument projectionSpec)
-    throws OracleException
-  {
+          throws OracleException {
     return project(projectionSpec, true);
   }
 
   /*
    * Selects the results for update.
    */
-  public OracleOperationBuilder lock() throws OracleException
-  {
+  public OracleOperationBuilder lock() throws OracleException {
     if (skip > 0L)
       throw SODAUtils.makeException(SODAMessage.EX_INCOMPATIBLE_METHODS, "lock()", "skip()");
     else if (limit > 0)
@@ -601,59 +555,49 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   /*
    * Set the hint string for the SQL statement
    */
-  public OracleOperationBuilder hint(String hints) throws OracleException
-  {
+  public OracleOperationBuilder hint(String hints) throws OracleException {
     if (hints == null)
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL, hints);
     if (hints.indexOf("/*") >= 0 || hints.indexOf("*/") >= 0)
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_HINT, hints);
-    this.hints = (hints == "")? null: hints;
+    this.hints = (hints == "") ? null : hints;
     return this;
   }
-  
+
   // Checks that the maximum number of specified keys is
   // not greater than MAX_NUM_OF_KEYS.
   // Note that this is called from filter(), keys(), and key()
   // as opposed to generateOperation() in
   // order to fail early.
-  private void maxNumberOfKeysCheck() throws OracleException
-  {
+  private void maxNumberOfKeysCheck() throws OracleException {
     int totalNumOfKeys = 0;
 
-    if (filterSpec != null)
-    {
+    if (filterSpec != null) {
       totalNumOfKeys += tree.getKeys().size();
     }
 
-    if (keys != null)
-    {
+    if (keys != null) {
       totalNumOfKeys += keys.size();
-    }
-    else if (key != null && !isStartKey)
-    {
+    } else if (key != null && !isStartKey) {
       totalNumOfKeys++;
     }
 
-    if (totalNumOfKeys > MAX_NUM_OF_KEYS)
-    {
+    if (totalNumOfKeys > MAX_NUM_OF_KEYS) {
       throw SODAUtils.makeException(SODAMessage.EX_MAX_NUM_OF_KEYS_EXCEEDED,
-                                    totalNumOfKeys,
-                                    MAX_NUM_OF_KEYS);
+              totalNumOfKeys,
+              MAX_NUM_OF_KEYS);
     }
   }
 
-  public OracleOperationBuilder version(String version) throws OracleException
-  {
-    if (options.versionColumnName == null)
-    {
+  public OracleOperationBuilder version(String version) throws OracleException {
+    if (options.versionColumnName == null) {
       throw SODAUtils.makeException(SODAMessage.EX_NO_VERSION,
-                                    options.uriName);
+              options.uriName);
     }
 
-    if (version == null)
-    {
+    if (version == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "version");
+              "version");
     }
 
     this.version = version;
@@ -663,18 +607,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   /* Not part of a public API */
   public OracleOperationBuilder lastModified(String lastModified)
-    throws OracleException
-  {
-    if (options.timestampColumnName == null)
-    {
+          throws OracleException {
+    if (options.timestampColumnName == null) {
       throw SODAUtils.makeException(SODAMessage.EX_NO_TIMESTAMP,
-                                    options.uriName);
+              options.uriName);
     }
 
-    if (lastModified == null)
-    {
+    if (lastModified == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    "lastModified");
+              "lastModified");
     }
 
     if (lastModified.endsWith("Z"))
@@ -691,23 +632,19 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     return this;
   }
 
-  private ResultSet getResultSet(Operation operation) throws OracleException
-  {
+  private ResultSet getResultSet(Operation operation) throws OracleException {
     return getResultSet(operation, false);
   }
- 
+
   private ResultSet getResultSet(Operation operation, boolean close)
-    throws OracleException
-  {
+          throws OracleException {
     PreparedStatement stmt = operation.getPreparedStatement();
     ResultSet resultSet = null;
 
-    try
-    {
+    try {
       resultSet = stmt.executeQuery();
 
-      if (close)
-      {
+      if (close) {
         resultSet.close();
         resultSet = null;
 
@@ -715,20 +652,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       stmt = null;
-    }
-    catch (SQLException e)
-    {
-      if (OracleLog.isLoggingEnabled())
-      {
+    } catch (SQLException e) {
+      if (OracleLog.isLoggingEnabled()) {
         log.severe(e.toString() + "\n" + operation.getSqlText());
       }
       throw SODAUtils.makeExceptionWithSQLText(e, operation.getSqlText());
-    }
-    finally
-    {
+    } finally {
       for (String message : SODAUtils.closeCursor(stmt,
-                                                  (close ? resultSet : null)))
-      {
+              (close ? resultSet : null))) {
         if (OracleLog.isLoggingEnabled())
           log.severe(message);
       }
@@ -737,8 +668,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     return resultSet;
   }
 
-  public OracleCursor getCursor() throws OracleException
-  {
+  public OracleCursor getCursor() throws OracleException {
     Operation operation = generateOperation(Terminal.GET_CURSOR);
     ResultSet resultSet = getResultSet(operation);
 
@@ -747,19 +677,18 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     boolean isModify = (selectPatchedDoc || selectMergedDoc);
 
     OracleCursorImpl cursor =
-      new OracleCursorImpl(options,
-                           metrics,
-                           operation,
-                           resultSet,
-                           // Projection is ignored if the operation is a modify
-                           isModify ? false : ((proj == null) ? false : true),
-                           isModify);
+            new OracleCursorImpl(options,
+                    metrics,
+                    operation,
+                    resultSet,
+                    // Projection is ignored if the operation is a modify
+                    isModify ? false : ((proj == null) ? false : true),
+                    isModify);
 
     cursor.setElapsedTime(prepAndExecTime);
 
     // This seems to be the only place where a return query makes sense
-    if (return_query)
-    {
+    if (return_query) {
       return_sql_json.appendCloseBrace();
       cursor.setQuery(return_sql_json.toArray());
     }
@@ -769,18 +698,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   // Common checks performed by various patch methods
   private void specChecks(OracleDocument spec, String specType)
-    throws OracleException
-  {
+          throws OracleException {
     if (spec == null)
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
-                                    specType);
-    
-    if (specType.equals("patchSpec")) 
-    {
+              specType);
+
+    if (specType.equals("patchSpec")) {
       collection.writeCheck("patch");
-    } 
-    else if (specType.equals("mergeSpec")) 
-    {
+    } else if (specType.equals("mergeSpec")) {
       collection.writeCheck("merge");
       // Any document is a valid mergepatch.  don't unnecessarily convert the
       // possibly binary patchspec to a string.
@@ -792,23 +717,20 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (specAsString == null || specAsString.isEmpty()) {
       if (specType.equals("patchSpec")) {
         throw SODAUtils.makeException(SODAMessage.EX_SPEC_HAS_NO_CONTENT,
-                                      "Patch");
-      }
-      else if (specType.equals("projectionSpec")){
+                "Patch");
+      } else if (specType.equals("projectionSpec")) {
         throw SODAUtils.makeException(SODAMessage.EX_SPEC_HAS_NO_CONTENT,
-                                      "Projection");
-      }
-      else {
+                "Projection");
+      } else {
         throw SODAUtils.makeException(SODAMessage.EX_SPEC_HAS_NO_CONTENT,
-                                      "Filter");
+                "Filter");
       }
     }
   }
 
   private Pair<List<OracleDocument>, Long>
-          getModifiedDocs(OracleDocument patchSpec, boolean isMergePatch)
-   throws OracleException
-  {
+  getModifiedDocs(OracleDocument patchSpec, boolean isMergePatch)
+          throws OracleException {
     //
     // Get the patched documents and their keys.
     //
@@ -818,7 +740,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     // Toggle patched/merged doc to true, so that a PLSQL patch/merge
     // function is invoked as part of a select
     selectPatchedDoc = !isMergePatch;
-    selectMergedDoc  = isMergePatch;
+    selectMergedDoc = isMergePatch;
 
     OracleCursor modifiedDocsCursor = null;
 
@@ -826,13 +748,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     Long countProcessed = 0L;
 
-    try
-    {
+    try {
       modifiedDocsCursor = getCursor();
-      if (modifiedDocsCursor != null)
-      {
-        while (modifiedDocsCursor.hasNext())
-        {
+      if (modifiedDocsCursor != null) {
+        while (modifiedDocsCursor.hasNext()) {
           OracleDocument modifiedDoc = modifiedDocsCursor.next();
 
           if (modifiedDoc != null)
@@ -841,16 +760,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
           ++countProcessed;
         }
       }
-    }
-    catch (OracleException e)
-    {
-      try
-      {
+    } catch (OracleException e) {
+      try {
         if (modifiedDocsCursor != null)
           modifiedDocsCursor.close();
-      }
-      catch (IOException ioE)
-      {
+      } catch (IOException ioE) {
         // Since we got an IOException following an OracleException,
         // we can wrap the IOException in another OracleException,
         // and attach is as the next exception.
@@ -860,16 +774,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       throw e;
-    }
-    catch (RuntimeException e)
-    {
-      try
-      {
+    } catch (RuntimeException e) {
+      try {
         if (modifiedDocsCursor != null)
           modifiedDocsCursor.close();
-      }
-      catch (IOException ioE)
-      {
+      } catch (IOException ioE) {
         // Nothing to do, this IOException follows
         // another exception.
         if (OracleLog.isLoggingEnabled())
@@ -877,16 +786,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       throw e;
-    }
-    catch (Error e)
-    {
-      try
-      {
+    } catch (Error e) {
+      try {
         if (modifiedDocsCursor != null)
           modifiedDocsCursor.close();
-      }
-      catch (IOException ioE)
-      {
+      } catch (IOException ioE) {
         // Nothing to do, this IOException follows
         // another exception.
         if (OracleLog.isLoggingEnabled())
@@ -894,40 +798,30 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       throw e;
-    }
-    finally
-    {
+    } finally {
       // Now toggle it back to false, since we got our modified docs.
       selectPatchedDoc = selectMergedDoc = false;
       patchSpec = null;
     }
 
-    try
-    {
+    try {
       if (modifiedDocsCursor != null)
         modifiedDocsCursor.close();
-    }
-    catch (IOException ioE)
-    {
+    } catch (IOException ioE) {
       throw new OracleException(ioE);
     }
 
-    return new Pair<List<OracleDocument>, Long> (modifiedDocs,
-                                                 countProcessed);
+    return new Pair<List<OracleDocument>, Long>(modifiedDocs,
+            countProcessed);
   }
 
-  private boolean disableAutoCommit() throws OracleException
-  {
-    try
-    {
-      if (connection.getAutoCommit() == true)
-      {
+  private boolean disableAutoCommit() throws OracleException {
+    try {
+      if (connection.getAutoCommit() == true) {
         connection.setAutoCommit(false);
         return true;
       }
-    }
-    catch (SQLException e)
-    {
+    } catch (SQLException e) {
       throw SODAUtils.makeException(SODAMessage.EX_CANT_DISABLE_AUTOCOMMIT, e);
     }
 
@@ -940,14 +834,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   private List<OracleDocument> modifyAndGet(OracleDocument patchSpec,
                                             boolean skipErrors,
                                             boolean isMergePatch)
-    throws OracleException
-  {
+          throws OracleException {
     //
     // Handle a single key-based patch first
     //
 
-    if (key != null && !isStartKey)
-    {
+    if (key != null && !isStartKey) {
       OracleDocument patchedDoc;
       if (isMergePatch)
         patchedDoc = mergeOneAndGet(patchSpec);
@@ -955,15 +847,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         patchedDoc = patchOneAndGet(patchSpec);
 
       List<OracleDocument> l = new ArrayList<OracleDocument>();
-      if (patchedDoc != null)
-      {
-          l.add(patchedDoc);
+      if (patchedDoc != null) {
+        l.add(patchedDoc);
       }
       // ### Return empty list or null if nothing is patched?
       return l;
     }
 
-    specChecks(patchSpec, "patchSpec");
+    specChecks(patchSpec, (isMergePatch) ? "mergeSpec" : "patchSpec");
 
     //
     // Now handle a patch involving
@@ -972,13 +863,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     boolean manageTransaction = disableAutoCommit();
 
-    try
-    {
+    try {
       if (skipErrors)
         patchSpecExceptionOnly = true;
 
       List<OracleDocument> patchedDocs =
-          getModifiedDocs(patchSpec, isMergePatch).getFirst();
+              getModifiedDocs(patchSpec, isMergePatch).getFirst();
 
       patchSpecExceptionOnly = false;
 
@@ -987,8 +877,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       // some other OracleOperationBuilder state (currently keys(...) and startKey(...)).
       // Note: all state overriden by key(...) must be saved and restored
       // after all the replaces are complete!
-      if (!patchedDocs.isEmpty())
-      {
+      if (!patchedDocs.isEmpty()) {
         List<OracleDocument> finalDocs = new ArrayList<OracleDocument>();
 
         HashSet<String> savedKeys = null;
@@ -997,22 +886,17 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         boolean ascendingSaved = false;
         boolean startKeyInclusiveSaved = false;
 
-        if (keys != null && !keys.isEmpty())
-        {
+        if (keys != null && !keys.isEmpty()) {
           savedKeys = new HashSet<String>();
           savedKeys.addAll(keys);
-        }
-        else if (isStartKey == true)
-        {
+        } else if (isStartKey == true) {
           isStartKeySaved = true;
           ascendingSaved = ascending;
           startKeyInclusiveSaved = startKeyInclusive;
         }
 
-        try
-        {
-          for (OracleDocument d : patchedDocs)
-          {
+        try {
+          for (OracleDocument d : patchedDocs) {
 
             if (d.getContentAsByteArray() == null)
               continue;
@@ -1021,8 +905,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
             OracleDocument returnedDoc = replaceOneAndGet(d);
 
-            if (returnedDoc != null)
-            {
+            if (returnedDoc != null) {
               // getContentAsByteArray() is OK here, since
               // we don't currently stream JSON documents.
               ((OracleDocumentImpl) returnedDoc).setContent(d.getContentAsByteArray());
@@ -1030,17 +913,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
               finalDocs.add(returnedDoc);
             }
           }
-        }
-        finally
-        {
+        } finally {
           // Restore OracleOperationBuilder state
-          if (savedKeys != null)
-          {
+          if (savedKeys != null) {
             keys = new HashSet<String>();
             keys.addAll(savedKeys);
-          }
-          else if (isStartKeySaved == true)
-          {
+          } else if (isStartKeySaved == true) {
             isStartKey = isStartKeySaved;
             ascending = ascendingSaved;
             startKeyInclusive = startKeyInclusiveSaved;
@@ -1048,9 +926,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         }
 
         OracleException e = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-          connection,
-          manageTransaction,
-          true);
+                connection,
+                manageTransaction,
+                true);
 
         if (e != null)
           throw e;
@@ -1058,51 +936,42 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         // ### Return empty list or null if nothing is patched?
         return finalDocs;
       }
-    }
-    catch (OracleException e)
-    {
+    } catch (OracleException e) {
       OracleException nE = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-                                               connection,
-                                               manageTransaction,
-                                               false);
+              connection,
+              manageTransaction,
+              false);
       e.setNextException(nE);
 
-      if (OracleLog.isLoggingEnabled())
-      {
+      if (OracleLog.isLoggingEnabled()) {
         log.severe(e.toString());
       }
 
       throw e;
-    }
-    catch (RuntimeException e)
-    {
+    } catch (RuntimeException e) {
       TableCollectionImpl.completeTxnAndRestoreAutoCommit(connection,
-                                                          manageTransaction,
-                                                          false);
+              manageTransaction,
+              false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
 
       throw e;
-    }
-    catch (Error e)
-    {
+    } catch (Error e) {
       TableCollectionImpl.completeTxnAndRestoreAutoCommit(connection,
-                                                          manageTransaction,
-                                                          false);
+              manageTransaction,
+              false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
 
       throw e;
-    }
-    finally
-    {
+    } finally {
       patchSpecExceptionOnly = false;
     }
 
     OracleException e = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-                                            connection,
-                                            manageTransaction,
-                                            true);
+            connection,
+            manageTransaction,
+            true);
 
     if (e != null)
       throw e;
@@ -1115,14 +984,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   private WriteResult modify(OracleDocument patchSpec,
                              boolean skipErrors,
                              boolean isMergePatch)
-    throws OracleException
-  {
+          throws OracleException {
     //
     // Handle a single key-based patch first
     //
 
-    if (key != null && !isStartKey)
-    {
+    if (key != null && !isStartKey) {
       boolean result;
 
       if (isMergePatch)
@@ -1148,10 +1015,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (skipErrors)
       patchSpecExceptionOnly = true;
 
-    try
-    {
+    try {
       Pair<List<OracleDocument>, Long> resultPair =
-          getModifiedDocs(patchSpec, isMergePatch);
+              getModifiedDocs(patchSpec, isMergePatch);
 
       List<OracleDocument> modifiedDocs = resultPair.getFirst();
 
@@ -1162,8 +1028,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       // some other OracleOperationBuilder state (currently keys(...) and startKey(...)).
       // Note: all state overriden by key(...) must be saved and restored
       // after all the replaces are complete!
-      if (!modifiedDocs.isEmpty())
-      {
+      if (!modifiedDocs.isEmpty()) {
         long countOfAppliedPatches = 0;
 
         HashSet<String> savedKeys = null;
@@ -1172,31 +1037,22 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         boolean ascendingSaved = false;
         boolean startKeyInclusiveSaved = false;
 
-        if (keys != null && !keys.isEmpty())
-        {
+        if (keys != null && !keys.isEmpty()) {
           savedKeys = new HashSet<String>();
           savedKeys.addAll(keys);
-        }
-        else if (isStartKey == true)
-        {
+        } else if (isStartKey == true) {
           isStartKeySaved = true;
           ascendingSaved = ascending;
           startKeyInclusiveSaved = startKeyInclusive;
         }
 
-        try
-        {
-          for (OracleDocument d : modifiedDocs)
-          {
-            if (((OracleDocumentImpl) d).isBinary())
-            {
-              if (((OracleDocumentImpl) d).getBinaryContentAsByteArray() == null)
-              {
+        try {
+          for (OracleDocument d : modifiedDocs) {
+            if (((OracleDocumentImpl) d).isBinary()) {
+              if (((OracleDocumentImpl) d).getBinaryContentAsByteArray() == null) {
                 continue;
               }
-            }
-            else if (d.getContentAsByteArray() == null)
-            {
+            } else if (d.getContentAsByteArray() == null) {
               continue;
             }
 
@@ -1205,17 +1061,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
             if (replaceOne(d))
               countOfAppliedPatches++;
           }
-        }
-        finally
-        {
+        } finally {
           // Restore OracleOperationBuilder state
-          if (savedKeys != null)
-          {
+          if (savedKeys != null) {
             keys = new HashSet<String>();
             keys.addAll(savedKeys);
-          }
-          else if (isStartKeySaved == true)
-          {
+          } else if (isStartKeySaved == true) {
             isStartKey = isStartKeySaved;
             ascending = ascendingSaved;
             startKeyInclusive = startKeyInclusiveSaved;
@@ -1223,61 +1074,52 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         }
 
         OracleException e = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-          connection,
-          manageTransaction,
-          true);
+                connection,
+                manageTransaction,
+                true);
 
         if (e != null)
           throw e;
 
         return new WriteResultImpl(resultPair.getSecond(), countOfAppliedPatches);
       }
-    }
-    catch (OracleException e)
-    {
-     OracleException nE = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-                                              connection,
-                                              manageTransaction,
-                                              false);
+    } catch (OracleException e) {
+      OracleException nE = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
+              connection,
+              manageTransaction,
+              false);
 
       e.setNextException(nE);
 
-      if (OracleLog.isLoggingEnabled())
-      {
+      if (OracleLog.isLoggingEnabled()) {
         log.severe(e.toString());
       }
 
       throw e;
-    }
-    catch (RuntimeException e)
-    {
+    } catch (RuntimeException e) {
       TableCollectionImpl.completeTxnAndRestoreAutoCommit(connection,
-                                                          manageTransaction,
-                                                          false);
+              manageTransaction,
+              false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
 
       throw e;
-    }
-    catch (Error e)
-    {
+    } catch (Error e) {
       TableCollectionImpl.completeTxnAndRestoreAutoCommit(connection,
-                                                          manageTransaction,
-                                                          false);
+              manageTransaction,
+              false);
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString());
 
       throw e;
-    }
-    finally
-    {
+    } finally {
       patchSpecExceptionOnly = false;
     }
 
     OracleException e = TableCollectionImpl.completeTxnAndRestoreAutoCommit(
-                                            connection,
-                                            manageTransaction,
-                                            true);
+            connection,
+            manageTransaction,
+            true);
     if (e != null)
       throw e;
 
@@ -1289,8 +1131,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
    */
   private OracleDocument getModifiedDoc(OracleDocument patchSpec,
                                         boolean isMergePatch)
-    throws OracleException
-  {
+          throws OracleException {
     if (key == null || isStartKey)
       throw SODAUtils.makeException(SODAMessage.EX_KEY_MUST_BE_SPECIFIED);
 
@@ -1299,16 +1140,13 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     // Toggle patched/merged doc to true, so that a PLSQL patch/merge
     // function is invoked as part of a select
     selectPatchedDoc = !isMergePatch;
-    selectMergedDoc  = isMergePatch;
+    selectMergedDoc = isMergePatch;
 
     OracleDocument modifiedDoc = null;
 
-    try
-    {
+    try {
       modifiedDoc = getOne();
-    }
-    finally
-    {
+    } finally {
       // At this point, either the patched doc was obtained successfully
       // or an error was encountered. selectPatchedDoc and selectMergedDoc
       // should be toggled back to false
@@ -1320,50 +1158,41 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   private boolean modifyOne(OracleDocument patchSpec, boolean isMergePatch)
-    throws OracleException
-  {
+          throws OracleException {
     specChecks(patchSpec, (isMergePatch) ? "mergeSpec" : "patchSpec");
 
-    if (isMergePatch && (options.versionColumnName == null || 
-        !collection.payloadBasedVersioning())) {
+    if (options.versionColumnName == null || !collection.payloadBasedVersioning()) {
       // Take an optimized path that does the merge in one execution. 
       this.patchSpec = patchSpec;
-      return replaceOneWithOptionalMerge(patchSpec, Terminal.MERGE_ONE);
-      
+      Terminal terminal = (isMergePatch) ? Terminal.MERGE_ONE : Terminal.PATCH_ONE;
+      return replaceOneWithOptionalMerge(patchSpec, terminal);
+
     } else {
-      
+
       OracleDocument modifiedDoc = getModifiedDoc(patchSpec, isMergePatch);
 
-      if (modifiedDoc != null)
-        return replaceOneWithOptionalMerge(modifiedDoc, Terminal.REPLACE_ONE);
+      if (modifiedDoc != null) {
+        return replaceOne(modifiedDoc);
+      }
     }
     return false;
   }
 
-  private OracleDocument modifyOneAndGet(OracleDocument patchSpec,
-                                         boolean isMergePatch)
-    throws OracleException
-  {
+  private OracleDocument modifyOneAndGet(OracleDocument patchSpec, boolean isMergePatch)
+          throws OracleException {
     specChecks(patchSpec, (isMergePatch) ? "mergeSpec" : "patchSpec");
 
-    OracleDocument patchedDoc = getModifiedDoc(patchSpec, isMergePatch);
+    if (options.versionColumnName == null || !collection.payloadBasedVersioning()) {
+      // TODO: double check this assignment
+      this.patchSpec = patchSpec;
+      Terminal terminal = (isMergePatch) ? Terminal.MERGE_ONE_AND_GET : Terminal.PATCH_ONE_AND_GET;
+      return replaceOneAndGetWithOptionalMerge(patchSpec, terminal);
+    }
+    else {
+      OracleDocument modifiedDoc = getModifiedDoc(patchSpec, isMergePatch);
 
-    if (patchedDoc != null)
-    {
-      OracleDocument replacedDoc = replaceOneAndGet(patchedDoc);
-
-      if (replacedDoc != null)
-      {
-        OracleDocument resultDoc = new OracleDocumentImpl(replacedDoc.getKey(),
-          replacedDoc.getVersion(),
-          replacedDoc.getLastModified(),
-          //### Is this ok (encoding, etc?)
-          patchedDoc.getContentAsByteArray());
-
-        ((OracleDocumentImpl) resultDoc).setCreatedOn(replacedDoc.getCreatedOn());
-        ((OracleDocumentImpl) resultDoc).setContentType(replacedDoc.getMediaType());
-
-        return resultDoc;
+      if (modifiedDoc != null) {
+        return replaceOneAndGet(modifiedDoc);
       }
     }
 
@@ -1371,8 +1200,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   public WriteResult patch(OracleDocument patchSpec)
-    throws OracleException
-  {
+          throws OracleException {
     // For now, only expose the version of patchAndGet()
     // that skips errors (except for invalid patch spec).
     // Therefore, the second parameters to modifyAndGet(...),
@@ -1388,21 +1216,18 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     return modify(patchSpec, true, false);
   }
 
-  public boolean patchOne(OracleDocument patchSpec) throws OracleException
-  {
+  public boolean patchOne(OracleDocument patchSpec) throws OracleException {
     return modifyOne(patchSpec, false);
   }
 
   public OracleDocument patchOneAndGet(OracleDocument patchSpec)
-    throws OracleException
-  {
+          throws OracleException {
     return modifyOneAndGet(patchSpec, false);
   }
 
 
   public List<OracleDocument> patchAndGet(OracleDocument patchSpec)
-                                          throws OracleException
-  {
+          throws OracleException {
     // For now, only expose the version of patchAndGet()
     // that skips errors (except for invalid patch spec).
     // Therefore, the second parameters to patchAndGet(...),
@@ -1419,34 +1244,29 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   public WriteResult merge(OracleDocument patchSpec)
-    throws OracleException
-  {
+          throws OracleException {
     return modify(patchSpec, true, true);
   }
 
   @Override
-  public boolean mergeOne(OracleDocument patchSpec) throws OracleException
-  {
+  public boolean mergeOne(OracleDocument patchSpec) throws OracleException {
     return modifyOne(patchSpec, true);
   }
 
   @Override
   public OracleDocument mergeOneAndGet(OracleDocument patchSpec)
-    throws OracleException
-  {
+          throws OracleException {
     // ### This could take an optimized code path as in mergeOne()
     return modifyOneAndGet(patchSpec, true);
   }
 
   public List<OracleDocument> mergeAndGet(OracleDocument patchSpec)
-                                          throws OracleException
-  {
+          throws OracleException {
     return modifyAndGet(patchSpec, true, true);
   }
 
   private Operation generateOperation(Terminal terminal)
-          throws OracleException
-  {
+          throws OracleException {
     return generateOperation(terminal, null);
   }
 
@@ -1462,28 +1282,21 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
    */
   private Operation generateOperation(Terminal terminal,
                                       OracleDocument document)
-    throws OracleException
-  {
+          throws OracleException {
     StringBuilder sb = new StringBuilder();
 
     // Make this a callable statement for non-Oracle drivers
     if (returningClause(terminal) && collection.useCallableReturns)
       sb.append("begin\n");
 
-    if (terminal == Terminal.REMOVE)
-    {
+    if (terminal == Terminal.REMOVE) {
       return_query = false;
       generateRemove(sb);
-    }
-    else if (isReplaceOrMerge(terminal))
-    {
+    } else if (isReplaceOrMergeOrPatch(terminal)) {
       return_query = false;
       generateUpdate(sb, terminal);
-    }
-    else
-    {
-      if (terminal != Terminal.GET_CURSOR || selectStageOfPatch())
-      {
+    } else {
+      if (terminal != Terminal.GET_CURSOR || selectStageOfPatch()) {
         // ### It would also be good to support non-cursor based
         //     operations, such as getOne(). However, we would
         //     need to provide the ability to fetch the SQL
@@ -1492,12 +1305,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         return_query = false;
       }
 
-      if (paginationWorkaround(terminal))
-      {
+      if (paginationWorkaround(terminal)) {
         generatePaginationWorkaround(sb, terminal);
-      }
-      else
-      {
+      } else {
         generateSelect(sb, terminal);
       }
     }
@@ -1507,10 +1317,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     int numOfFilterSpecKeys = 0;
 
-    if (filterSpec != null)
-    {
-      if (tree == null)
-      {
+    if (filterSpec != null) {
+      if (tree == null) {
         throw new IllegalStateException();
       }
 
@@ -1519,18 +1327,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
     generateWhere(sb);
 
-    if (!countOrWrite(terminal) && !selectStageOfPatch())
-    {
+    if (!countOrWrite(terminal) && !selectStageOfPatch()) {
       boolean filterSpecOrderByPresent = false;
 
-      if (hasFilterSpecOrderBy())
-      {
+      if (hasFilterSpecOrderBy()) {
         generateFilterSpecOrderBy(sb, tree);
         filterSpecOrderByPresent = true;
       }
 
-      if (!paginationWorkaround(terminal))
-      {
+      if (!paginationWorkaround(terminal)) {
         generateOrderBy(sb, filterSpecOrderByPresent);
         generateOffsetAndFetchNext(sb);
       }
@@ -1538,8 +1343,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       if (lockRows) sb.append(" for update");
     }
 
-    if (returningClause(terminal))
-    {
+    if (returningClause(terminal)) {
       generateReturning(sb);
     }
 
@@ -1547,13 +1351,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (returningClause(terminal) && collection.useCallableReturns)
       sb.append(";\nend;\n");
 
-    PreparedStatement stmt  = null;
+    PreparedStatement stmt = null;
     CallableStatement cstmt = null;
 
     String sqltext = sb.toString();
 
-    try
-    {
+    try {
       if (return_query)
         beginQueryRecord(sqltext);
 
@@ -1571,54 +1374,42 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
       // Binds new values for a replace statement
       // (e.g. new content, version, etc).
-      if (isReplaceOrMerge(terminal))
-      {
+      if (isReplaceOrMergeOrPatch(terminal)) {
         parameterIndex = bindUpdate(stmt, document, terminal);
       }
 
-      if (selectPatchedDoc) 
-      {
+      if (selectPatchedDoc) {
         stmt.setString(++parameterIndex, patchSpec.getContentAsString());
-      }
-      else if (selectMergedDoc)
-      {
+      } else if (selectMergedDoc) {
         parameterIndex = bindMergePatch(stmt, parameterIndex);
       }
       // If this is a projection based on REDACT, bind the redaction spec
-      else if (projection(terminal))
-      {
+      else if (projection(terminal)) {
         stmt.setString(++parameterIndex, projString);
       }
 
-      if (flashback(terminal))
-      {
+      if (flashback(terminal)) {
         parameterIndex = bindFlashback(stmt, parameterIndex);
       }
 
       Iterator<String> keysIter = null;
 
-      if (key != null)
-      {
+      if (key != null) {
         String canonicalKey = collection.canonicalKey(key);
 
-        ((TableCollectionImpl)collection)
-            .bindKeyColumn(stmt, ++parameterIndex, canonicalKey);
+        ((TableCollectionImpl) collection)
+                .bindKeyColumn(stmt, ++parameterIndex, canonicalKey);
         if (return_query)
           recordNamedBind("key", canonicalKey);
-      }
-      else if (likePattern != null)
-      {
-        ((TableCollectionImpl)collection)
-            .bindKeyColumn(stmt, ++parameterIndex, likePattern);
+      } else if (likePattern != null) {
+        ((TableCollectionImpl) collection)
+                .bindKeyColumn(stmt, ++parameterIndex, likePattern);
 
-        if (likeEscape != null)
-        {
-          ((TableCollectionImpl)collection)
-              .bindKeyColumn(stmt, ++parameterIndex, likeEscape);
+        if (likeEscape != null) {
+          ((TableCollectionImpl) collection)
+                  .bindKeyColumn(stmt, ++parameterIndex, likeEscape);
         }
-      }
-      else if (keys != null)
-      {
+      } else if (keys != null) {
         keysIter = keys.iterator();
         bindKeys(keysIter, stmt, keys.size(), parameterIndex);
 
@@ -1626,8 +1417,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       // Bind $id part of the filterSpec
-      if (numOfFilterSpecKeys > 0)
-      {
+      if (numOfFilterSpecKeys > 0) {
         HashSet<String> keysFromFilterSpec = tree.getKeys();
         int numKeys = keysFromFilterSpec.size();
         HashSet<String> canonicalKeysFromFilterSpec = new HashSet<String>(numKeys);
@@ -1636,44 +1426,37 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
           canonicalKeysFromFilterSpec.add(collection.canonicalKey(k));
 
         bindKeys(canonicalKeysFromFilterSpec.iterator(),
-                 stmt,
-                 numKeys,
-                 parameterIndex);
+                stmt,
+                numKeys,
+                parameterIndex);
         parameterIndex += numKeys;
       }
 
       parameterIndex = setStartAndEndTime(stmt, parameterIndex);
       parameterIndex = setVersionAndLastModified(stmt, parameterIndex);
 
-      if (filterSpec != null)
-      {
+      if (filterSpec != null) {
         // Bind JSON exists part of the filterSpec
         parameterIndex = bindJsonExists(stmt, tree, parameterIndex);
       }
 
-      if (spatialClauses != null)
-      {
+      if (spatialClauses != null) {
         int bindCount = 0;
         String bindName;
 
-        for (SpatialClause clause : spatialClauses)
-        {
+        for (SpatialClause clause : spatialClauses) {
           String spatialReference = clause.getReference();
           String spatialDistance = clause.getDistance();
 
-          if (spatialReference != null)
-          {
-            if (return_query)
-            {
+          if (spatialReference != null) {
+            if (return_query) {
               bindName = "GEO" + Integer.toString(++bindCount);
               recordNamedBind(bindName, spatialReference);
             }
             stmt.setString(++parameterIndex, spatialReference);
 
-            if (spatialDistance != null)
-            {
-              if (return_query)
-              {
+            if (spatialDistance != null) {
+              if (return_query) {
                 bindName = "GEO" + Integer.toString(++bindCount);
                 recordNamedBind(bindName, spatialDistance);
               }
@@ -1683,19 +1466,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         }
       }
 
-      if (containsClauses != null)
-      {
+      if (containsClauses != null) {
         int bindCount = 0;
         String bindName;
 
-        for (ContainsClause clause : containsClauses)
-        {
+        for (ContainsClause clause : containsClauses) {
           String searchString = clause.getSearchString();
 
-          if (searchString != null)
-          {
-            if (return_query)
-            {
+          if (searchString != null) {
+            if (return_query) {
               bindName = "TXT" + Integer.toString(++bindCount);
               recordNamedBind(bindName, searchString);
             }
@@ -1704,17 +1483,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         }
       }
 
-      if (sqlJsonClauses != null)
-      {
+      if (sqlJsonClauses != null) {
         int bindCount = 0;
 
-        for (SqlJsonClause clause : sqlJsonClauses)
-        {
+        for (SqlJsonClause clause : sqlJsonClauses) {
           ValueTypePair varg;
-          int           vpos = 0;
+          int vpos = 0;
 
-          for (int i = 0; i < clause.getArgCount(); ++i)
-          {
+          for (int i = 0; i < clause.getArgCount(); ++i) {
             varg = clause.getValue(vpos++);
 
             if (return_query)
@@ -1723,8 +1499,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
             bindTypedParam(stmt, varg, ++parameterIndex);
           }
 
-          for (int i = 0; i < clause.getBindCount(); ++i)
-          {
+          for (int i = 0; i < clause.getBindCount(); ++i) {
             varg = clause.getValue(vpos++);
 
             if (return_query)
@@ -1737,15 +1512,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
       int returnParameterIndex = -1;
 
-      if (returningClause(terminal))
-      {
-        if (collection.useCallableReturns)
-        {
+      if (returningClause(terminal)) {
+        if (collection.useCallableReturns) {
           returnParameterIndex = parameterIndex;
           parameterIndex = bindReturning(cstmt, parameterIndex);
-        }
-        else
-        {
+        } else {
           parameterIndex = bindReturning(stmt, parameterIndex);
         }
       }
@@ -1754,8 +1525,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
       // If it's not a count() or a write operation,
       // reduce round trips associated with fetching.
-      if (!countOrWrite(terminal))
-      {
+      if (!countOrWrite(terminal)) {
         // If it's not a single row operation, set array fetch size
         if (!isSingleKey)
           stmt.setFetchSize(SODAConstants.BATCH_FETCH_SIZE);
@@ -1768,27 +1538,22 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       boolean isFilterSpec = (filterSpec != null);
 
       operation = new Operation(stmt,
-                                sqltext,
-                                headerOnly,
-                                isFilterSpec,
-                                isSingleKey,
-                                returnParameterIndex,
-                                collection);
+              sqltext,
+              headerOnly,
+              isFilterSpec,
+              isSingleKey,
+              returnParameterIndex,
+              collection);
 
       stmt = null;
 
       return operation;
-    }
-    catch (SQLException e)
-    {
+    } catch (SQLException e) {
       if (OracleLog.isLoggingEnabled())
         log.severe(e.toString() + "\n" + sqltext);
       throw SODAUtils.makeExceptionWithSQLText(e, sqltext);
-    }
-    finally
-    {
-      for (String message : SODAUtils.closeCursor(stmt, null))
-      {
+    } finally {
+      for (String message : SODAUtils.closeCursor(stmt, null)) {
         if (OracleLog.isLoggingEnabled())
           log.severe(message);
       }
@@ -1797,53 +1562,49 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private int bindMergePatch(PreparedStatement stmt, int parameterIndex) throws SQLException, OracleException {
     parameterIndex++;
-    if (options.hasBinaryFormat() && !options.hasJsonType()) 
+    if (options.hasBinaryFormat() && !options.hasJsonType())
       // workaround bug 30702558 by binding patch as textual json
-      ((TableCollectionImpl)collection)
-        .bindPayloadColumn(stmt, parameterIndex, patchSpec.getContentAsByteArray());
-    else         
-      ((TableCollectionImpl)collection).bindPayloadColumn(stmt, 
-          parameterIndex, patchSpec);
+      ((TableCollectionImpl) collection)
+              .bindPayloadColumn(stmt, parameterIndex, patchSpec.getContentAsByteArray());
+    else
+      ((TableCollectionImpl) collection).bindPayloadColumn(stmt,
+              parameterIndex, patchSpec);
     return parameterIndex;
   }
 
   private void bindTypedParam(PreparedStatement stmt,
                               ValueTypePair item,
                               int parameterIndex)
-    throws SQLException
-  {
-      switch (item.getType())
-      {
-        case ValueTypePair.TYPE_NUMBER:
-          stmt.setBigDecimal(parameterIndex, item.getNumberValue());
-          break;
+          throws SQLException {
+    switch (item.getType()) {
+      case ValueTypePair.TYPE_NUMBER:
+        stmt.setBigDecimal(parameterIndex, item.getNumberValue());
+        break;
 
-        case ValueTypePair.TYPE_STRING:
-          stmt.setString(parameterIndex, item.getStringValue());
-          break;
+      case ValueTypePair.TYPE_STRING:
+        stmt.setString(parameterIndex, item.getStringValue());
+        break;
 
-        case ValueTypePair.TYPE_BOOLEAN:
-          stmt.setString(parameterIndex,
-                         String.valueOf(item.getBooleanValue()));
-          break;
+      case ValueTypePair.TYPE_BOOLEAN:
+        stmt.setString(parameterIndex,
+                String.valueOf(item.getBooleanValue()));
+        break;
 
-        case ValueTypePair.TYPE_NULL:
-          stmt.setString(parameterIndex, NULL);
-          break;
+      case ValueTypePair.TYPE_NULL:
+        stmt.setString(parameterIndex, NULL);
+        break;
 
-        default:
-          throw new IllegalStateException();
-      }
+      default:
+        throw new IllegalStateException();
+    }
   }
 
   private int bindJsonExists(PreparedStatement stmt,
                              AndORTree tree,
                              int parameterIndex)
-    throws SQLException
-  {
+          throws SQLException {
     int count = 0;
-    for (ValueTypePair item : tree.getValueArray())
-    {
+    for (ValueTypePair item : tree.getValueArray()) {
       ++parameterIndex;
 
       if (return_query)
@@ -1857,17 +1618,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private int setVersionAndLastModified(PreparedStatement stmt,
                                         int parameterIndex)
-    throws SQLException
-  {
-    if (version != null)
-    {
+          throws SQLException {
+    if (version != null) {
       if (return_query)
         recordNamedBind("version", version);
       stmt.setString(++parameterIndex, version);
     }
 
-    if (lastModified != null)
-    {
+    if (lastModified != null) {
       if (return_query)
         recordNamedBind("lastModified", lastModified);
       stmt.setString(++parameterIndex, lastModified);
@@ -1878,16 +1636,13 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private int setStartAndEndTime(PreparedStatement stmt,
                                  int parameterIndex)
-    throws SQLException
-  {
-    if (since != null)
-    {
+          throws SQLException {
+    if (since != null) {
       if (return_query)
         recordNamedBind("since", since);
       stmt.setString(++parameterIndex, since);
     }
-    if (until != null)
-    {
+    if (until != null) {
       if (return_query)
         recordNamedBind("until", until);
       stmt.setString(++parameterIndex, until);
@@ -1897,8 +1652,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   int bindUpdate(PreparedStatement stmt, OracleDocument document, Terminal terminal)
-    throws SQLException, OracleException
-  {
+          throws SQLException, OracleException {
     int num = 0;
 
     byte[] dataBytes = OracleCollectionImpl.EMPTY_DATA;
@@ -1906,37 +1660,37 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     boolean materializeContent = true;
 
     if (!collection.payloadBasedVersioning() &&
-        collection.admin().isHeterogeneous() &&
-        ((OracleDocumentImpl) document).hasStreamContent() &&
-        !OracleDocumentImpl.isBinary(document))
-    {
+            collection.admin().isHeterogeneous() &&
+            ((OracleDocumentImpl) document).hasStreamContent() &&
+            !OracleDocumentImpl.isBinary(document)) {
       // This means it needs to be streamed without materializing
-      ((TableCollectionImpl)collection).setStreamBind(stmt, document, ++num);
+      ((TableCollectionImpl) collection).setStreamBind(stmt, document, ++num);
       materializeContent = false;
     }
     // ### After discussion with Doug, we do want to materialize even when
     // not content-based versioning due to the LOB layer issue. Leaving
     // a comment to register this fact.
-    else
-    {
-      if (terminal == Terminal.MERGE_ONE && 
-          options.hasBinaryFormat() &&
-          !options.hasJsonType()) {
+    else {
+      // TODO: double check
+      if ((terminal == Terminal.MERGE_ONE ||
+           terminal == Terminal.MERGE_ONE_AND_GET ||
+           terminal == Terminal.PATCH_ONE ||
+           terminal == Terminal.PATCH_ONE_AND_GET) &&
+              options.hasBinaryFormat() &&
+              !options.hasJsonType()) {
         // workaround bug 30702558 by binding patch as textual json 
-        ((TableCollectionImpl)collection)
-            .bindPayloadColumn(stmt, ++num, document.getContentAsByteArray());
+        ((TableCollectionImpl) collection)
+                .bindPayloadColumn(stmt, ++num, document.getContentAsByteArray());
       } else {
         // This means we need to materialize the payload
-        dataBytes = ((TableCollectionImpl)collection)
-            .bindPayloadColumn(stmt, ++num, document);
+        dataBytes = ((TableCollectionImpl) collection)
+                .bindPayloadColumn(stmt, ++num, document);
       }
     }
 
     if ((options.versionColumnName != null) &&
-            (options.versioningMethod) != CollectionDescriptor.VERSION_NONE)
-    {
-      switch (options.versioningMethod)
-      {
+            (options.versioningMethod) != CollectionDescriptor.VERSION_NONE) {
+      switch (options.versioningMethod) {
         case CollectionDescriptor.VERSION_SEQUENTIAL:
           // Assumes RETURNING clause
           break;
@@ -1951,8 +1705,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
           stmt.setString(++num, computedVersion);
           break;
         default: /* Hashes */
-          if (!materializeContent || terminal == Terminal.MERGE_ONE)
-          {
+          if (!materializeContent || (terminal == Terminal.MERGE_ONE ||
+                                      terminal == Terminal.MERGE_ONE_AND_GET || 
+                                      terminal == Terminal.PATCH_ONE ||
+                                      terminal == Terminal.PATCH_ONE_AND_GET)) {
             // Not Feasible
             throw SODAUtils.makeException(SODAMessage.EX_NO_HASH_VERSION,
                     options.uriName,
@@ -1964,28 +1720,24 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
     }
 
-    num = ((TableCollectionImpl)collection)
-              .bindMediaTypeColumn(stmt, num, document);
+    num = ((TableCollectionImpl) collection)
+            .bindMediaTypeColumn(stmt, num, document);
     return num;
   }
 
   int bindReturning(CallableStatement stmt, int parameterIndex)
-    throws SQLException
-  {
-    if (options.timestampColumnName != null)
-    {
+          throws SQLException {
+    if (options.timestampColumnName != null) {
       stmt.registerOutParameter(++parameterIndex, Types.VARCHAR);
     }
 
     if (options.versionColumnName != null &&
-         (options.versioningMethod == CollectionDescriptor.VERSION_NONE ||
-          options.versioningMethod == CollectionDescriptor.VERSION_SEQUENTIAL))
-    {
+            (options.versioningMethod == CollectionDescriptor.VERSION_NONE ||
+                    options.versioningMethod == CollectionDescriptor.VERSION_SEQUENTIAL)) {
       stmt.registerOutParameter(++parameterIndex, Types.VARCHAR);
     }
 
-    if (options.creationColumnName != null)
-    {
+    if (options.creationColumnName != null) {
       stmt.registerOutParameter(++parameterIndex, Types.VARCHAR);
     }
 
@@ -1999,22 +1751,18 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   int bindReturning(PreparedStatement stmt, int parameterIndex)
-    throws SQLException
-  {
-    if (options.timestampColumnName != null)
-    {
+          throws SQLException {
+    if (options.timestampColumnName != null) {
       collection.db.registerReturnTimestamp(stmt, ++parameterIndex);
     }
 
     if (options.versionColumnName != null &&
-         (options.versioningMethod == CollectionDescriptor.VERSION_NONE ||
-          options.versioningMethod == CollectionDescriptor.VERSION_SEQUENTIAL))
-    {
+            (options.versioningMethod == CollectionDescriptor.VERSION_NONE ||
+                    options.versioningMethod == CollectionDescriptor.VERSION_SEQUENTIAL)) {
       collection.db.registerReturnString(stmt, ++parameterIndex);
     }
 
-    if (options.creationColumnName != null)
-    {
+    if (options.creationColumnName != null) {
       collection.db.registerReturnTimestamp(stmt, ++parameterIndex);
     }
 
@@ -2022,8 +1770,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   int bindFlashback(PreparedStatement stmt, int num)
-          throws SQLException
-  {
+          throws SQLException {
     if (asOfScn != null)
       stmt.setLong(++num, asOfScn.longValue());
     else if (asOfTimestamp != null)
@@ -2037,54 +1784,54 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
                 PreparedStatement stmt,
                 int fetchLimit,
                 int currentNumBinds)
-    throws SQLException, OracleException
-  {
+          throws SQLException, OracleException {
     String currentKey = null;
 
     int numBinds = currentNumBinds;
 
     int count = 0;
 
-    while (keysIterator.hasNext())
-    {
+    while (keysIterator.hasNext()) {
       currentKey = keysIterator.next();
 
       if (return_query)
         recordQueryKey(count++, currentKey);
 
       // Bind each key in the set
-      ((TableCollectionImpl)collection)
-          .bindKeyColumn(stmt, ++numBinds, currentKey);
+      ((TableCollectionImpl) collection)
+              .bindKeyColumn(stmt, ++numBinds, currentKey);
     }
   }
 
   private Operation createReplaceStatement(Terminal terminal,
                                            OracleDocument document)
-    throws OracleException
-  {
-    if ((key == null) || isStartKey)
-    {
+          throws OracleException {
+    if ((key == null) || isStartKey) {
       throw SODAUtils.makeException(SODAMessage.EX_KEY_MUST_BE_SPECIFIED);
     }
 
-    if (document == null)
-    {
+    if (document == null) {
       throw SODAUtils.makeException(SODAMessage.EX_ARG_CANNOT_BE_NULL,
               "document");
     }
 
+    // TODO: double check
     computedVersion = null;
 
     return (generateOperation(terminal, document));
   }
 
   public OracleDocument replaceOneAndGet(OracleDocument document)
-    throws OracleException
+          throws OracleException
   {
     collection.writeCheck("replaceOneAndGet");
+    return replaceOneAndGetWithOptionalMerge(document, Terminal.REPLACE_ONE_AND_GET);
+  }
 
-    Operation operation = createReplaceStatement(Terminal.REPLACE_ONE_AND_GET,
-                                                 document);
+  private OracleDocument replaceOneAndGetWithOptionalMerge(OracleDocument document, Terminal terminal)
+    throws OracleException
+  {
+    Operation operation = createReplaceStatement(terminal, document);
     PreparedStatement stmt  = operation.getPreparedStatement();
     CallableStatement cstmt = operation.getCallableStatement();
 
@@ -2109,7 +1856,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
 
       // Oracle-specific RETURNING clauses
-      if (returningClause(Terminal.REPLACE_ONE_AND_GET) &&
+      if (returningClause(terminal) &&
           (options.timestampColumnName != null ||
             ((TableCollectionImpl) collection).returnVersion() ||
             options.creationColumnName != null))
@@ -2217,14 +1964,13 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   @Override
   public boolean replaceOne(OracleDocument document) throws OracleException {
+    collection.writeCheck("replaceOne");
     return replaceOneWithOptionalMerge(document, Terminal.REPLACE_ONE);
   }
   
   private boolean replaceOneWithOptionalMerge(OracleDocument document, Terminal terminal)
     throws OracleException
   {
-    collection.writeCheck("replaceOne");
-
     Operation operation = createReplaceStatement(terminal, document);
     PreparedStatement stmt = operation.getPreparedStatement();
 
@@ -3036,7 +2782,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private boolean write (Terminal terminal)
   {
-    if ((terminal == Terminal.REMOVE) || isReplaceOrMerge(terminal))
+    if ((terminal == Terminal.REMOVE) || isReplaceOrMergeOrPatch(terminal))
     {
       return true;
     }
@@ -3068,7 +2814,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (!collection.oracleDriver && !collection.useCallableReturns)
       disableReturning = true;
 
-    if ((terminal == Terminal.REPLACE_ONE_AND_GET) && !disableReturning)
+    if ((terminal == Terminal.REPLACE_ONE_AND_GET ||
+         terminal == Terminal.MERGE_ONE_AND_GET ||
+         terminal == Terminal.PATCH_ONE_AND_GET) && !disableReturning)
     {
       if ((options.timestampColumnName == null) &&
           (options.creationColumnName == null) &&
@@ -3083,11 +2831,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     return false;
   }
 
-  private boolean isReplaceOrMerge(Terminal terminal)
+  private boolean isReplaceOrMergeOrPatch(Terminal terminal)
   {
     if (terminal == Terminal.REPLACE_ONE_AND_GET ||
         terminal == Terminal.REPLACE_ONE ||
-        terminal == Terminal.MERGE_ONE)
+        terminal == Terminal.MERGE_ONE_AND_GET ||
+        terminal == Terminal.MERGE_ONE || 
+        terminal == Terminal.PATCH_ONE_AND_GET ||
+        terminal == Terminal.PATCH_ONE)
     {
       return true;
     }
@@ -3414,66 +3165,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   {
     if (selectPatchedDoc)
     {
-      if (options.hasBinaryFormat() || options.hasJsonType())
-      {
-        // Sanity check
-        if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
-            options.hasBinaryFormat())
-        {
-          throw new IllegalStateException();
-        }
-
-        // ### json_patch can be used for all collections (not just with binary format),
-        //     in 18c or above. Expand later.
-        sb.append("json_patch(");
-        appendAliasedColumn(sb, options.contentColumnName, tAlias);
-        if (options.hasJsonType()) {
-          sb.append(",? ");
-        }
-        else {
-          sb.append(",? returning blob format oson");
-        }
-
-        if (!patchSpecExceptionOnly)
-        {
-          sb.append(" error on error),");
-        }
-        else
-        {
-          sb.append("),");
-        }
-      }
-      else
-      {
-        switch (options.contentDataType) {
-          case CollectionDescriptor.BLOB_CONTENT:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH_B(");
-            break;
-          case CollectionDescriptor.CLOB_CONTENT:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH_C(");
-            break;
-          case CollectionDescriptor.NCLOB_CONTENT:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH_NC(");
-            break;
-          case CollectionDescriptor.NCHAR_CONTENT:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH_N(");
-            break;
-          case CollectionDescriptor.RAW_CONTENT:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH_R(");
-            break;
-          case CollectionDescriptor.CHAR_CONTENT:
-          default:
-            sb.append("DBMS_SODA_DOM.JSON_PATCH(");
-            break;
-        }
-        appendAliasedColumn(sb, options.contentColumnName, tAlias);
-        sb.append(",?");
-
-        if (patchSpecExceptionOnly)
-          sb.append(",'INVALID_PATCH_SPEC'),");
-        else
-          sb.append("),");
-      }
+      appendPatchExpression(sb, tAlias);
+      sb.append(",");
     }
     else if (selectMergedDoc)
     {
@@ -3606,16 +3299,81 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
   }
 
-  private void appendMergePatchExpression(StringBuilder sb, String tAlias) {
-    if (options.hasBinaryFormat() || options.hasJsonType())
+  private void appendPatchExpression(StringBuilder sb, String tAlias) {
+
+    // Sanity check
+    if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
+            options.hasBinaryFormat())
     {
-      // Sanity check
-      if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
-          options.hasBinaryFormat())
+      throw new IllegalStateException();
+    }
+
+    if (options.hasJsonType() || (options.contentDataType == CollectionDescriptor.BLOB_CONTENT))
+    {
+      // ### json_patch can be used for all collections (not just with binary format),
+      //     in 18c or above. Expand later.
+      sb.append("json_patch(");
+      appendAliasedColumn(sb, options.contentColumnName, tAlias);
+      if (options.hasJsonType()) 
       {
-        throw new IllegalStateException();
+        sb.append(",? ");
+      }
+      else
+      {
+        sb.append(",? returning blob");
+        if (options.hasBinaryFormat() || options.hasJsonType())
+          sb.append(" format oson");
       }
 
+      if (!patchSpecExceptionOnly)
+      {
+        sb.append(" error on error)");
+      }
+      else
+      {
+        sb.append(")");
+      }
+    }
+    else
+    {
+      switch (options.contentDataType) {
+        case CollectionDescriptor.CLOB_CONTENT:
+          sb.append("DBMS_SODA_DOM.JSON_PATCH_C(");
+          break;
+        case CollectionDescriptor.NCLOB_CONTENT:
+          sb.append("DBMS_SODA_DOM.JSON_PATCH_NC(");
+          break;
+        case CollectionDescriptor.NCHAR_CONTENT:
+          sb.append("DBMS_SODA_DOM.JSON_PATCH_N(");
+          break;
+        case CollectionDescriptor.RAW_CONTENT:
+          sb.append("DBMS_SODA_DOM.JSON_PATCH_R(");
+          break;
+        case CollectionDescriptor.CHAR_CONTENT:
+        default:
+          sb.append("DBMS_SODA_DOM.JSON_PATCH(");
+          break;
+        }
+        appendAliasedColumn(sb, options.contentColumnName, tAlias);
+        sb.append(",?");
+
+        if (patchSpecExceptionOnly)
+          sb.append(",'INVALID_PATCH_SPEC')");
+        else
+          sb.append(")");
+    }
+  }
+  private void appendMergePatchExpression(StringBuilder sb, String tAlias) {
+
+    // Sanity check
+    if (options.contentDataType != CollectionDescriptor.BLOB_CONTENT &&
+            options.hasBinaryFormat())
+    {
+      throw new IllegalStateException();
+    }
+
+    if (options.hasJsonType() || (options.contentDataType == CollectionDescriptor.BLOB_CONTENT))
+    {
       // ### json_mergepatch can be used for all collections (not just with binary format),
       //     in 18c or above. Expand later.
       sb.append("json_mergepatch(");
@@ -3626,8 +3384,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
       else
       {
-        sb.append(",? returning blob format oson");
-      }
+        sb.append(",? returning blob");
+        if (options.hasBinaryFormat() || options.hasJsonType())
+          sb.append(" format oson");      }
 
       if (!patchSpecExceptionOnly)
       {
@@ -3641,9 +3400,6 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     else 
     {
       switch (options.contentDataType) {
-        case CollectionDescriptor.BLOB_CONTENT:
-          sb.append("JSON_MERGEPATCH(");
-          break;
         case CollectionDescriptor.CLOB_CONTENT:
           sb.append("DBMS_SODA_DOM.JSON_MERGE_PATCH_C(");
           break;
@@ -3665,9 +3421,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       sb.append(",?");
 
       if (patchSpecExceptionOnly)
-        sb.append(",'INVALID_PATCH_SPEC'),");
+        sb.append(",'INVALID_PATCH_SPEC')");
       else
         sb.append(")");
+
     }
   }
 
@@ -3679,10 +3436,18 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     appendTable(sb);
     sb.append(" set \"");
     sb.append(options.contentColumnName);
-    if (terminal == Terminal.MERGE_ONE) {
+    if (terminal == Terminal.MERGE_ONE || terminal == Terminal.MERGE_ONE_AND_GET)
+    {
       sb.append("\" = ");
       appendMergePatchExpression(sb, null);
-    } else {
+    } 
+    else if (terminal == Terminal.PATCH_ONE || terminal == Terminal.PATCH_ONE_AND_GET) 
+    {
+      sb.append("\" = ");
+      appendPatchExpression(sb, null);
+    } 
+    else 
+    {
       sb.append("\" = ?");
     }
 
