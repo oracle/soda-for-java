@@ -155,7 +155,18 @@ public class testSODA {
 
 Copy and paste this code into a file called testSODA.java. Then modify the "url" String at the beginning of the program with connection info for your Oracle RDBMS instance. Also "user" and "password" properties set at the beginning of the program need to be modified with the schema name which will contain the table backing the collection, and the password for that schema.
 
-To compile and run SODA Java applications, you need the following jars:
+To compile and run SODA for Java application you will need the orajsoda-version.jar and its dependencies (javax.json-1.1.4.jar, which is the JSR252 implementation, and the Oracle JDBC jar).
+
+You can obtain the latest SODA for Java jar and its dependencies using these Maven coordinates:
+
+<!-- https://mvnrepository.com/artifact/com.oracle.database.soda/orajsoda -->
+<dependency>
+    <groupId>com.oracle.database.soda</groupId>
+    <artifactId>orajsoda</artifactId>
+    <version>1.1.4</version>
+</dependency>
+
+If you need to download the SODA jar and the dependencies manually, you can do that as follows:
 
 *    A JDBC 8 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html).
 
