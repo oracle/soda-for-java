@@ -164,7 +164,7 @@ You can obtain the latest SODA for Java jar and its dependencies using these Mav
 <dependency>
     <groupId>com.oracle.database.soda</groupId>
     <artifactId>orajsoda</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.7</version>
 </dependency>
 ```
 
