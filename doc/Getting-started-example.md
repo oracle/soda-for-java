@@ -160,7 +160,6 @@ To compile and run SODA for Java application you will need the orajsoda-version.
 You can obtain the latest SODA for Java jar and its dependencies using these Maven coordinates:
 
 ```
-<!-- https://mvnrepository.com/artifact/com.oracle.database.soda/orajsoda -->
 <dependency>
     <groupId>com.oracle.database.soda</groupId>
     <artifactId>orajsoda</artifactId>
