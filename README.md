@@ -25,9 +25,9 @@ See the [Oracle as a Document Store](http://www.oracle.com/technetwork/database/
 
 To obtain the latest SODA jar and its dependencies, use these Maven coordinates:
 
-**Group id:** com.oracle.database.soda
-**Artifact id:** orajsoda
-**Version:** 1.1.7
+**Group id:** com.oracle.database.soda  
+**Artifact id:** orajsoda  
+**Version:** 1.1.7  
 
 The following short code snippet illustrates working with SODA. It shows how to create a document collection, insert a document into it, and query the collection by using a unique document key and a QBE (query-by-example).
 
