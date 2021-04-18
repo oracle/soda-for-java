@@ -165,7 +165,7 @@ You can obtain the latest SODA for Java jar and its dependencies using these Mav
 
 If you need to download the SODA jar and the dependencies manually, you can do that as follows:
 
-*    JDBC 8 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database 18c, available from [this page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/jdbc-ucp-183-5013470.html). Alternatively, you can also use ojdbc8.jar that ships with OracleDatabase 12.2.0.1, available from [this page](http://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html).
+*    JDBC 8 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database, available from [this page](https://www.oracle.com/database/technologies/appdev/jdbc-downloads.html). Note: to work with JSON type, which is the new default JSON storage in SODA when running against 21c database with compatible set to 20 or above, use a 21c or above JDBC jar.
 
 *    javax.json-1.1.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.1.4/javax.json-1.1.4.jar).
 
