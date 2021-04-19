@@ -161,7 +161,7 @@ To compile and run SODA for Java application you will need the orajsoda-version.
 **Artifact id:** orajsoda  
 **Version:** 1.1.7  
 
-The above will automatically pull the latest versions of the dependencies needed to work with SODA on all supported database versions and cloud services.
+The above will automatically pull the latest versions of the dependencies needed to work with SODA on all supported database versions and cloud services. **Note:** there was an issue with 1.1.7 SODA release on Maven Central - an incorrect version for the javax.json dependency was stated in the SODA POM. This is fixed in the 1.1.7.1 SODA patch release on Maven Central, so please use 1.1.7.1 as the release version.
 
 If you need to download the SODA jar and the dependencies manually, you can do that as follows:
 
