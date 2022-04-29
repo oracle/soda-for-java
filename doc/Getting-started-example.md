@@ -25,6 +25,7 @@ import java.sql.DriverManager;
 import oracle.soda.rdbms.OracleRDBMSClient;
 
 import oracle.soda.OracleDatabase;
+import oracle.soda.OracleCollection;
 import oracle.soda.OracleCursor;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
