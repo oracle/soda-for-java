@@ -1,4 +1,4 @@
-Copyright © 2015, 2023 Oracle and/or its affiliates.  All rights reserved.
+Copyright (c) 2015, 2023 Oracle and/or its affiliates.  All rights reserved.
 
 This software is dual-licensed to you under the MIT License (MIT) and the Universal Permissive License (UPL).  
 See below for license terms.  You may choose either license, or both.
