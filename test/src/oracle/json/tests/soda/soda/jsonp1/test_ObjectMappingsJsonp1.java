@@ -1,0 +1,1 @@
+.ade_path/test_ObjectMappingsJsonp1.java

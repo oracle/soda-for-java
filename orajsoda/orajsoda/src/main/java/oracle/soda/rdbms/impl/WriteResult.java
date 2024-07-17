@@ -1,0 +1,1 @@
+.ade_path/WriteResult.java
