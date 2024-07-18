@@ -19,7 +19,7 @@
     <!-- Compiles with JDK6 to be compatible with an 12.1.0.2 RDBMS deployment -->
     <property name="javac.java.home" value="${env.JAVA_HOME}"/>
     
-    <property name="xdk.lib.dir" value="${xdk.json.src.dir}/lib"/>
+    <property name="xdk.lib.dir" value="${xdk.json.src.dir}/../lib"/>
     <property name="jar.orajsoda" value="${xdk.lib.dir}/orajsoda.jar"/>
 
     <!--
@@ -43,10 +43,12 @@
 
     <target name="-compile">
 
+        <fileset dir="${src.dir}" excludes="**/*.ade_path/**"/>
+
         <property name="-compile.classes.dir" value="" />
         <property name="-compile.depend.cache.dir" value=""/>
         <property name="-compile.includes" value=""/>
-        <property name="-compile.excludes" value=""/>
+        <property name="-compile.excludes" value="**/.ade_path/**"/>
         <property name="-compile.message" value=""/>
         <property name="-compile.source.dirs" value=""/>
 
