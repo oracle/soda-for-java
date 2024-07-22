@@ -1,1 +1,0 @@
-.ade_path/SQLTextCarrier.java

@@ -1,0 +1,28 @@
+<html xmlns:lxslt="http://xml.apache.org/xslt" xmlns:stringutils="xalan://org.apache.tools.ant.util.StringUtils">
+    <head>
+        <META http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+        <title>Unit Test Results: All Errors</title>
+        <link rel="stylesheet" type="text/css" title="Style" href="stylesheet.css">
+    </head>
+    <body onload="open('allclasses-frame.html','classListFrame')">
+        <h1>Unit Test Results.</h1>
+        <table width="100%">
+            <tr>
+                <td align="left"></td><td align="right">Designed for use with <a href="http://www.junit.org/">JUnit</a> and <a href="http://ant.apache.org/">Ant</a>.</td>
+            </tr>
+        </table>
+        <hr size="1">
+        <h2>All Errors</h2>
+        <table class="details" border="0" cellpadding="5" cellspacing="2" width="95%">
+            <tr valign="top">
+                <th>Class</th><th>Name</th><th>Status</th><th width="80%">Type</th><th nowrap>Time(s)</th>
+            </tr>
+            <tr valign="top" class="Error">
+                <td><a href="oracle/json/tests/soda/2_test_OracleCollectionAdmin.html">test_OracleCollectionAdmin</a></td><td><a name="testCreateIndexTTL"></a><a href="oracle/json/tests/soda/2_test_OracleCollectionAdmin.html#testCreateIndexTTL">testCreateIndexTTL</a></td><td>Error</td><td>N/A
+                    <br>
+                    <br>
+                    <code>oracle.soda.rdbms.impl.SODAUtils$1OracleSQLException<br/>	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:124)<br/>	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:87)<br/>	at oracle.soda.rdbms.impl.OracleCollectionImpl.callCreateIndexPLSQL(OracleCollectionImpl.java:1789)<br/>	at oracle.soda.rdbms.impl.OracleCollectionImpl.createIndex(OracleCollectionImpl.java:1959)<br/>	at oracle.soda.rdbms.impl.OracleCollectionImpl.access$900(OracleCollectionImpl.java:69)<br/>	at oracle.soda.rdbms.impl.OracleCollectionImpl$OracleCollectionAdministrationImpl.createIndex(OracleCollectionImpl.java:2398)<br/>	at oracle.json.tests.soda.test_OracleCollectionAdmin.testCreateIndexTTL(test_OracleCollectionAdmin.java:2300)<br/>	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)<br/>	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)<br/>	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)<br/>	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:45)<br/>Caused by: java.sql.SQLException: ORA-27486: insufficient privileges<br/><br/>https://docs.oracle.com/error-help/db/ora-27486/<br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:702)<br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:608)<br/>	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1277)<br/>	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:1102)<br/>	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:456)<br/>	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:482)<br/>	at oracle.jdbc.driver.T4CCallableStatement.doOall8(T4CCallableStatement.java:216)<br/>	at oracle.jdbc.driver.T4CCallableStatement.executeForRows(T4CCallableStatement.java:1164)<br/>	at oracle.jdbc.driver.OracleStatement.executeSQLStatement(OracleStatement.java:1652)<br/>	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1417)<br/>	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3731)<br/>	at oracle.jdbc.driver.OraclePreparedStatement.execute(OraclePreparedStatement.java:3945)<br/>	at oracle.jdbc.driver.OracleCallableStatement.execute(OracleCallableStatement.java:4202)<br/>	at oracle.jdbc.driver.OraclePreparedStatementWrapper.execute(OraclePreparedStatementWrapper.java:1011)<br/>	at oracle.soda.rdbms.impl.OracleCollectionImpl.callCreateIndexPLSQL(OracleCollectionImpl.java:1771)<br/>Caused by: Error : 27486, Position : 0, SQL = begin<br/>  DBMS_SODA_ADMIN.CREATE_INDEX(<br/>                   P_URI_NAME   => :1 ,<br/>                   P_INDEX_SPEC => :2 );<br/>end;, Original SQL = begin<br/>  DBMS_SODA_ADMIN.CREATE_INDEX(<br/>                   P_URI_NAME   => ?,<br/>                   P_INDEX_SPEC => ?);<br/>end;, Error Message = ORA-27486: insufficient privileges<br/><br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:710)<br/></code></td><td>0.554</td>
+            </tr>
+        </table>
+    </body>
+</html>

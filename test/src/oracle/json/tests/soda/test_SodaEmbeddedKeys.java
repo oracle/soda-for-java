@@ -11,6 +11,7 @@ package oracle.json.tests.soda;
 import java.util.Map.Entry;
 
 import oracle.json.testharness.SodaTestCase;
+//import oracle.json.tests.test_EmbeddedKeys;
 import oracle.json.sodautil.ByteArray;
 
 import oracle.soda.OracleCollection;
@@ -585,6 +586,5 @@ public class test_SodaEmbeddedKeys extends SodaTestCase {
     }
     
 }
-
 
 

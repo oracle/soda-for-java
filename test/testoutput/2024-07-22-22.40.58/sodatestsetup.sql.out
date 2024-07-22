@@ -1,0 +1,106 @@
+
+SQL*Plus: Release 26.0.0.0.0 - Development on Mon Jul 22 22:40:59 2024
+Version 26.1.0.24.00
+
+Copyright (c) 1982, 2024, Oracle.  All rights reserved.
+
+Last Successful login time: Mon Jul 22 2024 22:40:39 +00:00
+
+Connected to:
+Oracle Database 26ai Enterprise Edition Release 26.0.0.0.0 - Development
+Version 26.1.0.24.00
+
+SQL> SET FEEDBACK 1
+SQL> SET NUMWIDTH 10
+SQL> SET LINESIZE 80
+SQL> SET TRIMSPOOL ON
+SQL> SET TAB OFF
+SQL> SET PAGESIZE 100
+SQL> 
+SQL> drop view soda_view;
+
+View dropped.
+
+SQL> 
+SQL> drop table soda_table;
+
+Table dropped.
+
+SQL> 
+SQL> create table soda_table (ID VARCHAR2(255) NOT NULL PRIMARY KEY, CONTENT_TYPE VARCHAR2(255),
+  2      CREATED_ON TIMESTAMP(6), LAST_MODIFIED TIMESTAMP(6), VERSION VARCHAR2(255), JSON_DOCUMENT BLOB);
+
+Table created.
+
+SQL> 
+SQL> create view soda_view as select * from soda_table;
+
+View created.
+
+SQL> 
+SQL> create FUNCTION c2b( c IN CLOB ) RETURN BLOB
+  2  as
+  3    pos PLS_INTEGER := 1;
+  4    buffer RAW( 32767 );
+  5    res BLOB;
+  6    lob_len PLS_INTEGER := DBMS_LOB.getLength( c );
+  7  BEGIN
+  8    DBMS_LOB.createTemporary( res, TRUE );
+  9    DBMS_LOB.OPEN( res, DBMS_LOB.LOB_ReadWrite );
+ 10    LOOP
+ 11      buffer := UTL_RAW.cast_to_raw( DBMS_LOB.SUBSTR( c, 16000, pos ) );
+ 12      IF UTL_RAW.LENGTH( buffer ) > 0 THEN
+ 13        DBMS_LOB.writeAppend( res, UTL_RAW.LENGTH( buffer ), buffer );
+ 14      END IF;
+ 15      pos := pos + 16000;
+ 16      EXIT WHEN pos > lob_len;
+ 17    END LOOP;
+ 18  RETURN res; -- res is OPEN here
+ 19  END c2b;
+ 20  /
+create FUNCTION c2b( c IN CLOB ) RETURN BLOB
+                *
+ERROR at line 1:
+ORA-00955: name is already used by an existing object
+
+
+SQL> 
+SQL> -- create sodatbl and sequence sodatbl_version_seq for testGetVersion()
+SQL> drop table sodatbl;
+
+Table dropped.
+
+SQL> drop sequence sodatbl_version_seq;
+
+Sequence dropped.
+
+SQL> 
+SQL> create table sodatbl (ID VARCHAR2(255) NOT NULL PRIMARY KEY, CONTENT_TYPE VARCHAR2(255),
+  2      CREATED_ON TIMESTAMP(6), LAST_MODIFIED TIMESTAMP(6), VERSION varchar2(255) NOT NULL, JSON_DOCUMENT BLOB);
+
+Table created.
+
+SQL> 
+SQL> create sequence sodatbl_version_seq increment by 1 start with 1 minvalue 1 maxvalue 9999999999999 nocache order;
+
+Sequence created.
+
+SQL> 
+SQL> create or replace trigger sodatbl_trigger
+  2  before insert or update on sodatbl
+  3  for each row
+  4  begin
+  5      select sodatbl_version_seq.nextval into:new.version from sys.dual ;
+  6  end;
+  7  /
+
+Trigger created.
+
+SQL> 
+SQL> commit;
+
+Commit complete.
+
+SQL> 
+SQL> Disconnected from Oracle Database 26ai Enterprise Edition Release 26.0.0.0.0 - Development
+Version 26.1.0.24.00
