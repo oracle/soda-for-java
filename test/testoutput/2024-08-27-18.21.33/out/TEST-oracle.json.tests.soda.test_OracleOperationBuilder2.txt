@@ -1,3 +1,0 @@
-Testsuite: oracle.json.tests.soda.test_OracleOperationBuilder2
-Tests run: 19, Failures: 0, Errors: 0, Time elapsed: 548.384 sec
-
