@@ -28,7 +28,7 @@ package oracle.json.parser;
 
 import java.util.ResourceBundle;
 
-import oracle.json.sodacommon.Message;
+import oracle.json.common.Message;
 
 import javax.management.Query;
 

@@ -1,4 +1,4 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/SODAMessage.java /st_xdk_soda1/21 2024/07/16 22:56:04 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/SODAMessage.java /st_xdk_soda1/22 2024/08/02 02:37:36 vemahaja Exp $ */
 
 /* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
@@ -24,7 +24,7 @@ package oracle.soda.rdbms.impl;
 
 import java.util.ResourceBundle;
 
-import oracle.json.sodacommon.Message;
+import oracle.json.common.Message;
 
 public final class SODAMessage extends Message
 {

@@ -1,4 +1,4 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentImpl.java /st_xdk_soda1/5 2024/07/16 22:56:04 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentImpl.java /st_xdk_soda1/6 2024/08/02 02:37:36 vemahaja Exp $ */
 
 /* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
@@ -41,11 +41,11 @@ import jakarta.json.Json;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.json.stream.JsonParser;
-import oracle.json.sodacommon.DocumentCodec;
+import oracle.json.common.DocumentCodec;
 import oracle.json.logging.OracleLog;
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.JsonByteArray;
-import oracle.json.sodautil.LimitedInputStream;
+import oracle.json.util.ByteArray;
+import oracle.json.util.JsonByteArray;
+import oracle.json.util.LimitedInputStream;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
 

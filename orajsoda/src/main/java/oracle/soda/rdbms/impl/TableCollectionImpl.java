@@ -40,13 +40,13 @@ import java.util.Map;
 
 import java.time.Instant;
 
-import oracle.json.sodacommon.DocumentCodec;
-import oracle.json.sodacommon.LobInputStream;
+import oracle.json.common.DocumentCodec;
+import oracle.json.common.LobInputStream;
 import oracle.json.logging.OracleLog;
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.ComponentTime;
-import oracle.json.sodautil.LimitedInputStream;
-import oracle.json.sodautil.Pair;
+import oracle.json.util.ByteArray;
+import oracle.json.util.ComponentTime;
+import oracle.json.util.LimitedInputStream;
+import oracle.json.util.Pair;
 import oracle.soda.OracleBatchException;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
@@ -57,7 +57,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
   private static final int    MIN_RANGE_TRANSFER = 4*1024;    // 4Kbyte
 
   // JDBC batching batch size
-  private static final int    BATCH_MAX_SIZE = 1000;
+  private static final int    BATCH_MAX_SIZE = 100;
 
   TableCollectionImpl(OracleDatabaseImpl db, String name)
   {
@@ -1178,8 +1178,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                              rowCount, "insertRows");
         }
 
-        //        conn.setAutoCommit(false);
-        //        manageTransaction = true;
+        conn.setAutoCommit(false);
+        manageTransaction = true;
       }
 
       while (documents.hasNext())
@@ -1400,8 +1400,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
                                              rowCount, "insertAndGet");
         }
 
-        //        conn.setAutoCommit(false);
-        //        manageTransaction = true;
+        conn.setAutoCommit(false);
+        manageTransaction = true;
       }
 
       metrics.startTiming();
@@ -1418,12 +1418,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
         stmt = conn.prepareStatement(sqltext);
 
       // Use a stopped clock for all rows
-      Instant dbTime = null;
-      long    lstamp = 0;
-      if (!options.isNative) {
-        dbTime = db.getDatabaseTime();
-        lstamp = db.getDatabaseTimeVersion(dbTime);
-      }
+      Instant dbTime = db.getDatabaseTime();
+      long    lstamp = db.getDatabaseTimeVersion(dbTime);
       
       String  tstamp = null;
 

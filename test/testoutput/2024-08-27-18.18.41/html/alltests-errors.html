@@ -1,0 +1,27 @@
+<html xmlns:lxslt="http://xml.apache.org/xslt" xmlns:stringutils="xalan://org.apache.tools.ant.util.StringUtils">
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Unit Test Results: All Errors</title>
+<link rel="stylesheet" type="text/css" title="Style" href="stylesheet.css">
+</head>
+<body onload="open('allclasses-frame.html','classListFrame')">
+<h1>Unit Test Results.</h1>
+<table width="100%">
+<tr>
+<td align="left"></td><td align="right">Designed for use with <a href="http://www.junit.org/">JUnit</a> and <a href="http://ant.apache.org/">Ant</a>.</td>
+</tr>
+</table>
+<hr size="1">
+<h2>All Errors</h2>
+<table class="details" border="0" cellpadding="5" cellspacing="2" width="95%">
+<tr valign="top">
+<th>Class</th><th>Name</th><th>Status</th><th width="80%">Type</th><th nowrap>Time(s)</th>
+</tr>
+<tr valign="top" class="Error">
+<td><a href="oracle/json/tests/soda/4_test_OracleDatabaseAdmin.html">test_OracleDatabaseAdmin</a></td><td><a name="testCreateCollection2"></a><a href="oracle/json/tests/soda/4_test_OracleDatabaseAdmin.html#testCreateCollection2">testCreateCollection2</a></td><td>Error</td><td>N/A<br>
+<br>
+<code>oracle.soda.rdbms.impl.SODAUtils$1OracleSQLException<br/>	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:124)<br/>	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:87)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl.callCreatePLSQL(OracleDatabaseImpl.java:2028)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl.createCollection(OracleDatabaseImpl.java:809)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl.createCollection(OracleDatabaseImpl.java:1088)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl.access$200(OracleDatabaseImpl.java:76)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl$OracleDatabaseAdministrationImpl.createCollection(OracleDatabaseImpl.java:2901)<br/>	at oracle.json.tests.soda.test_OracleDatabaseAdmin.testCreateCollection2(test_OracleDatabaseAdmin.java:248)<br/>	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:45)<br/>Caused by: java.sql.SQLException: ORA-28361: Master key not yet set.<br/><br/>https://docs.oracle.com/error-help/db/ora-28361/<br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:702)<br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:608)<br/>	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1277)<br/>	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:1102)<br/>	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:456)<br/>	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:482)<br/>	at oracle.jdbc.driver.T4CCallableStatement.doOall8(T4CCallableStatement.java:216)<br/>	at oracle.jdbc.driver.T4CCallableStatement.executeForRows(T4CCallableStatement.java:1164)<br/>	at oracle.jdbc.driver.OracleStatement.executeSQLStatement(OracleStatement.java:1652)<br/>	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1417)<br/>	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3731)<br/>	at oracle.jdbc.driver.OraclePreparedStatement.execute(OraclePreparedStatement.java:3945)<br/>	at oracle.jdbc.driver.OracleCallableStatement.execute(OracleCallableStatement.java:4202)<br/>	at oracle.jdbc.driver.OraclePreparedStatementWrapper.execute(OraclePreparedStatementWrapper.java:1011)<br/>	at oracle.soda.rdbms.impl.OracleDatabaseImpl.callCreatePLSQL(OracleDatabaseImpl.java:1964)<br/>Caused by: Error : 28361, Position : 0, SQL = begin<br/>  DBMS_SODA_ADMIN.CREATE_COLLECTION(<br/>                   P_URI_NAME    => :1 ,<br/>                   P_CREATE_MODE => :2 ,<br/>                   P_DESCRIPTOR  => :3 ,<br/>                   P_CREATE_TIME => :4 ,<br/>                   P_23C_DRIVER => true);<br/>end;, Original SQL = begin<br/>  DBMS_SODA_ADMIN.CREATE_COLLECTION(<br/>                   P_URI_NAME    => ?,<br/>                   P_CREATE_MODE => ?,<br/>                   P_DESCRIPTOR  => ?,<br/>                   P_CREATE_TIME => ?,<br/>                   P_23C_DRIVER => true);<br/>end;, Error Message = ORA-28361: Master key not yet set.<br/><br/>	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:710)<br/></code></td><td>0.813</td>
+</tr>
+</table>
+</body>
+</html>

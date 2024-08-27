@@ -1,4 +1,4 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/4 2024/07/16 22:56:04 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/5 2024/08/02 02:37:36 vemahaja Exp $ */
 
 /* Copyright (c) 2019, 2024, Oracle and/or its affiliates. */
 
@@ -16,7 +16,7 @@
  */
 
 /**
- *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/4 2024/07/16 22:56:04 vemahaja Exp $
+ *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/5 2024/08/02 02:37:36 vemahaja Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -33,13 +33,13 @@ import java.nio.charset.StandardCharsets;
 
 import java.math.BigDecimal;
 
-import oracle.json.sodacommon.JsonFactoryProvider;
-import oracle.json.sodacommon.DocumentCodec;
-import oracle.json.sodacommon.DocumentCodecFactory;
-import oracle.json.sodacommon.Message;
+import oracle.json.common.JsonFactoryProvider;
+import oracle.json.common.DocumentCodec;
+import oracle.json.common.DocumentCodecFactory;
+import oracle.json.common.Message;
 
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.Pair;
+import oracle.json.util.ByteArray;
+import oracle.json.util.Pair;
 
 import jakarta.json.JsonValue;
 import jakarta.json.JsonNumber;

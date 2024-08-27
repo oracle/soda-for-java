@@ -1,4 +1,4 @@
-/* $Header: xdk/test/txjjson/src/oracle/json/tests/soda/test_SodaEmbeddedKeys.java /st_xdk_soda1/15 2024/07/16 22:56:04 vemahaja Exp $ */
+/* $Header: xdk/test/txjjson/src/oracle/json/tests/soda/test_SodaEmbeddedKeys.java /st_xdk_soda1/16 2024/08/02 02:37:37 vemahaja Exp $ */
 
 /* Copyright (c) 2021, 2024, Oracle and/or its affiliates.*/
 
@@ -11,8 +11,7 @@ package oracle.json.tests.soda;
 import java.util.Map.Entry;
 
 import oracle.json.testharness.SodaTestCase;
-//import oracle.json.tests.test_EmbeddedKeys;
-import oracle.json.sodautil.ByteArray;
+import oracle.json.util.ByteArray;
 
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDocument;

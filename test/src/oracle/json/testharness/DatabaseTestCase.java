@@ -22,7 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import oracle.jdbc.OracleConnection;
-import oracle.json.sodautil.ByteArray;
+import oracle.json.util.ByteArray;
 
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleCollectionAdmin;

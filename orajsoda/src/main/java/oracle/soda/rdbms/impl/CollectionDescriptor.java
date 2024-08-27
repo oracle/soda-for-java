@@ -28,9 +28,9 @@ import jakarta.json.JsonException;
 import jakarta.json.stream.JsonParsingException;
 import jakarta.json.stream.JsonParser.Event;
 
-import oracle.json.sodacommon.JsonFactoryProvider;
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.JsonByteArray;
+import oracle.json.common.JsonFactoryProvider;
+import oracle.json.util.ByteArray;
+import oracle.json.util.JsonByteArray;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
 import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;

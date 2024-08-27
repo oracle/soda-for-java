@@ -38,7 +38,7 @@ import jakarta.json.stream.JsonParserFactory;
 import jakarta.json.JsonException;
 import jakarta.json.stream.JsonParser.Event;
 
-import oracle.json.sodacommon.JsonFactoryProvider;
+import oracle.json.common.JsonFactoryProvider;
 
 public class IndexSpecification
 {

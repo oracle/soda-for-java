@@ -31,7 +31,7 @@ import java.util.List;
 
 import oracle.jdbc.OraclePreparedStatement;
 import oracle.json.testharness.SodaTestCase;
-import oracle.json.sodautil.ByteArray;
+import oracle.json.util.ByteArray;
 
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleCollectionAdmin;

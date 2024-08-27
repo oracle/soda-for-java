@@ -26,7 +26,7 @@ import java.io.StringReader;
 
 import oracle.json.parser.QueryException;
 
-import oracle.json.sodautil.Pair;
+import oracle.json.util.Pair;
 import oracle.soda.OracleCollectionAdmin;
 import oracle.soda.OracleException;
 import oracle.soda.OracleCollection;

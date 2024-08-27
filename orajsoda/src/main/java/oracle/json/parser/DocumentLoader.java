@@ -17,7 +17,7 @@
 
 package oracle.json.parser;
 
-import oracle.json.sodacommon.JsonFactoryProvider;
+import oracle.json.common.JsonFactoryProvider;
 
 import java.nio.charset.Charset;
 

@@ -30,7 +30,7 @@ import java.sql.Clob;
 
 import oracle.json.logging.OracleLog;
 
-import oracle.json.sodautil.JsonByteArray;
+import oracle.json.util.JsonByteArray;
 import oracle.soda.OracleCursor;
 
 import java.util.logging.Logger;
@@ -40,10 +40,10 @@ import oracle.soda.OracleException;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleCollection;
 
-import oracle.json.sodautil.ByteArray;
+import oracle.json.util.ByteArray;
 
-import oracle.json.sodacommon.MetricsCollector;
-import oracle.json.sodacommon.LobInputStream;
+import oracle.json.common.MetricsCollector;
+import oracle.json.common.LobInputStream;
 
 public class OracleCursorImpl implements OracleCursor
 {

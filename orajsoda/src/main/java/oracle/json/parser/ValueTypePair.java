@@ -22,7 +22,7 @@ import java.math.BigDecimal;
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonValue;
 import jakarta.json.JsonValue.ValueType;
-import oracle.json.sodautil.ComponentTime;
+import oracle.json.util.ComponentTime;
 
 public class ValueTypePair
 {

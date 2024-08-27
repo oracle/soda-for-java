@@ -1,4 +1,4 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/parser/ProjectionSpec.java /st_xdk_soda1/3 2024/07/16 22:56:04 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/parser/ProjectionSpec.java /st_xdk_soda1/4 2024/08/02 02:37:36 vemahaja Exp $ */
 
 /* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
@@ -17,7 +17,7 @@
  */
 
 /**
- *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/parser/ProjectionSpec.java /st_xdk_soda1/3 2024/07/16 22:56:04 vemahaja Exp $
+ *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/parser/ProjectionSpec.java /st_xdk_soda1/4 2024/08/02 02:37:36 vemahaja Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -39,10 +39,10 @@ import jakarta.json.stream.JsonParserFactory;
 import jakarta.json.stream.JsonParser.Event;
 import jakarta.json.JsonException;
 
-import oracle.json.sodacommon.JsonFactoryProvider;
+import oracle.json.common.JsonFactoryProvider;
 
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.JsonByteArray;
+import oracle.json.util.ByteArray;
+import oracle.json.util.JsonByteArray;
 
 public class ProjectionSpec
 {

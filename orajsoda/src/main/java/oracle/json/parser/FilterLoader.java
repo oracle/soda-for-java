@@ -24,7 +24,7 @@ import jakarta.json.JsonException;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.json.stream.JsonParser.Event;
 import jakarta.json.stream.JsonParsingException;
-import oracle.json.sodacommon.JsonFactoryProvider;
+import oracle.json.common.JsonFactoryProvider;
 
 public class FilterLoader extends DocumentLoader
 {

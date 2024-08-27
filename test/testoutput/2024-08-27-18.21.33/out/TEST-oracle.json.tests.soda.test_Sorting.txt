@@ -1,0 +1,31 @@
+Testsuite: oracle.json.tests.soda.test_Sorting
+Tests run: 4, Failures: 0, Errors: 4, Time elapsed: 0.406 sec
+
+Testcase: testOrderByWithString(oracle.json.tests.soda.test_Sorting):	Caused an ERROR
+null
+java.lang.NullPointerException
+	at oracle.json.tests.soda.test_Sorting.testOrderByWithString(test_Sorting.java:45)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testOrderByWithJsonObject(oracle.json.tests.soda.test_Sorting):	Caused an ERROR
+null
+java.lang.NullPointerException
+	at oracle.json.tests.soda.test_Sorting.testOrderByWithJsonObject(test_Sorting.java:82)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testOrderByWithNoArrayType(oracle.json.tests.soda.test_Sorting):	Caused an ERROR
+null
+java.lang.NullPointerException
+	at oracle.json.tests.soda.test_Sorting.testOrderByWithNoArrayType(test_Sorting.java:143)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testOrderByWithEmptyArrays(oracle.json.tests.soda.test_Sorting):	Caused an ERROR
+null
+java.lang.NullPointerException
+	at oracle.json.tests.soda.test_Sorting.testOrderByWithEmptyArrays(test_Sorting.java:168)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+

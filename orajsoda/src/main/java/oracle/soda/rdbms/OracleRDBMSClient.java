@@ -11,8 +11,8 @@ import oracle.soda.rdbms.impl.OracleDatabaseImpl;
 import oracle.soda.rdbms.impl.SODAMessage;
 import oracle.soda.rdbms.impl.SODAUtils;
 
-import oracle.json.sodacommon.MetricsCollector;
-import oracle.json.sodacommon.JsonFactoryProvider;
+import oracle.json.common.MetricsCollector;
+import oracle.json.common.JsonFactoryProvider;
 
 import oracle.soda.OracleClient;
 import oracle.soda.OracleDatabase;

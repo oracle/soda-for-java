@@ -48,12 +48,12 @@ import java.util.logging.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-import oracle.json.sodacommon.MetricsCollector;
-import oracle.json.sodacommon.DocumentCodec;
+import oracle.json.common.MetricsCollector;
+import oracle.json.common.DocumentCodec;
 
-import oracle.json.sodautil.ByteArray;
-import oracle.json.sodautil.JsonByteArray;
-import oracle.json.sodautil.Pair;
+import oracle.json.util.ByteArray;
+import oracle.json.util.JsonByteArray;
+import oracle.json.util.Pair;
 import oracle.json.parser.PathParser;
 import oracle.json.parser.IndexSpecification;
 import oracle.json.parser.QueryException;

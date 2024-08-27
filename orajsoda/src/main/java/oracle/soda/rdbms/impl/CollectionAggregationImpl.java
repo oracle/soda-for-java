@@ -32,13 +32,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 
-import oracle.json.sodacommon.DistinctValue;
+import oracle.json.common.DistinctValue;
 import oracle.json.logging.OracleLog;
 import oracle.json.parser.AndORTree;
 import oracle.json.parser.JsonQueryPath;
 import oracle.json.parser.QueryException;
 import oracle.json.parser.ValueTypePair;
-import oracle.json.sodautil.Pair;
+import oracle.json.util.Pair;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
 import oracle.sql.json.OracleJsonValue;
