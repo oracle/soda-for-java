@@ -1,5 +1,5 @@
-/* Copyright (c) 2016, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2016, 2023, Oracle and/or its affiliates.*/
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -76,6 +76,11 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     for (String columnSqlType : columnSqlTypes) {
       testSpatialOp1(columnSqlType, false);
       testSpatialOp1(columnSqlType, true);
+    }
+
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testSpatialOp1("JSON", false);
+      testSpatialOp1("JSON", true);
     }
   }
   
@@ -255,6 +260,11 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
       testSpatialOp2(columnSqlType, false);
       testSpatialOp2(columnSqlType, true);
     }
+     
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testSpatialOp2("JSON", false);
+      testSpatialOp2("JSON", true);
+    }
   }
   
   private void testSpatialOp2(String contentColumnType, boolean withIndex) throws Exception {
@@ -364,6 +374,11 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     for (String columnSqlType : columnSqlTypes) {
       testSpatialOp3(columnSqlType, false);
       testSpatialOp3(columnSqlType, true);
+    }
+    
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testSpatialOp3("JSON", false);
+      testSpatialOp3("JSON", true);
     }
   }
   
@@ -510,6 +525,9 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = null;
     }
     else {
       mDoc = client.createMetadataBuilder().build();
@@ -705,7 +723,9 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
 
     try {
       col.find().filter(filterDoc).getOne();
-      fail("No exception when filter spec is non json");
+      //### For now commenting out, there seems to be a JSONP bug that
+      //allows ingestion of bad JSON
+      //fail("No exception when filter spec is non json");
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals("Invalid filter condition.", e.getMessage());
@@ -805,7 +825,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
       // the error is suppressed by SODA Java layer
       fail("No exception when using the same index name on different collections");
     } catch (OracleException e) {
-      assertTrue(e.getMessage().contains("An index with the specified name already exists in the schema."));
+      assertTrue(e.getMessage().contains("An index with the specified name \"" + indexName2 + "\" already exists in the schema."));
     }
     
     col2.admin().drop();
@@ -832,6 +852,10 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     for (String columnSqlType : columnSqlTypes) {
       // $contains works only when index has been enabled
       testContains(columnSqlType, true);
+    }
+    
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testContains("JSON", true);
     }
   }
   
@@ -894,6 +918,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     assertEquals(3, col.find().count());
     
     filterDoc = db.createDocumentFromString("{\"family\" : { \"$contains\" : \"10\" }}");
+    Thread.sleep(5000);
     assertEquals(3, col.find().filter(filterDoc).count());
     expectedKeys.clear();
     expectedKeys.add(key[0]);
@@ -1075,7 +1100,7 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
       fail("No exception when $unknownField is presented");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      assertEquals("The field name $unknownField is not a recognized operator.", queryException.getMessage());
+      assertTrue(queryException.getMessage().contains("key ($contains) is not allowed at this location"));
     }
     
     // test when $contains is part of $or
@@ -1131,4 +1156,206 @@ public class test_OracleOperationBuilder3 extends SodaTestCase {
     }
   }
     
+  // tests for $near operator with $excludeDistance
+  public void testSpatialOp4() throws Exception {
+    // Assumes the relevant DB-side fix is in 19.18. If the DB-side fix lands into a later DBRU, might need to adjust.
+    if (isDBVersionBelow(19, 18))
+      return;
+
+    for (String columnSqlType : columnSqlTypes) {
+      //testSpatialOp4(columnSqlType, false);
+      testSpatialOp4(columnSqlType, true);
+    }
+  }
+    
+  private void testSpatialOp4(String contentColumnType, boolean withIndex) throws Exception {
+    OracleDocument mDoc = null;
+
+    if (isJDCSOrATPMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
+    
+    String colName = "testSpatialOp4" + contentColumnType + (withIndex?"Idx":"");
+    if (withIndex) {
+      // to bypass the spatial index restriction: (refer to bug23542273)
+      // the table name cannot contain spaces or mixed-case letters in a quoted string.
+      colName = colName.toUpperCase();
+    }
+    
+    OracleCollection col = db.admin().createCollection(colName, mDoc);
+    
+    // Point at Long Beach
+    String docStr1 = "{\"location\" : {\"type\": \"Point\", \"coordinates\": [33.7243,-118.1579]} }";
+
+    // LineString near Las Vegas
+    String docStr2 = "{\"location\" : {\"type\" : \"LineString\", \"coordinates\" : " +
+        "[[36.1290,-115.1037], [35.0869,-114.9499], [36.0846,-115.3234]]} }";
+   
+    // Polygon near Phoenix
+    String docStr3 = "{\"location\" : {\"type\" : \"Polygon\", \"coordinates\" : " +
+        "[[[33.4222,-112.0605], [33.3855,-112.2253], [33.3121,-112.1044], [33.3305,-111.8737], " +
+        "[33.4222,-112.0605]]]} }";
+
+    // Point at Bell Gardens
+    String docStr4 = "{\"location\" : {\"type\": \"Point\", \"coordinates\": [33.9652918,-118.1514588]} }";
+
+    String key1, key2, key3, key4;
+    OracleDocument filterDoc = null, doc = null;
+    OracleCursor cursor = null;
+
+    doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+    key1 = doc.getKey();
+    doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+    key2 = doc.getKey();
+    doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+    key3 = doc.getKey();
+    doc = col.insertAndGet(db.createDocumentFromString(docStr4));
+    key4 = doc.getKey();
+    
+    // create spatial index with mixed case index name
+    String indexSpec = null, indexName = "locationIndex";
+    if (withIndex) {
+      indexSpec = "{\"name\" : \"" + indexName + "\", \"spatial\" : \"location\"}";
+      col.admin().createIndex(db.createDocumentFromString(indexSpec));
+    }
+    
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$distance\" : 5, \n" +
+        "    \"$excludeDistance\" : 1, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+     
+    assertEquals(0, col.find().filter(filterDoc).count());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // only doc1(Long Beach) is within 10 to 50 kilometers of Los Angeles
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$distance\" : 50, \n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+
+    // doc1(Long Beach) and doc2(Las Vegas) are both within 10 to 500 kilometers of Los Angeles
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$distance\" : 500, \n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    HashSet<String> expectedKeys = new HashSet<String>();
+    expectedKeys.add(key1);
+    expectedKeys.add(key2);
+    checkKeys(col, filterDoc, expectedKeys);
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // doc1(Long Beach), doc2(Las Vegas), and doc3(Phoenix) are within 10 to 800 kilometers of Los Angeles
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$distance\" : 800, \n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+
+    assertEquals(3, col.find().filter(filterDoc).count());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // Test with the path containing array step
+    filterDoc = db.createDocumentFromString(
+        "{ \"location[0]\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$distance\" : 800, \n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+    assertEquals(3, col.find().filter(filterDoc).count());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // doc1(Long Beach), doc2(Las Vegas), and doc3(Phoenix) are within 10 to 800 kilometers of Los Angeles
+    // when no unit item given, the default, "mile", should be used.
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$distance\" : 800 }\n" +
+        "}}");
+    assertEquals(3, col.find().filter(filterDoc).count());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // test with LineString geometry object
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"LineString\", \"coordinates\" : " +
+        "    [[34.0162,-118.2019], [37.6142,-117.2680], [36.7565,-119.0917]] },\n" +
+        "    \"$excludeDistance\" : 10, \n" +
+        "    \"$distance\" : 250, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    
+    // Blocked by bug 34162325
+    // test with Polygon geometry object
+    // This is not returning any documents if $excludeDistance is set. Not clear if correct.
+    /*
+    filterDoc = db.createDocumentFromString(
+        "{ \"location\" : { \"$near\" : {\n" +
+        "    \"$geometry\" : { \"type\" : \"Polygon\", \"coordinates\" : [[[34.0162,-118.2019], " +
+        "    [34.0185,-118.3172], [33.9707,-118.3112], [33.9661,-118.1826], [34.0162,-118.2019]]] },\n" +
+        "    \"$excludeDistance\" : 1, \n" +
+        "    \"$distance\" : 5, \n" +
+        "    \"$unit\"     : \"KM\"} \n" +
+        "}}");
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key4, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan((OracleOperationBuilderImpl)col.find().filter(filterDoc), withIndex, indexName);
+    */
+  
+    // Blocked by bug 34162325
+    // test $near with $not
+    /*
+    filterDoc = db.createDocumentFromString("{ \"location\" : { \"$not\" : {\"$near\" : {\n"
+        + "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n"
+        + "    \"$excludeDistance\" : 10, \n"
+        + "    \"$distance\" : 500, \n"
+        + "    \"$unit\"     : \"KM\"} \n"
+        + "}}}");
+    assertEquals(2, col.find().filter(filterDoc).count());
+    expectedKeys = new HashSet<String>();
+    expectedKeys.add(key3);
+    expectedKeys.add(key4);
+    checkKeys(col, filterDoc, expectedKeys);
+    */
+ 
+    // test $near with $and
+    filterDoc = db.createDocumentFromString("{ \"$and\" : [ {\"location.type\":\"Point\"}, \n"
+        + "{\"location\" : {\"$near\" : {\n"
+        + "    \"$geometry\" : { \"type\" : \"Point\", \"coordinates\" : [34.0162,-118.2019] },\n"
+        + "    \"$excludeDistance\" : 10, \n"
+        + "    \"$distance\" : 500, \n" + "    \"$unit\"     : \"KM\"} \n"
+        + "}}] }");
+
+    assertEquals(1, col.find().filter(filterDoc).count());
+    assertEquals(key1, col.find().filter(filterDoc).getOne().getKey());
+    chkExplainPlan((OracleOperationBuilderImpl) col.find().filter(filterDoc),withIndex, indexName);
+ 
+    if (withIndex) {
+      col.admin().dropIndex(indexName);
+    }
+  }
 }

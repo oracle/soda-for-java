@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2015, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /**
  * DESCRIPTION
@@ -19,19 +19,21 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 
 import java.util.Iterator;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
 
 import junit.framework.Assert;
 
 import oracle.jdbc.OracleConnection;
 
 import oracle.soda.OracleCollectionAdmin;
+import oracle.soda.OracleCollection;
 import oracle.soda.OracleCursor;
 import oracle.soda.OracleDatabase;
 import oracle.soda.OracleDatabaseAdmin;
@@ -67,6 +69,7 @@ public class SodaTestCase extends DatabaseTestCase {
   
   private void dropAllCollections() throws Exception {
     String colName = null;
+
     Iterator<String> colIterator = dbAdmin.getCollectionNames().iterator();
     while (colIterator.hasNext()) {
       try {
@@ -76,6 +79,7 @@ public class SodaTestCase extends DatabaseTestCase {
       }
       catch(Exception ex)
       {
+        System.out.println(" Failed to drop the collection: " + colName);
         ex.printStackTrace();
       }
     }
@@ -139,22 +143,28 @@ public class SodaTestCase extends DatabaseTestCase {
     return path;
   }
   
-  public static void verifyNullContentDocument (OracleDocument doc) throws Exception {
+  public static void verifyNullContentDocument (OracleDocument doc,boolean checkTimestampColumns) throws Exception {
     
     if (doc.getMediaType() == null || doc.getMediaType().equalsIgnoreCase("application/json")) {
       // getContentAsString() is supported only for JSON content
       assertNull(doc.getContentAsString()); 
     }
 
+    if (checkTimestampColumns) {
+      assertNotNull(doc.getLastModified());
+      assertNotNull(doc.getCreatedOn());
+    }
+
     assertNull(doc.getContentAsByteArray());
     assertNull(((OracleDocumentImpl) doc).getContentAsStream());
     assertEquals(-1, doc.getContentLength());
-    
     assertNotNull(doc.getMediaType());
-    assertNotNull(doc.getCreatedOn());
     assertNotNull(doc.getKey());
-    assertNotNull(doc.getLastModified());
     assertNotNull(doc.getVersion());
+  }
+
+  public static void verifyNullContentDocument (OracleDocument doc) throws Exception {
+    verifyNullContentDocument(doc, true);
   }
 
   public static void compareInputStream(InputStream srcSrm, InputStream rltSrm) throws IOException {
@@ -240,6 +250,21 @@ public class SodaTestCase extends DatabaseTestCase {
     chkSearchIndexExplainPlan((OracleOperationBuilderImpl)builder, searchIndextype, indexName);
   }
   
+
+  public boolean isNative(OracleCollection col) throws OracleException {
+    OracleDocument metadata = col.admin().getMetadata();
+    String meta = metadata.getContentAsString();
+    JsonReader jsonReader = Json.createReader(new StringReader(meta));
+    JsonObject jsonObject = jsonReader.readObject();
+    jsonReader.close();
+
+    boolean isNative = false;
+    if (jsonObject.containsKey("native")) {
+      isNative = jsonObject.getBoolean("native");
+    }
+    return isNative;
+  }
+
   public static void chkSearchIndexExplainPlan(OracleOperationBuilderImpl builderImpl, 
       SrearchIndexType searchIndextype, String indexName) throws OracleException
   {
@@ -247,7 +272,7 @@ public class SodaTestCase extends DatabaseTestCase {
     final String domainIndexKey = "DOMAIN INDEX";
     final String textIndexKey1 = "HASPATH";
     final String textIndexKey2 = "INPATH";
-    final String numberIndexKey = "sdatap";
+    final String numberIndexKey = "sdata";
     
     switch (searchIndextype) {
       case textIndex:
