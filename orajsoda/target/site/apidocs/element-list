@@ -1,0 +1,9 @@
+oracle.json.common
+oracle.json.logging
+oracle.json.parser
+oracle.json.rdbms
+oracle.json.util
+oracle.soda
+oracle.soda.rdbms
+oracle.soda.rdbms.impl
+oracle.soda.rdbms.impl.cache

@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"oracle.json.common"},{"l":"oracle.json.logging"},{"l":"oracle.json.parser"},{"l":"oracle.json.rdbms"},{"l":"oracle.json.util"},{"l":"oracle.soda"},{"l":"oracle.soda.rdbms"},{"l":"oracle.soda.rdbms.impl"},{"l":"oracle.soda.rdbms.impl.cache"}]

@@ -1,0 +1,140 @@
+@options
+@argfile
+-classpath
+'/home/vemahaja/.m2/repository/jakarta/json/jakarta.json-api/2.1.3/jakarta.json-api-2.1.3.jar:/home/vemahaja/.m2/repository/org/eclipse/parsson/jakarta.json/1.1.5/jakarta.json-1.1.5.jar:/home/vemahaja/.m2/repository/javax/json/javax.json-api/1.1.4/javax.json-api-1.1.4.jar:/home/vemahaja/.m2/repository/com/oracle/database/jdbc/ojdbc8/23.3.0.23.09/ojdbc8-23.3.0.23.09.jar:/home/vemahaja/.m2/repository/jakarta/servlet/jakarta.servlet-api/4.0.4/jakarta.servlet-api-4.0.4.jar'
+-encoding
+'UTF-8'
+-public
+-source
+'1.8'
+-sourcepath
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java'
+-bottom
+'Copyright &#169; 2024. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs'
+-docencoding
+'UTF-8'
+-Xdoclint:none
+-doctitle
+'orajsoda 1.1.23-SNAPSHOT API'
+-linkoffline
+'https://docs.oracle.com/javase/8/docs/api' '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/javadoc-bundle-options'
+-use
+-windowtitle
+'orajsoda 1.1.23-SNAPSHOT API'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/Configuration.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/ConnectionPool.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/DistinctValue.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/DocumentCodec.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/DocumentCodecFactory.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/DocumentKeyer.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/JsonFactoryProvider.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/LobInputStream.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/Message.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/MetricsCollector.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/PooledConnection.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/common/SharedServices.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/logging/OracleLog.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/AndORNode.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/AndORTree.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/ContainsClause.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/DocumentLoader.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/Evaluator.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/FilterLoader.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/FindSpecification.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/IndexColumn.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/IndexSpecification.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/JsonPath.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/JsonQueryPath.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/OrderBySpecification.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/PathParser.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/Predicate.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/ProjectionSpec.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/QueryException.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/QueryMessage.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/SpatialClause.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/SqlJsonClause.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/parser/ValueTypePair.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/rdbms/JsonpGeneratorWrapper.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/rdbms/JsonpParserWrapper.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/ByteArray.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/ComponentTime.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/HashFuncs.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/JsonByteArray.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/LimitedInputStream.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/LogFormatter.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/MimeTypeLookup.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/Pair.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/ScalarValue.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/json/util/UriTools.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/CacheOfDescriptorCaches.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/ConcurrentCacheOfDescriptorCaches.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/ConcurrentDescriptorCache.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/DescriptorCache.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/LRUCache.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/SynchronizedCacheOfDescriptorCaches.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/cache/SynchronizedDescriptorCache.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/CollectionAggregationImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/CollectionDescriptor.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/Operation.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleCollectionImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleCursorImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDatabaseImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentFragmentImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleOperationBuilderImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/SODAConstants.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/SODAMessage.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/SODAUtils.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/SQLTextCarrier.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/TableCollectionImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/WriteResult.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/impl/WriteResultImpl.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/OracleRDBMSClient.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/OracleRDBMSMetadataBuilder.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/rdbms/package-info.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleBatchException.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleClient.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleCollection.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleCollectionAdmin.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleCursor.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleDatabase.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleDatabaseAdmin.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleDocument.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleDocumentFactory.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleDropResult.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleException.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/OracleOperationBuilder.java'
+'/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java/oracle/soda/package-info.java'
+/home/vemahaja/.m2/repository/jakarta/json/jakarta.json-api/2.1.3/jakarta.json-api-2.1.3.jar = 1724704533363
+/home/vemahaja/.m2/repository/org/eclipse/parsson/jakarta.json/1.1.5/jakarta.json-1.1.5.jar = 1724704533391
+/home/vemahaja/.m2/repository/javax/json/javax.json-api/1.1.4/javax.json-api-1.1.4.jar = 1724704533581
+/home/vemahaja/.m2/repository/com/oracle/database/jdbc/ojdbc8/23.3.0.23.09/ojdbc8-23.3.0.23.09.jar = 1724704533712
+/home/vemahaja/.m2/repository/jakarta/servlet/jakarta.servlet-api/4.0.4/jakarta.servlet-api-4.0.4.jar = 1724704533166
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/src/main/java = 1721254563490
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/element-list = 1724880540498
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/constant-values.html = 1724880540552
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/serialized-form.html = 1724880540564
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/overview-tree.html = 1724880540805
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/package-search-index.js = 1724880540894
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/package-search-index.zip = 1724880540898
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/type-search-index.js = 1724880540899
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/type-search-index.zip = 1724880540899
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/member-search-index.js = 1724880540900
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/member-search-index.zip = 1724880540903
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/index-all.html = 1724880540907
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/allclasses-index.html = 1724880540916
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/allpackages-index.html = 1724880540918
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/deprecated-list.html = 1724880540925
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/allclasses.html = 1724880540929
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/index.html = 1724880540934
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/overview-summary.html = 1724880540935
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/help-doc.html = 1724880540937
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/stylesheet.css = 1724880540938
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/script.js = 1724880540938
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/search.js = 1724880540939
+/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/orajsoda/target/site/apidocs/jquery-ui.overrides.css = 1724880540953
