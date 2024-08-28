@@ -10,12 +10,12 @@ Set the JAVA_HOME environment variable to the JDK install directory. At a minimu
 
 ### Building with Maven
 
-  ` cd soda-for-java`\
-  ` mvn clean install`
+  `cd soda-for-java`\
+  `mvn clean install`
 
 If you're behind a firewall, you might need to set the proxy host and port
 number. For example, assuming your proxy host is myproxy.mycompany.com and the port is 80, do:
 
-  ` mvn clean install -Dhttp.proxyHost=myproxy.mycompany.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=myproxy.mycompany.com -Dhttps.proxyPort=80`
+  `mvn clean install -Dhttp.proxyHost=myproxy.mycompany.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=myproxy.mycompany.com -Dhttps.proxyPort=80`
 
 If the build is successful, you should see orajsoda.jar (the SODA jar) and other dependency jars in the /lib directory under the top SODA directory.
