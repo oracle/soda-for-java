@@ -50,7 +50,8 @@
     <property name="jdcs.mode" value="false"/>
     <property name="atp.mode" value="false"/>
     <property name="install.plsql" value="false"/>
- 
+    <property name="compatible" value="12.2"/>
+
     <import file="json.xml"/>
     <import file="ant/sql.xml"/>
 
@@ -121,7 +122,8 @@
              <sysproperty key="debug.curl" value="${debug.curl}"/>
              <sysproperty key="test.match" value="${test.match}"/>
              <sysproperty key="test.dir" value="${test.dir}"/>
-             <sysproperty key="patch.version" value="${patch.version}"/>
+	     <sysproperty key="patch.version" value="${patch.version}"/>
+	     <sysproperty key="compatible" value="${compatible}"/>
              <batchtest todir="${test.dir}/out">
                  <fileset dir="${classes.dir}" 
                    includes="@{includes}*" 

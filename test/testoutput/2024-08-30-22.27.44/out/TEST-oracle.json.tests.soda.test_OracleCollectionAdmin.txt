@@ -1,0 +1,13 @@
+Testsuite: oracle.json.tests.soda.test_OracleCollectionAdmin
+Tests run: 1, Failures: 1, Errors: 0, Time elapsed: 2.391 sec
+
+Testcase: testIsHeterogeneous(oracle.json.tests.soda.test_OracleCollectionAdmin):	FAILED
+null
+junit.framework.AssertionFailedError
+	at oracle.json.tests.soda.test_OracleCollectionAdmin.testIsHeterogeneous(test_OracleCollectionAdmin.java:150)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:45)
+
+

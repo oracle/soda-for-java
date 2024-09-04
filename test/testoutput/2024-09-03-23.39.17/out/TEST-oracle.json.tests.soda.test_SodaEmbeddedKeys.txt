@@ -1,0 +1,13 @@
+Testsuite: oracle.json.tests.soda.test_SodaEmbeddedKeys
+Tests run: 8, Failures: 0, Errors: 0, Time elapsed: 3.423 sec
+
+------------- Standard Output ---------------
+23.0
+23.0
+23.0
+23.0
+23.0
+23.0
+23.0
+23.0
+------------- ---------------- ---------------

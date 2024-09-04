@@ -1,0 +1,12 @@
+Testsuite: oracle.json.tests.soda.test_OracleDatabase
+Tests run: 4, Failures: 0, Errors: 0, Time elapsed: 0.787 sec
+
+------------- Standard Output ---------------
+23.0
+23.0
+23.0
+23.0
+23.0
+23.0
+23.0
+------------- ---------------- ---------------

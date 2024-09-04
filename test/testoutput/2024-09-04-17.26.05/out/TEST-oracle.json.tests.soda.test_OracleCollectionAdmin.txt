@@ -1,0 +1,16 @@
+Testsuite: oracle.json.tests.soda.test_OracleCollectionAdmin
+Tests run: 1, Failures: 1, Errors: 0, Time elapsed: 22.052 sec
+
+------------- Standard Output ---------------
+23.0
+------------- ---------------- ---------------
+Testcase: testAnyScalarJsonIndex(oracle.json.tests.soda.test_OracleCollectionAdmin):	FAILED
+Any Scalar Index range scan is not found.
+junit.framework.AssertionFailedError: Any Scalar Index range scan is not found.
+	at oracle.json.tests.soda.test_OracleCollectionAdmin.testAnyScalarJsonIndex(test_OracleCollectionAdmin.java:1335)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:45)
+
+

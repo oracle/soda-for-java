@@ -1,0 +1,792 @@
+<html xmlns:lxslt="http://xml.apache.org/xslt" xmlns:stringutils="xalan://org.apache.tools.ant.util.StringUtils">
+    <head>
+        <META http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+        <title>Unit Test Results: oracle.json.tests.soda.test_SodaDependencies</title>
+        <link rel="stylesheet" type="text/css" title="Style" href="../../../../stylesheet.css">
+        <script type="text/javascript" language="JavaScript">
+        var TestCases = new Array();
+        var cur;
+        
+    cur = TestCases['oracle.json.tests.soda.test_SodaDependencies'] = new Array();
+    
+        cur['ant.core.lib'] = '/ade/vemahaja_gitdumpnew/ant/lib/ant.jar';
+    
+        cur['ant.file'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build.xml';
+    
+        cur['ant.file.json-base'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/json.xml';
+    
+        cur['ant.file.sql'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/ant/sql.xml';
+    
+        cur['ant.file.txjjson'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build.xml';
+    
+        cur['ant.home'] = '/ade/vemahaja_gitdumpnew/ant';
+    
+        cur['ant.java.version'] = '1.6';
+    
+        cur['ant.library.dir'] = '/ade/vemahaja_gitdumpnew/ant/lib';
+    
+        cur['ant.project.name'] = 'txjjson';
+    
+        cur['ant.version'] = 'Apache Ant version 1.7.1 compiled on June 27 2008';
+    
+        cur['atp.mode'] = 'false';
+    
+        cur['awt.toolkit'] = 'sun.awt.X11.XToolkit';
+    
+        cur['basedir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test';
+    
+        cur['build.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build';
+    
+        cur['classes.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build/classes';
+    
+        cur['compatible'] = '23';
+    
+        cur['datasource'] = 'datasource.properties';
+    
+        cur['DBName'] = 'cdb1_pdb1.regress.rdbms.dev.us.oracle.com';
+    
+        cur['debug.curl'] = 'false';
+    
+        cur['depend.cache.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build/depend';
+    
+        cur['DSTAMP'] = '20240830';
+    
+        cur['env._ORA_PLUS_TST'] = 'TRUE';
+    
+        cur['env.ADE_AUTO_MAP'] = 'disabled';
+    
+        cur['env.ADE_CHROOT_SHELL'] = '/ade_autofs/ade_infra/UTL_MAIN_GENERIC.rdd/LATEST/utl/chroot_env.pl';
+    
+        cur['env.ADE_CONFIG_DIR'] = '/ade_autofs/ade_infra/SEICONFIG_MAIN_PLATFORMS.rdd/LATEST/seiconfig/ade';
+    
+        cur['env.ADE_DEFAULT_TWORK_STORAGE_LOC'] = '/scratch/vemahaja/view_storage';
+    
+        cur['env.ADE_DEFAULT_TXN_GROUP'] = 'db_test_access';
+    
+        cur['env.ADE_DEFAULT_VIEW_STORAGE_LOC'] = '/scratch/vemahaja/view_storage';
+    
+        cur['env.ADE_EXPAND_SPEC'] = 'xdk/lib:xdk/bin:xdk/utl:rdbms/lib:rdbms/bin:rdbms/admin:rdbms/utl:plsql/exdir:odbc/*:odbctests/*:oracle/*:buildtools/public:has/css:oss/*:oraolap/*:cwmlite/*';
+    
+        cur['env.ADE_HOME_DIR'] = '/ade_autofs/ade_infra/ADE_MAIN_LINUX.X64.rdd/LATEST/nde/ade';
+    
+        cur['env.ADE_LABELSERVER_CONFIG_FILE'] = '/ade_autofs/ade_infra/SEICONFIG_MAIN_PLATFORMS.rdd/LATEST/seiconfig/ade/linux/i686-linux/phx/DB/ADE_LabelServers_List.txt';
+    
+        cur['env.ADE_PERL_PATH'] = '/usr/local/ade/x86_64/perl530';
+    
+        cur['env.ADE_POLICY_TRANS_STORAGE_ROOT'] = '/ade_autofs/ade_txn_db_phx_fss';
+    
+        cur['env.ADE_PRODUCT_ROOT'] = '/ade/vemahaja_gitdumpnew/xdk';
+    
+        cur['env.ADE_REPOS_MERGE_ROOT'] = '/ade_autofs/ade_infra/ADE_MAIN_LINUX.X64.rdd/LATEST/nde/ade/repos_merge';
+    
+        cur['env.ADE_ROOT'] = '1';
+    
+        cur['env.ADE_SAVE_UMASK'] = '022';
+    
+        cur['env.ADE_SITE'] = 'phx';
+    
+        cur['env.ADE_TRIGGER_DIR'] = '/ade_autofs/ade_infra/ADE_MAIN_LINUX.X64.rdd/LATEST/nde/ade/bin/perl/trigger_scripts';
+    
+        cur['env.ADE_UMASK'] = '000';
+    
+        cur['env.ADE_USER_TRIGGER_DIR'] = '/ade/vemahaja_gitdumpnew/xdk/utl/trigger_scripts';
+    
+        cur['env.ADE_VIEW_NAME'] = 'vemahaja_gitdumpnew';
+    
+        cur['env.ADE_VIEW_ROOT'] = '/ade/vemahaja_gitdumpnew';
+    
+        cur['env.ADE_VIEW_ROOT_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew';
+    
+        cur['env.ADMIN_PWD'] = 'welcome';
+    
+        cur['env.ADMIN_USER'] = 'admin';
+    
+        cur['env.ANT_HOME'] = '/ade/vemahaja_gitdumpnew/ant';
+    
+        cur['env.APJ_HOME'] = '/ade/b/1556886341/oracle/Apache';
+    
+        cur['env.ATRIAHOME'] = '/usr/atria';
+    
+        cur['env.BUILD_CC'] = '1';
+    
+        cur['env.CDB_NLS_LMT_SEED'] = '/ade/b/1556886341/oracle/rdbms/utl/cdb_nls_lmt_seed';
+    
+        cur['env.CDB_NLS_SEED'] = '/ade/b/1556886341/oracle/rdbms/utl/cdb_nls_seed';
+    
+        cur['env.CDB_SEED'] = '/ade/b/1556886341/oracle/rdbms/utl/cdb_seed';
+    
+        cur['env.CDPATH'] = '/ade/b/1556886341/oracle:/ade/b/1556886341/oracle/xdk:/ade/b/1556886341/oracle/xdk/src:/ade/b/1556886341/oracle/xdk/src/c:/ade/b/1556886341/oracle/xdk/src/cpp:/ade/b/1556886341/oracle/xdk/src/java:/ade/b/1556886341/oracle/xdk/src/java/oracle:/ade/b/1556886341/oracle/xdk/src/java/oracle/xml:/ade/b/1556886341/oracle/xdk/src/java/oracle/xml/parser:/ade/b/1556886341/oracle/xdk/test:/ade/b/1556886341/oracle/javavm:/ade/b/1556886341/oracle/dbjava:/ade/b/1556886341/oracle/rdbms:/ade/b/1556886341/oracle/rdbms/src:/ade/vemahaja_gitdumpnew/obase:/ade/vemahaja_gitdumpnew';
+    
+        cur['env.CLASSPATH'] = '';
+    
+        cur['env.CLEAN_SUC'] = 'FALSE';
+    
+        cur['env.CLNTLIBVERSION4TEST'] = '23';
+    
+        cur['env.COBDIR'] = '/opt/microfocus/cobol';
+    
+        cur['env.COLORTERM'] = 'truecolor';
+    
+        cur['env.COMPDIR'] = '/usr/local/remote/packages/icc_remote/9.1.046patched';
+    
+        cur['env.CTS_HOME'] = '/ade/b/1556886341/oracle/xdk/cts/j2eects';
+    
+        cur['env.CTX_TWO_TASK'] = 'inst1';
+    
+        cur['env.CVS_RSH'] = 'ssh';
+    
+        cur['env.DB_CHARSET'] = 'utf8';
+    
+        cur['env.DB_DRIVER'] = 'thin';
+    
+        cur['env.DB_DS'] = 'emulated';
+    
+        cur['env.DB_HOST'] = 'phoenix137785';
+    
+        cur['env.DB_PORT'] = '5521';
+    
+        cur['env.DB_SID'] = 'dumpnew';
+    
+        cur['env.DB3PARTY_HOME'] = '/ade/b/1556886341/oracle/db3party';
+    
+        cur['env.DBLIBVERSION4TEST'] = '';
+    
+        cur['env.DBUS_SESSION_BUS_ADDRESS'] = 'unix:abstract=/tmp/dbus-tvGEWxdKTN,guid=f4f3c147768462d3632b584d667c9eec';
+    
+        cur['env.DEFAULT_SEED_LOC'] = 'oracle/rdbms/utl/cdb_lmt_al32utf8_seed';
+    
+        cur['env.DEV_STACK'] = 'DB';
+    
+        cur['env.DISPLAY'] = ':1';
+    
+        cur['env.ESE_RTF_LOCAL_URL'] = 'https://artifacthub-phx.oci.oraclecorp.com';
+    
+        cur['env.EXD'] = '/ade/b/1556886341/oracle/plsql/exdir/';
+    
+        cur['env.FQDN'] = 'phoenix137785.dev3sub3phx.databasede3phx.oraclevcn.com';
+    
+        cur['env.FSEP'] = '/';
+    
+        cur['env.FTPPORT'] = '2100';
+    
+        cur['env.GCONF_LOCAL_LOCKS'] = '1';
+    
+        cur['env.GENLRGMK_GENERIC'] = '/ade_autofs/ade_infra/UTL_MAIN_GENERIC.rdd/LATEST/utl/regresstools/genlrgmk';
+    
+        cur['env.GJS_DEBUG_OUTPUT'] = 'stderr';
+    
+        cur['env.GJS_DEBUG_TOPICS'] = 'JS ERROR;JS LOG';
+    
+        cur['env.GNOME_DESKTOP_SESSION_ID'] = 'this-is-deprecated';
+    
+        cur['env.GNOME_TERMINAL_SCREEN'] = '/org/gnome/Terminal/screen/78a1c06e_cc9a_4139_9051_e4c3001c343b';
+    
+        cur['env.GNOME_TERMINAL_SERVICE'] = ':1.65';
+    
+        cur['env.GROUP'] = 'dba';
+    
+        cur['env.HAS_NO_LIBCHANGE'] = 'TRUE';
+    
+        cur['env.HISTFILESIZE'] = '10000';
+    
+        cur['env.HISTSIZE'] = '10000';
+    
+        cur['env.HOME'] = '/home/vemahaja';
+    
+        cur['env.HOST'] = 'phoenix137785';
+    
+        cur['env.HOSTNAME'] = 'phoenix137785';
+    
+        cur['env.HOSTTYPE'] = 'x86_64-linux';
+    
+        cur['env.HTTPPORT'] = '8080';
+    
+        cur['env.INTG_ROOT'] = '/ade_autofs/ade_infra/INTG_PT.V3_LINUX.rdd/LATEST/intg';
+    
+        cur['env.IS_OCI_HOST'] = '1';
+    
+        cur['env.J2EE_HOME'] = '/ade/b/1556886341/oracle/work/jtwork/oc4j_standalone/j2ee/home';
+    
+        cur['env.J2EE_HOST'] = 'phoenix137785';
+    
+        cur['env.J2EE_SSL_PORT'] = '1699';
+    
+        cur['env.JAVA_11'] = '/ade/b/1556886341/oracle/jdk11/bin';
+    
+        cur['env.JAVA_15'] = '/ade/b/1556886341/oracle/jdk/bin';
+    
+        cur['env.JAVA_8'] = '/ade/b/1556886341/oracle/jdk8/bin';
+    
+        cur['env.JAVA_HOME'] = '/ade/b/1556886341/oracle/jdk';
+    
+        cur['env.JAVA15HOME'] = '/ade/b/1556886341/oracle/jdk';
+    
+        cur['env.JAVA16HOME'] = '/ade/b/1556886341/oracle/jdk6';
+    
+        cur['env.JAVA6HOME'] = '/ade/b/1556886341/oracle/jdk6';
+    
+        cur['env.JAVA7HOME'] = '/ade/b/1556886341/oracle/jdk7';
+    
+        cur['env.JAVA8HOME'] = '/ade/b/1556886341/oracle/jdk8';
+    
+        cur['env.JCK8ROOT'] = '/net/slc06mdm/scratch/yhuang/JCK/jck8a/JCK-runtime-8a';
+    
+        cur['env.JDK_CLASSES'] = '/ade/b/1556886341/oracle/lib/vbjorb.jar:/ade/b/1556886341/oracle/lib/vbjapp.jar:';
+    
+        cur['env.JDK_HOME'] = '/ade/b/1556886341/oracle/jdk';
+    
+        cur['env.JDK6_HOME'] = '/ade/b/1556886341/oracle/jdk6';
+    
+        cur['env.JDKHOME'] = '/ade/b/1556886341/oracle/jdk';
+    
+        cur['env.JDKHOME_15'] = '/ade/b/1556886341/oracle/jdk15';
+    
+        cur['env.JDKHOME_16'] = '/ade/b/1556886341/oracle/jdk6';
+    
+        cur['env.JDKVER'] = 'JDK8';
+    
+        cur['env.JMS_PORT'] = '9127';
+    
+        cur['env.JRE15HOME'] = '/ade/b/1556886341/oracle/jre15';
+    
+        cur['env.JREHOME'] = '/ade/b/1556886341/oracle/jre15';
+    
+        cur['env.JT_SRC'] = '/ade/b/1556886341/oracle/tklocal:/ade/b/1556886341/oracle/xdk/test';
+    
+        cur['env.JT_WORK'] = '/ade/b/1556886341/oracle/work/jtwork';
+    
+        cur['env.KDEDIRS'] = '/usr';
+    
+        cur['env.KGZF_DISABLE_RECONNECT'] = '1';
+    
+        cur['env.LANG'] = 'en_US.UTF-8';
+    
+        cur['env.LD_LIBRARY_PATH'] = '/ade/vemahaja_gitdumpnew/odbc/public/osds/unixODBC/lib:/opt/microfocus/cobol/lib:/usr/dt/lib:/ade/vemahaja_gitdumpnew/rdbms/lib:/ade/b/1556886341/oracle/lib:/ade/vemahaja_gitdumpnew/ctx/lib:/ade/vemahaja_gitdumpnew/javavm/utl/ejb/unix/lib:/ade/vemahaja_gitdumpnew/dbjava/lib:/usr/lib:/ade/b/1556886341/oracle/jre14/lib/i386:/ade/b/1556886341/oracle/jre14/lib/i386/client:/ade/vemahaja_gitdumpnew/oss/lib:/ade/vemahaja_gitdumpnew/odbc/public/osds/ext_lib:/usr/lib';
+    
+        cur['env.LESSOPEN'] = '||/usr/bin/lesspipe.sh %s';
+    
+        cur['env.LKMGR_LOG'] = '/tmp/DLM_vemahaja_gitdumpnew';
+    
+        cur['env.LOADEDMODULES'] = '';
+    
+        cur['env.LOGNAME'] = 'vemahaja';
+    
+        cur['env.LPI_PRODUCT_DIR'] = '/usr/local/packages/lpi-7.3.2';
+    
+        cur['env.LS_COLORS'] = 'rs=0:di=38;5;33:ln=38;5;51:mh=00:pi=40;38;5;11:so=38;5;13:do=38;5;5:bd=48;5;232;38;5;11:cd=48;5;232;38;5;3:or=48;5;232;38;5;9:mi=01;05;37;41:su=48;5;196;38;5;15:sg=48;5;11;38;5;16:ca=48;5;196;38;5;226:tw=48;5;10;38;5;16:ow=48;5;10;38;5;21:st=48;5;21;38;5;15:ex=38;5;40:*.tar=38;5;9:*.tgz=38;5;9:*.arc=38;5;9:*.arj=38;5;9:*.taz=38;5;9:*.lha=38;5;9:*.lz4=38;5;9:*.lzh=38;5;9:*.lzma=38;5;9:*.tlz=38;5;9:*.txz=38;5;9:*.tzo=38;5;9:*.t7z=38;5;9:*.zip=38;5;9:*.z=38;5;9:*.dz=38;5;9:*.gz=38;5;9:*.lrz=38;5;9:*.lz=38;5;9:*.lzo=38;5;9:*.xz=38;5;9:*.zst=38;5;9:*.tzst=38;5;9:*.bz2=38;5;9:*.bz=38;5;9:*.tbz=38;5;9:*.tbz2=38;5;9:*.tz=38;5;9:*.deb=38;5;9:*.rpm=38;5;9:*.jar=38;5;9:*.war=38;5;9:*.ear=38;5;9:*.sar=38;5;9:*.rar=38;5;9:*.alz=38;5;9:*.ace=38;5;9:*.zoo=38;5;9:*.cpio=38;5;9:*.7z=38;5;9:*.rz=38;5;9:*.cab=38;5;9:*.wim=38;5;9:*.swm=38;5;9:*.dwm=38;5;9:*.esd=38;5;9:*.jpg=38;5;13:*.jpeg=38;5;13:*.mjpg=38;5;13:*.mjpeg=38;5;13:*.gif=38;5;13:*.bmp=38;5;13:*.pbm=38;5;13:*.pgm=38;5;13:*.ppm=38;5;13:*.tga=38;5;13:*.xbm=38;5;13:*.xpm=38;5;13:*.tif=38;5;13:*.tiff=38;5;13:*.png=38;5;13:*.svg=38;5;13:*.svgz=38;5;13:*.mng=38;5;13:*.pcx=38;5;13:*.mov=38;5;13:*.mpg=38;5;13:*.mpeg=38;5;13:*.m2v=38;5;13:*.mkv=38;5;13:*.webm=38;5;13:*.ogm=38;5;13:*.mp4=38;5;13:*.m4v=38;5;13:*.mp4v=38;5;13:*.vob=38;5;13:*.qt=38;5;13:*.nuv=38;5;13:*.wmv=38;5;13:*.asf=38;5;13:*.rm=38;5;13:*.rmvb=38;5;13:*.flc=38;5;13:*.avi=38;5;13:*.fli=38;5;13:*.flv=38;5;13:*.gl=38;5;13:*.dl=38;5;13:*.xcf=38;5;13:*.xwd=38;5;13:*.yuv=38;5;13:*.cgm=38;5;13:*.emf=38;5;13:*.ogv=38;5;13:*.ogx=38;5;13:*.aac=38;5;45:*.au=38;5;45:*.flac=38;5;45:*.m4a=38;5;45:*.mid=38;5;45:*.midi=38;5;45:*.mka=38;5;45:*.mp3=38;5;45:*.mpc=38;5;45:*.ogg=38;5;45:*.ra=38;5;45:*.wav=38;5;45:*.oga=38;5;45:*.opus=38;5;45:*.spx=38;5;45:*.xspf=38;5;45:';
+    
+        cur['env.LSAN_OPTIONS'] = 'log_path=/ade/b/1556886341/oracle/work/lsan-leaks:strip_path_prefix=/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/';
+    
+        cur['env.MACHTYPE'] = 'x86_64';
+    
+        cur['env.MAIL'] = '/var/spool/mail/vemahaja';
+    
+        cur['env.MANPATH'] = '/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/local/packages/idb_remote/8.1-035/man:/usr/share/man:/usr/local/share/man';
+    
+        cur['env.MAVEN_HOME'] = '/ade/vemahaja_gitdumpnew/maven';
+    
+        cur['env.MODULEPATH'] = '/etc/scl/modulefiles:/etc/scl/modulefiles:/usr/share/Modules/modulefiles:/etc/modulefiles:/usr/share/modulefiles';
+    
+        cur['env.MODULEPATH_modshare'] = '/usr/share/modulefiles:1:/usr/share/Modules/modulefiles:1:/etc/modulefiles:1';
+    
+        cur['env.MODULES_CMD'] = '/usr/share/Modules/libexec/modulecmd.tcl';
+    
+        cur['env.MODULES_USE_COMPAT_VERSION'] = '0';
+    
+        cur['env.MODULESHOME'] = '/usr/share/Modules';
+    
+        cur['env.MYPROFDIR'] = 'NONE';
+    
+        cur['env.NDE_HOME'] = '/usr/local/nde';
+    
+        cur['env.NDE_PRODUCT'] = 'xdk';
+    
+        cur['env.NDE_PRODUCT_REL'] = '8.0.2';
+    
+        cur['env.NDE_PRODUCT_ROOT'] = '/ade/vemahaja_gitdumpnew/xdk';
+    
+        cur['env.NDE_VIEW_TAG'] = 'vemahaja_gitdumpnew';
+    
+        cur['env.NDE_VOB_ROOT'] = '/ade/vemahaja_gitdumpnew';
+    
+        cur['env.NDERC_ONCE'] = 'TRUE';
+    
+        cur['env.NDERC_PREFIX'] = '';
+    
+        cur['env.NLS_SEED'] = '/ade/b/1556886341/oracle/rdbms/utl/nlsdb';
+    
+        cur['env.OC4J_HOST'] = 'phoenix137785';
+    
+        cur['env.OC4J_IIOP'] = '15555';
+    
+        cur['env.OC4J_SIIOP'] = '15556';
+    
+        cur['env.OCR_BACKUP'] = '/ade/b/1556886341/oracle/hist/data.ocr';
+    
+        cur['env.OCR_DEVELOPER_ENV'] = 'TRUE';
+    
+        cur['env.OCR_DG_FILE'] = 'ocrdg1';
+    
+        cur['env.OCR_DG_NAME'] = 'ocrdg1';
+    
+        cur['env.OCR_DG_ROOT'] = '+ocrdg1';
+    
+        cur['env.OCR_FILE'] = 'data.ocr';
+    
+        cur['env.OCR_LOC'] = '/ade/b/1556886341/oracle/hist/ocr.loc';
+    
+        cur['env.OCR_LOC_FILE'] = 'ocr.loc';
+    
+        cur['env.OCR_MIRROR_DG_FILE'] = 'ocrdg2';
+    
+        cur['env.OCR_MIRROR_DG_NAME'] = 'ocrdg2';
+    
+        cur['env.OCR_MIRROR_DG_ROOT'] = '+ocrdg2';
+    
+        cur['env.OCR_MIRROR_FILE'] = 'mirror.ocr';
+    
+        cur['env.OCR_MIRROR_NAME'] = 'mirror.ocr';
+    
+        cur['env.OCR_MIRROR_ROOT'] = '/ade/b/1556886341/oracle/has_work/mirror.ocr';
+    
+        cur['env.OCR_NAME'] = 'data.ocr';
+    
+        cur['env.OCR_NAME_3'] = 'data3.ocr';
+    
+        cur['env.OCR_NAME_4'] = 'data4.ocr';
+    
+        cur['env.OCR_NAME_5'] = 'data5.ocr';
+    
+        cur['env.OCR_ROOT'] = '/ade/b/1556886341/oracle/hist/ocr.dat';
+    
+        cur['env.OCR_ROOT_3'] = '/ade/b/1556886341/oracle/has_work/data3.ocr';
+    
+        cur['env.OCR_ROOT_4'] = '/ade/b/1556886341/oracle/has_work/data4.ocr';
+    
+        cur['env.OCR_ROOT_5'] = '/ade/b/1556886341/oracle/has_work/data5.ocr';
+    
+        cur['env.OCR_SUPERUSER'] = 'TRUE';
+    
+        cur['env.OCR9_LOC'] = '/ade/b/1556886341/oracle/has_work/srvConfig.loc';
+    
+        cur['env.OCR9_LOC_FILE'] = 'srvConfig.loc';
+    
+        cur['env.OLR_FILE'] = 'phoenix137785.olr';
+    
+        cur['env.OLR_LOC'] = '/ade/b/1556886341/oracle/has_work/olr.loc';
+    
+        cur['env.OLR_LOC_FILE'] = 'olr.loc';
+    
+        cur['env.OLR_NAME'] = 'phoenix137785.olr';
+    
+        cur['env.OLR_ROOT'] = '/ade/b/1556886341/oracle/has_work/';
+    
+        cur['env.ORA_NLS'] = '/ade/b/1556886341/oracle/nlsrtl/admin/nlsdata';
+    
+        cur['env.ORA_SID'] = 'dumpnew';
+    
+        cur['env.ORA_SUPPRESS_ERROR_URL'] = 'TRUE';
+    
+        cur['env.ORA64_32'] = '1';
+    
+        cur['env.ORACLE_BASE'] = '/ade/b/1556886341/oracle';
+    
+        cur['env.ORACLE_BASE_CONFIG'] = '/ade/b/1556886341/oracle';
+    
+        cur['env.ORACLE_BASE_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/oracle';
+    
+        cur['env.ORACLE_HOME'] = '/ade/b/1556886341/oracle';
+    
+        cur['env.ORACLE_HOME_NAME'] = 'gitdumpnew';
+    
+        cur['env.ORACLE_HOME_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/oracle';
+    
+        cur['env.ORACLE_PORT'] = '5521';
+    
+        cur['env.ORACLE_SID'] = 'dumpnew';
+    
+        cur['env.ORAJTST_HOME'] = '/ade/b/1556886341/oracle/xdk/test/orajtst';
+    
+        cur['env.ORATST_CLEAN'] = 'txclnt.tsc';
+    
+        cur['env.ORATST_NODB'] = 'TRUE';
+    
+        cur['env.ORATST_START'] = 'txstart.tsc';
+    
+        cur['env.ORDIM_JDKHOME_SERVER'] = '';
+    
+        cur['env.OSTYPE'] = 'linux';
+    
+        cur['env.OUT_DIR'] = '/ade/b/1556886341/oracle/work/temp/';
+    
+        cur['env.PATH'] = '/usr/local/packages/idb_remote/8.1-035/bin:/usr/local/packages/idb_remote/8.1-035/bin:/ade/b/1556886341/oracle/xdk/test/orajtst/bin:/ade/b/1556886341/oracle/xdk/bin:/ade/vemahaja_gitdumpnew/ant/bin:/ade/vemahaja_gitdumpnew/maven/bin:/ade/b/1556886341/oracle/python/bin:/opt/microfocus/cobol/bin:/ade/b/1556886341/oracle/perl/bin:/ade/vemahaja_gitdumpnew/plsql/bin:/ade/vemahaja_gitdumpnew/plsql/utl:/ade/vemahaja_gitdumpnew/plsql/utl/scripts:.:/ade/vemahaja_gitdumpnew/buildtools/bin:/ade/b/1556886341/oracle/bin:/ade/b/1556886341/oracle/xdk/utl:/ade/b/1556886341/oracle/rdbms/utl:/ade/vemahaja_gitdumpnew/utl:/ade/vemahaja_gitdumpnew/nlsrtl3/bin:/ade/vemahaja_gitdumpnew/gradle/bin:/usr/sbin:/bin:/usr/dev_infra/platform/bin:/usr/dev_infra/generic/bin:/usr/local/bin:/etc:/usr/ccs/bin:/usr/local/nde/bin:/usr/ucb:/usr/X11R6/bin:/usr/local/ade/bin:/ade/vemahaja_gitdumpnew/odbctests/odbc_ptest/bin:/ade/vemahaja_gitdumpnew/rdbms_topaz:/usr/local/packages/idb_remote/8.1-035/bin:/usr/share/Modules/bin';
+    
+        cur['env.PERL_BINDIR_5_6'] = '/usr/local/redhat/packages/perl_5.6.1/bin';
+    
+        cur['env.PERL_EXEC'] = '/ade/b/1556886341/oracle/perl/bin/perl';
+    
+        cur['env.PERL_HOME'] = '/usr/local/redhat/packages/perl_5.6.1';
+    
+        cur['env.PERL_JSON_BACKEND'] = 'JSON::PP';
+    
+        cur['env.PERL_USE_UNSAFE_INC'] = '1';
+    
+        cur['env.PSEP'] = ':';
+    
+        cur['env.PWD'] = '/ade/b/1556886341/oracle/xdk/src/java/json/soda-for-java/test';
+    
+        cur['env.PYTHON'] = '/ade/b/1556886341/oracle/python/bin/python';
+    
+        cur['env.QT_IM_MODULE'] = 'ibus';
+    
+        cur['env.RDBMS_CC'] = '/usr/bin/gcc';
+    
+        cur['env.REMOTEHOST'] = '10.14.176.147';
+    
+        cur['env.RMI_ACT_PORT'] = '3098';
+    
+        cur['env.RMI_PORT'] = '23791';
+    
+        cur['env.S_COLORS'] = 'auto';
+    
+        cur['env.SAMBAROOT'] = '/data3/prophecy/prophecy';
+    
+        cur['env.SESSION_MANAGER'] = 'local/unix:@/tmp/.ICE-unix/52658,unix/unix:/tmp/.ICE-unix/52658';
+    
+        cur['env.SHELL'] = '/bin/tcsh';
+    
+        cur['env.SHLVL'] = '4';
+    
+        cur['env.SO_EXT'] = 'so';
+    
+        cur['env.SODA_SQLPLUS'] = '/ade/b/3265917444/oracle/bin/';
+    
+        cur['env.SRCHOME'] = '/ade/b/1556886341/oracle';
+    
+        cur['env.SRCHOME_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/oracle';
+    
+        cur['env.SRGMGR_GENERIC'] = '/ade_autofs/ade_infra/UTL_MAIN_GENERIC.rdd/LATEST/utl/regresstools/srgmgr.pl';
+    
+        cur['env.SSH_AGENT_PID'] = '52692';
+    
+        cur['env.SSH_ASKPASS'] = '/usr/libexec/openssh/gnome-ssh-askpass';
+    
+        cur['env.SSH_AUTH_SOCK'] = '/run/user/1700179/keyring/ssh';
+    
+        cur['env.SSH_CLIENT'] = '10.14.176.147 63291 22';
+    
+        cur['env.SSH_CONNECTION'] = '10.14.176.147 63291 100.70.65.247 22';
+    
+        cur['env.SSH_TTY'] = '/dev/pts/31';
+    
+        cur['env.T_ARCHIVE'] = '/ade/b/1556886341/oracle/work:/ade/vemahaja_gitdumpnew/sqlplus/test/iplus/log';
+    
+        cur['env.T_CONFIG_DBS'] = '/ade/b/1556886341/oracle/dbs';
+    
+        cur['env.T_CP_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txcp/data';
+    
+        cur['env.T_CPP_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txcpp/data';
+    
+        cur['env.T_CS_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txcs/data';
+    
+        cur['env.T_CX_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txcx/data';
+    
+        cur['env.T_DBS'] = '/ade/b/1556886341/oracle/dbs';
+    
+        cur['env.T_DHOME'] = '/ade/b/1556886341/oracle/log/diag/rdbms/dumpnew/dumpnew';
+    
+        cur['env.T_DHOME_TRC'] = '/ade/b/1556886341/oracle/log/diag/rdbms/dumpnew/dumpnew/trace';
+    
+        cur['env.T_DIAG'] = '/ade/b/1556886341/oracle/log';
+    
+        cur['env.T_DISCARD'] = '/dev/null';
+    
+        cur['env.T_HAS_WORK'] = '/ade/b/1556886341/oracle/has_work';
+    
+        cur['env.T_HIST'] = '/ade/b/1556886341/oracle/hist';
+    
+        cur['env.T_MAXDIFF'] = '50000';
+    
+        cur['env.T_SYSTEM'] = '/ade/b/1556886341/oracle/xdk/bin:/ade/b/1556886341/oracle/work:/ade/b/1556886341/oracle/perl/bin:/ade/b/1556886341/oracle/work:/ade/vemahaja_gitdumpnew/rdbms/bin:/ade/b/1556886341/oracle/bin:/ade/vemahaja_gitdumpnew/sqlj/bin:/ade/vemahaja_gitdumpnew/precomp_bin/bin:/ade/b/1556886341/oracle/wwg/tools:/ade/b/1556886341/oracle/perl/bin:/ade/b/1556886341/oracle/jdk6/bin:/ade/vemahaja_gitdumpnew/rdbms/src/server/xmlsupp/xsu/lib:/ade/b/1556886341/oracle/plsql/utl:/ade/b/1556886341/oracle/plsql/utl/scripts:/ade/b/1556886341/oracle/ctx/utl:/ade/vemahaja_gitdumpnew/python/bin:/ade/vemahaja_gitdumpnew/rdbms/src/server/vos/odmlib/nfs/test:/usr/local/bin:/bin:/usr/bin';
+    
+        cur['env.T_SYSTEM_JRE'] = '/usr/local/packages/jre1.1.8_10/bin';
+    
+        cur['env.T_SYSTEM_JRE116'] = '/usr/local/packages/jdk1.1.6p/bin';
+    
+        cur['env.T_TKXQ_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/tkxq/data';
+    
+        cur['env.T_TRC'] = '/ade/b/1556886341/oracle/log';
+    
+        cur['env.T_VM_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txvm/data';
+    
+        cur['env.T_WORK'] = '/ade/b/1556886341/oracle/work';
+    
+        cur['env.T_WORK_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/oracle/work';
+    
+        cur['env.T_XQD_DATA'] = '/ade/vemahaja_gitdumpnew/xdk/test/txqd/data';
+    
+        cur['env.TCPPORT'] = '5521';
+    
+        cur['env.TERM'] = 'xterm-256color';
+    
+        cur['env.TKLOCAL'] = '/ade/b/1556886341/oracle/tklocal';
+    
+        cur['env.TKLOCAL_V'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/oracle/tklocal';
+    
+        cur['env.TLINT_HOME'] = '/ade/b/1556886341/oracle/buildtools';
+    
+        cur['env.TNS_ADMIN'] = '/ade/b/1556886341/oracle/work';
+    
+        cur['env.TZ'] = 'UTC';
+    
+        cur['env.UBSAN_OPTIONS'] = 'log_path=/ade/b/1556886341/oracle/work/ubsan-errs:print_stacktrace=1:strip_path_prefix=/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/';
+    
+        cur['env.UPPER_HOSTNAME'] = 'PHOENIX137785';
+    
+        cur['env.USER'] = 'vemahaja';
+    
+        cur['env.VENDOR'] = 'unknown';
+    
+        cur['env.VIEW_LABEL'] = 'XDK_SODA1_LINUX.X64_240807';
+    
+        cur['env.VIEW_OBH'] = '/ade/b/1556886341/oracle';
+    
+        cur['env.VNCDESKTOP'] = 'phoenix137785:1 (vemahaja)';
+    
+        cur['env.VTE_VERSION'] = '5204';
+    
+        cur['env.XDG_CURRENT_DESKTOP'] = 'GNOME';
+    
+        cur['env.XDG_MENU_PREFIX'] = 'gnome-';
+    
+        cur['env.XDG_RUNTIME_DIR'] = '/run/user/1700179';
+    
+        cur['env.XDG_SESSION_ID'] = '610';
+    
+        cur['env.XDK_CLASSPATH'] = '.:/ade/b/1556886341/oracle/xdk/lib/xmlmesg.jar:/ade/b/1556886341/oracle/xdk/lib/xmlparserv2.jar:/ade/b/1556886341/oracle/xdk/lib/xml.jar:/ade/b/1556886341/oracle/xdk/lib/classgen.jar:/ade/b/1556886341/oracle/xdk/lib/xsu12.jar:/ade/b/1556886341/oracle/xdk/lib/xquery.jar:/ade/b/1556886341/oracle/xdk/lib/ojcr.jar:/ade/b/1556886341/oracle/xdk/src/java/lib/jcr-1.0.jar:/ade/b/1556886341/oracle/jlib/orai18n.jar:/ade/b/1556886341/oracle/jlib/orai18n-mapping.jar:/ade/b/1556886341/oracle/jlib/orai18n-utility.jar:/ade/b/1556886341/oracle/jlib/orai18n-collation.jar:/ade/b/1556886341/oracle/xdk/src/java/lib/stax.jar:/ade/b/1556886341/oracle/xdk/src/java/lib/jdev-rt.zip:/ade/b/1556886341/oracle/xdk/src/java/lib/xmldemo.jar:/ade/b/1556886341/oracle/rdbms/jlib/xdb.jar:/ade/b/1556886341/oracle/jdbc/lib/ojdbc6.jar:/ade/b/1556886341/oracle/xdk/src/java/lib/fastinfoset.jar:/ade/b/1556886341/oracle/dbjava/lib/ojdbc8.jar';
+    
+        cur['env.XDK_TEST_ROOT'] = '/ade/b/1556886341/oracle/xdk/test';
+    
+        cur['env.XDKHOME'] = '/ade/b/1556886341/oracle/xdk/lib';
+    
+        cur['env.XMODIFIERS'] = '@im=ibus';
+    
+        cur['file.encoding'] = 'UTF-8';
+    
+        cur['file.separator'] = '/';
+    
+        cur['install.plsql'] = 'false';
+    
+        cur['jar.orajsoda'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/../lib/orajsoda.jar';
+    
+        cur['java.awt.graphicsenv'] = 'sun.awt.X11GraphicsEnvironment';
+    
+        cur['java.awt.printerjob'] = 'sun.print.PSPrinterJob';
+    
+        cur['java.class.path'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/jakarta.json-1.1.5.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/jakarta.json-api-2.1.3.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/jakarta.servlet-api-4.0.4.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/javax.json-api-1.1.4.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/junit-4.13.2.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/ojdbc8-23.3.0.23.09.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/lib/orajsoda.jar:/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/build/classes:/ade/vemahaja_gitdumpnew/ant/lib/junit.jar:/ade_autofs/ud222_db/XDK_SODA1_LINUX.X64.rdd/240807/ant/lib/ant-launcher.jar:/ade/vemahaja_gitdumpnew/ant/lib/ant.jar:/ade/vemahaja_gitdumpnew/ant/lib/ant-junit.jar';
+    
+        cur['java.class.version'] = '55.0';
+    
+        cur['java.home'] = '/ade_autofs/dd223_db/XDK/SODA1/LINUX.X64/240807/jdk11';
+    
+        cur['java.io.tmpdir'] = '/tmp';
+    
+        cur['java.library.path'] = '/ade/vemahaja_gitdumpnew/odbc/public/osds/unixODBC/lib:/opt/microfocus/cobol/lib:/usr/dt/lib:/ade/vemahaja_gitdumpnew/rdbms/lib:/ade/b/1556886341/oracle/lib:/ade/vemahaja_gitdumpnew/ctx/lib:/ade/vemahaja_gitdumpnew/javavm/utl/ejb/unix/lib:/ade/vemahaja_gitdumpnew/dbjava/lib:/usr/lib:/ade/b/1556886341/oracle/jre14/lib/i386:/ade/b/1556886341/oracle/jre14/lib/i386/client:/ade/vemahaja_gitdumpnew/oss/lib:/ade/vemahaja_gitdumpnew/odbc/public/osds/ext_lib:/usr/lib:/usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib';
+    
+        cur['java.runtime.name'] = 'Java(TM) SE Runtime Environment';
+    
+        cur['java.runtime.version'] = '11.0.24+7-LTS-271';
+    
+        cur['java.specification.maintenance.version'] = '2';
+    
+        cur['java.specification.name'] = 'Java Platform API Specification';
+    
+        cur['java.specification.vendor'] = 'Oracle Corporation';
+    
+        cur['java.specification.version'] = '11';
+    
+        cur['java.vendor'] = 'Oracle Corporation';
+    
+        cur['java.vendor.url'] = 'https://openjdk.java.net/';
+    
+        cur['java.vendor.url.bug'] = 'https://bugreport.java.com/bugreport/';
+    
+        cur['java.vendor.version'] = '18.9';
+    
+        cur['java.version'] = '11.0.24';
+    
+        cur['java.version.date'] = '2024-07-16';
+    
+        cur['java.vm.compressedOopsMode'] = 'Zero based';
+    
+        cur['java.vm.info'] = 'mixed mode';
+    
+        cur['java.vm.name'] = 'Java HotSpot(TM) 64-Bit Server VM';
+    
+        cur['java.vm.specification.name'] = 'Java Virtual Machine Specification';
+    
+        cur['java.vm.specification.vendor'] = 'Oracle Corporation';
+    
+        cur['java.vm.specification.version'] = '11';
+    
+        cur['java.vm.vendor'] = 'Oracle Corporation';
+    
+        cur['java.vm.version'] = '11.0.24+7-LTS-271';
+    
+        cur['javac.java.home'] = '/ade/b/1556886341/oracle/jdk';
+    
+        cur['jdcs.mode'] = 'false';
+    
+        cur['jdk.debug'] = 'release';
+    
+        cur['junit.jar'] = '${env.SODA_JUNIT_JAR}';
+    
+        cur['jvmdebug'] = '';
+    
+        cur['lib.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/lib';
+    
+        cur['lib.dir.name'] = 'lib';
+    
+        cur['line.separator'] = ' ';
+    
+        cur['os.arch'] = 'amd64';
+    
+        cur['os.name'] = 'Linux';
+    
+        cur['os.version'] = '5.4.17-2136.324.5.3.el8uek.x86_64';
+    
+        cur['Password'] = 'tiger';
+    
+        cur['patch.version'] = '';
+    
+        cur['path.separator'] = ':';
+    
+        cur['Port'] = '1521';
+    
+        cur['resources.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/resources';
+    
+        cur['Server'] = 'localhost';
+    
+        cur['sqlplus.dir'] = '/ade/b/3265917444/oracle/bin/';
+    
+        cur['src.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/src';
+    
+        cur['sun.arch.data.model'] = '64';
+    
+        cur['sun.boot.library.path'] = '/ade_autofs/dd223_db/XDK/SODA1/LINUX.X64/240807/jdk11/lib';
+    
+        cur['sun.cpu.endian'] = 'little';
+    
+        cur['sun.cpu.isalist'] = '';
+    
+        cur['sun.desktop'] = 'gnome';
+    
+        cur['sun.io.unicode.encoding'] = 'UnicodeLittle';
+    
+        cur['sun.java.command'] = 'org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner testsfile=/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/junittestcases6921538230043143412.properties filtertrace=true haltOnError=false haltOnFailure=false formatter=org.apache.tools.ant.taskdefs.optional.junit.SummaryJUnitResultFormatter showoutput=false outputtoformatters=true logtestlistenerevents=true formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/testoutput/2024-08-30-20.47.42/out/IGNORETHIS.xml formatter=org.apache.tools.ant.taskdefs.optional.junit.BriefJUnitResultFormatter,/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/testoutput/2024-08-30-20.47.42/out/IGNORETHIS.txt crashfile=/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/junitvmwatcher3274560059498556169.properties propsfile=/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/junit10269800067542568279.properties';
+    
+        cur['sun.java.launcher'] = 'SUN_STANDARD';
+    
+        cur['sun.jnu.encoding'] = 'UTF-8';
+    
+        cur['sun.management.compiler'] = 'HotSpot 64-Bit Tiered Compilers';
+    
+        cur['sun.os.patch.level'] = 'unknown';
+    
+        cur['test.dir'] = 'testoutput/2024-08-30-20.47.42';
+    
+        cur['test.html.dir'] = 'testoutput/2024-08-30-20.47.42/html';
+    
+        cur['test.match'] = '';
+    
+        cur['test.out.dir'] = 'testoutput/2024-08-30-20.47.42/out';
+    
+        cur['test.run'] = '2024-08-30-20.47.42';
+    
+        cur['TODAY'] = 'August 30 2024';
+    
+        cur['TSTAMP'] = '2047';
+    
+        cur['user.country'] = 'US';
+    
+        cur['user.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test';
+    
+        cur['user.home'] = '/home/vemahaja';
+    
+        cur['user.language'] = 'en';
+    
+        cur['user.name'] = 'vemahaja';
+    
+        cur['user.timezone'] = '';
+    
+        cur['UserName'] = 'scott';
+    
+        cur['xdk.json.src.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test';
+    
+        cur['xdk.lib.dir'] = '/scratch/vemahaja/view_storage/vemahaja_gitdumpnew/xdk/src/java/json/soda-for-java/test/../lib';
+    </script><script type="text/javascript" language="JavaScript">
+        function displayProperties (name) {
+          var win = window.open('','JUnitSystemProperties','scrollbars=1,resizable=1');
+          var doc = win.document;
+          doc.open();
+          doc.write("<html><head><title>Properties of " + name + "</title>");
+          doc.write("<style type=\"text/css\">");
+          doc.write("body {font:normal 68% verdana,arial,helvetica; color:#000000; }");
+          doc.write("table tr td, table tr th { font-size: 68%; }");
+          doc.write("table.properties { border-collapse:collapse; border-left:solid 1 #cccccc; border-top:solid 1 #cccccc; padding:5px; }");
+          doc.write("table.properties th { text-align:left; border-right:solid 1 #cccccc; border-bottom:solid 1 #cccccc; background-color:#eeeeee; }");
+          doc.write("table.properties td { font:normal; text-align:left; border-right:solid 1 #cccccc; border-bottom:solid 1 #cccccc; background-color:#fffffff; }");
+          doc.write("h3 { margin-bottom: 0.5em; font: bold 115% verdana,arial,helvetica }");
+          doc.write("</style>");
+          doc.write("</head><body>");
+          doc.write("<h3>Properties of " + name + "</h3>");
+          doc.write("<div align=\"right\"><a href=\"javascript:window.close();\">Close</a></div>");
+          doc.write("<table class='properties'>");
+          doc.write("<tr><th>Name</th><th>Value</th></tr>");
+          for (prop in TestCases[name]) {
+            doc.write("<tr><th>" + prop + "</th><td>" + TestCases[name][prop] + "</td></tr>");
+          }
+          doc.write("</table>");
+          doc.write("</body></html>");
+          doc.close();
+          win.focus();
+        }
+      
+      </script>
+    </head>
+    <body>
+        <h1>Unit Test Results.</h1>
+        <table width="100%">
+            <tr>
+                <td align="left"></td><td align="right">Designed for use with <a href="http://www.junit.org/">JUnit</a> and <a href="http://ant.apache.org/">Ant</a>.</td>
+            </tr>
+        </table>
+        <hr size="1">
+        <h3>Class oracle.json.tests.soda.test_SodaDependencies</h3>
+        <table class="details" border="0" cellpadding="5" cellspacing="2" width="95%">
+            <tr valign="top">
+                <th width="80%">Name</th><th>Tests</th><th>Errors</th><th>Failures</th><th nowrap>Time(s)</th><th nowrap>Time Stamp</th><th>Host</th>
+            </tr>
+            <tr valign="top" class="Pass">
+                <td><a title="Display all tests" href="14_test_SodaDependencies.html">test_SodaDependencies</a></td><td><a title="Display all tests" href="14_test_SodaDependencies.html">2</a></td><td>0</td><td>0</td><td>0.468</td><td>2024-08-30T21:05:02</td><td>phoenix137785</td>
+            </tr>
+        </table>
+        <h2>Tests</h2>
+        <table class="details" border="0" cellpadding="5" cellspacing="2" width="95%">
+            <tr valign="top">
+                <th>Name</th><th>Status</th><th width="80%">Type</th><th nowrap>Time(s)</th>
+            </tr>
+            <tr valign="top" class="TableRowColor">
+                <td><a name="testSodaSanity"></a>testSodaSanity</td><td>Success</td><td></td><td>0.401</td>
+            </tr>
+            <tr valign="top" class="TableRowColor">
+                <td><a name="testClasspath"></a>testClasspath</td><td>Success</td><td></td><td>0.065</td>
+            </tr>
+        </table>
+        <div class="Properties">
+            <a href="javascript:displayProperties('oracle.json.tests.soda.test_SodaDependencies');">
+                    Properties &raquo;
+                </a>
+        </div>
+    </body>
+</html>
