@@ -1664,7 +1664,7 @@ public abstract class OracleCollectionImpl implements OracleCollection
       else
       {
         sb.append(" returning ");
-        if (sqlTypeName != null && sqlTypeName.equalsIgnoreCase("json"))
+        if (sqlTypeName != null && sqlTypeName.equalsIgnoreCase("any_scalar"))
         {
           if (!getStrictMode())
             throw SODAUtils.makeException(SODAMessage.EX_23DB_AND_JSON_TYPE_REQUIRED_FOR_INDEX);

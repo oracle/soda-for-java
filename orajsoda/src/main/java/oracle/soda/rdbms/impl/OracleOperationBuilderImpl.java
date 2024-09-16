@@ -3594,8 +3594,13 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
           sb.append(options.contentColumnName); 
           sb.append("\", '$._id') format oson ignore on existing)");  
         } 
-        else
-          sb.append("\" = ?"); 
+        else {
+          sb.append("\" = ");
+          if (options.isNative() && collection.getDatabase().isREST() && !eJSON)
+            sb.append("json_mergepatch(?,'{\"_id\":null}')");
+          else
+            sb.append("?");
+        }
       }
       
       if (newKey != null && !omitIdInjection)

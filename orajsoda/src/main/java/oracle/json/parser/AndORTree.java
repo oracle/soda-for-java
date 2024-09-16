@@ -497,7 +497,8 @@ public class AndORTree
 
       if (datatype != null)
       {
-        if (datatype.equalsIgnoreCase("json"))
+        if (datatype.equalsIgnoreCase("json") ||
+            datatype.equalsIgnoreCase("any")) 
           datatype = "json";
 	else if (datatype.equalsIgnoreCase("number"))
           datatype = "number";

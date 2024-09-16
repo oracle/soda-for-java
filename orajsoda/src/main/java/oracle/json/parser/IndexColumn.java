@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 /*
@@ -26,7 +26,7 @@ public class IndexColumn extends JsonPath
   public static final int SQLTYPE_NUMBER     = 2;
   public static final int SQLTYPE_DATE       = 3;
   public static final int SQLTYPE_TIMESTAMP  = 4;
-  public static final int SQLTYPE_JSON       = 5;
+  public static final int SQLTYPE_ANY_SCALAR = 5;
   
   public static final int KEY_NAME         = 1;
   public static final int KEY_UNIQUE       = 2;
@@ -85,11 +85,11 @@ public class IndexColumn extends JsonPath
   {
     switch (sqlType)
     {
-    case SQLTYPE_CHAR:      return("VARCHAR2");
-    case SQLTYPE_NUMBER:    return("NUMBER");
-    case SQLTYPE_DATE:      return("DATE");
-    case SQLTYPE_TIMESTAMP: return("TIMESTAMP");
-    case SQLTYPE_JSON:      return("JSON");
+    case SQLTYPE_CHAR:       return("VARCHAR2");
+    case SQLTYPE_NUMBER:     return("NUMBER");
+    case SQLTYPE_DATE:       return("DATE");
+    case SQLTYPE_TIMESTAMP:  return("TIMESTAMP");
+    case SQLTYPE_ANY_SCALAR: return("ANY_SCALAR");
     default:
       break;
     }
@@ -130,8 +130,8 @@ public class IndexColumn extends JsonPath
                (str.equalsIgnoreCase("VARCHAR")) ||
                (str.equalsIgnoreCase("VARCHAR2")) )
         sqlType = SQLTYPE_CHAR;
-      else if (str.equalsIgnoreCase("JSON"))
-        sqlType = SQLTYPE_JSON;
+      else if (str.equalsIgnoreCase("ANY_SCALAR"))
+        sqlType = SQLTYPE_ANY_SCALAR;
     }
     // Set the SQL type only if a valid type was detected
     if (sqlType != SQLTYPE_NONE)

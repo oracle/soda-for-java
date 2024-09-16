@@ -183,6 +183,19 @@ public class OracleDatabaseImpl implements OracleDatabase
   private JsonFactoryProvider  jProvider;
   
   private boolean omitIdProcessing = false;
+  
+  private boolean isREST = false;
+  
+  /* Not part of the public API */
+  public OracleDatabaseImpl(OracleConnection conn,
+      DescriptorCache descriptorCache,
+      MetricsCollector metrics,
+      boolean localCaching,
+      boolean avoidTxnManagement,
+      JsonFactoryProvider jProvider) 
+  {
+    this(conn, descriptorCache, metrics, localCaching, avoidTxnManagement, jProvider, false);
+  }
 
   /**
    * Not part of a public API.
@@ -198,13 +211,15 @@ public class OracleDatabaseImpl implements OracleDatabase
                             MetricsCollector metrics,
                             boolean localCaching,
                             boolean avoidTxnManagement,
-                            JsonFactoryProvider jProvider)
+                            JsonFactoryProvider jProvider,
+                            boolean isREST)
   {
     this.conn = conn;
     this.sharedDescriptorCache = descriptorCache;
     this.metrics = metrics;
     this.avoidTxnManagement = avoidTxnManagement;
     this.jProvider = jProvider;
+    this.isREST = isREST;
 
 /***
     // ### This may or may not be necessary
@@ -333,6 +348,11 @@ public class OracleDatabaseImpl implements OracleDatabase
   public boolean omitIdProcessing() 
   {
     return this.omitIdProcessing;
+  }
+  
+  public boolean isREST() 
+  {
+    return isREST;
   }
 
   // Avoid oracle.sql.json in the signature to prevent loading of it
