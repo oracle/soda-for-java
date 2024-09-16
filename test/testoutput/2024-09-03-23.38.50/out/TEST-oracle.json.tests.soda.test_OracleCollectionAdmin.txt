@@ -1,6 +1,0 @@
-Testsuite: oracle.json.tests.soda.test_OracleCollectionAdmin
-Tests run: 1, Failures: 0, Errors: 0, Time elapsed: 1.587 sec
-
-------------- Standard Output ---------------
-23.0
-------------- ---------------- ---------------

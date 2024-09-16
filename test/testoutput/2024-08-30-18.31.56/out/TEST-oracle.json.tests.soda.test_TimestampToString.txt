@@ -1,3 +1,0 @@
-Testsuite: oracle.json.tests.soda.test_TimestampToString
-Tests run: 8, Failures: 0, Errors: 0, Time elapsed: 1.074 sec
-

@@ -1,3 +1,0 @@
-Testsuite: oracle.json.tests.soda.test_OracleDocument2
-Tests run: 9, Failures: 0, Errors: 0, Time elapsed: 40.929 sec
-

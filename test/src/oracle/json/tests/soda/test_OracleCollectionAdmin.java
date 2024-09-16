@@ -1117,26 +1117,25 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
 
     String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
-
-    if (!plan9Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    
+    if (!plan9Str.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
 
-    if (!plan9Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan9Num.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
-
-    // bug - 35402218
 
     String plan10 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$nor\":[{\"empid\":{\"$lt\":\"ved100\"}},{\"empid\":{\"$gt\":\"ved500\"}}]}"))).explainPlan("all");
 
-    if (!plan10.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan10.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      //fail ("Any Scalar Index range scan is not found.");
+      
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     String plan11Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[\"ved2500\",\"ved4000\"]}}"))).explainPlan("all");
@@ -1160,22 +1159,18 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       fail ("Any Scalar Index range scan is not found.");
     }
 
-    // bug - 35402218
-
     String plan13 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$ne\":1000}}"))).explainPlan("all");
 
-    if (!plan13.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan13.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      //fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
-
-    // bug - 35402218
 
     String plan14 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$nin\":[1000, 2000, \"ved3000\", \"ved4000\"]}}"))).explainPlan("all");
 
-    if (!plan14.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan14.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      // fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     colAdmin.dropIndex(indexName1);
@@ -1206,7 +1201,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     String indexSpec1 =
             "{ \"name\":\"" + indexName1 + "\", \n" +
                     "  \"fields\": [\n" +
-                    "    { \"path\":\"empid\" , \"datatype\":\"JSON\"} \n" +
+                    "    { \"path\":\"empid\" , \"datatype\":\"any_scalar\"} \n" +
                     "] }";
 
     try
@@ -1329,25 +1324,24 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
 
-    if (!plan9Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan9Str.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
 
-    if (!plan9Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan9Num.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Any Scalar Index range scan is not found.");
+      
+      fail ("TABLE ACCESS FULL is not found.");
     }
-
-    // bug - 35402218
 
     String plan10 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$nor\":[{\"empid\":{\"$lt\":\"ved100\"}},{\"empid\":{\"$gt\":\"ved500\"}}]}"))).explainPlan("all");
 
-    if (!plan10.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan10.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      //fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     String plan11Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[\"ved2500\",\"ved4000\"]}}"))).explainPlan("all");
@@ -1371,22 +1365,18 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       fail ("Any Scalar Index range scan is not found.");
     }
 
-    // bug - 35402218
-
     String plan13 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$ne\":1000}}"))).explainPlan("all");
 
-    if (!plan13.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan13.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      //fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
-
-    // bug - 35402218
 
     String plan14 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$nin\":[1000, 2000, \"ved3000\", \"ved4000\"]}}"))).explainPlan("all");
 
-    if (!plan14.matches("(?s).*INDEX RANGE SCAN.*"))
+    if (!plan14.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      // fail ("Any Scalar Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     colAdmin.dropIndex(indexName1);
