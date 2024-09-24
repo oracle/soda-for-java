@@ -159,7 +159,7 @@ public class testSODA {
 
 Copy and paste this code into a file called testSODA.java. Then modify the "url" String at the beginning of the program with connection info for your Oracle RDBMS instance. Also "user" and "password" properties set at the beginning of the program need to be modified with the schema name which will contain the table backing the collection, and the password for that schema.
 
-To compile and run SODA for Java application you will need the orajsoda-version.jar and its dependencies (javax.json-1.1.4.jar, which is the JSR252 implementation, and the Oracle JDBC jar, JSON API - jakarta.json-api-2.1.3.jar, Parsson - jakarta.json-1.1.5.jar). Obtain the latest SODA for Java jar and its dependencies using these Maven coordinates:
+To compile and run SODA for Java application you will need the orajsoda-version.jar and its dependencies (javax.json-1.1.4.jar, which is the JSR252 implementation, and the Oracle JDBC jar, JSON API - jakarta.json-api-version.jar, Parsson - jakarta.json-version.jar). Obtain the latest SODA for Java jar and its dependencies using these Maven coordinates:
 
 **Group id:** com.oracle.database.soda  
 **Artifact id:** orajsoda  
@@ -182,8 +182,8 @@ If you need to download the SODA jar and the dependencies manually, you can do t
 
 Compile and run testSODA.java, making sure the necessary jars are in the classpath. JDK 8 or above is required. For example, assuming you're in the directory where the jars are located, and you are using ojdbc8.jar, do:
 
-    javac -classpath "orajsoda.jar:ojdbc8.jar" testSODA.java
-    java -classpath "orajsoda.jar:ojdbc8.jar:javax.json-1.1.4.jar:jakarta.json-api-2.1.3.jar:jakarta.json-1.1.5.jar:." testSODA
+    javac -classpath "orajsoda-version.jar:ojdbc8.jar" testSODA.java
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.1.4.jar:jakarta.json-api-version.jar:jakarta.json-version.jar:." testSODA
 
 You should see the following output:
 
@@ -220,7 +220,7 @@ This table schema corresponds to the default collection configuration, but SODA 
 
 To drop the collection, removing the underlying table and cleaning up the metadata persisted in the database, run the example again, but this time with the "drop" argument at the end:
 
-    java -classpath "orajsoda.jar:ojdbc8.jar:javax.json-1.1.4.jar:jakarta.json-api-2.1.3.jar:jakarta.json-1.1.5.jar:." testSODA drop
+    java -classpath "orajsoda-version.jar:ojdbc8.jar:javax.json-1.1.4.jar:jakarta.json-api-version.jar:jakarta.json-version.jar:." testSODA drop
 
 The output will now be different from before, since the same three documents will be inserted again. But, at the end, the collection will be dropped, and the underlying table removed.
 
