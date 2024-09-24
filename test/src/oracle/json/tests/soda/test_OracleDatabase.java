@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -33,6 +33,9 @@ public class test_OracleDatabase extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = null;
     }
     else
     {
@@ -78,7 +81,7 @@ public class test_OracleDatabase extends SodaTestCase {
       throw new Exception("unknown input parameter: " + from);
     
     OracleDocument metaDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       metaDoc = null;
     } else
@@ -102,7 +105,7 @@ public class test_OracleDatabase extends SodaTestCase {
     col.insertAndGet(doc);
     assertNotNull(doc);
     
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
       return;
     
     OracleDocument metaDoc2 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();

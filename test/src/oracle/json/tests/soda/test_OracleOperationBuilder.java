@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -11,7 +11,9 @@ All rights reserved.*/
  */
 package oracle.json.tests.soda;
 
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 import oracle.soda.OracleCursor;
 import oracle.soda.OracleException;
@@ -28,7 +30,13 @@ import oracle.json.testharness.SodaTestCase;
 public class test_OracleOperationBuilder extends SodaTestCase {
 
   public void testKeys() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -165,6 +173,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc; 
     if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}"); 
+    } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
     }
@@ -196,7 +207,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test startKey(...) with known key, ascending=false, inclusive=false
     builder = ((OracleOperationBuilderImpl) col.find()).startKey("id-11", false, false);
     assertEquals(1, builder.count());
-    if (isJDCSOrATPMode()) {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
       assertEquals("{\"d\":" + 1 + "}", new String(builder.getOne()
           .getContentAsByteArray(), "UTF-8"));
     } else {
@@ -209,7 +220,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     builder = ((OracleOperationBuilderImpl) col.find()).startKey("id-18", true, false);
     assertEquals(4, builder.count());
     OracleCursor cursor = builder.getCursor();
-    if (isJDCSOrATPMode()) {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
       // 1st document should be "id-2"
       assertEquals("{\"d\":" + 2 + "}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
       // 2rd document should be "id-3"
@@ -262,7 +273,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   public void testKey() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -338,9 +355,89 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
   }
 
-  public void testTimeRange() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("SeqOnKeyColumn").build();  
+  public void testKeyLimit01() throws Exception {
+    keyLimitTest(5691);
+  }
+  
+  public void testKeyLimit02() throws Exception {
+    keyLimitTest(1000);
+  }
+  
+  public void testKeyLimit03() throws Exception {
+    keyLimitTest(2000);
+  }
+  
+  public void testKeyLimit04() throws Exception {
+    keyLimitTest(100);
+  }
+  
+  public void testKeyLimit05() throws Exception {
+    keyLimitTest(14);
+  }
+  
+  public void testKeyLimit06() throws Exception {
+    keyLimitTest(500);
+  }
+  
+  public void keyLimitTest(int numOfKeys) throws Exception {
+    OracleCollection col = db.admin().createCollection("testKeyLimit");
     
+    String[] keys = new String[numOfKeys];
+    OracleDocument doc;
+    for (int i = 1; i <= numOfKeys; i++) {
+      doc = col.insertAndGet(db.createDocumentFromString("{ \"d\" : " + i + " }"));
+      keys[i-1] = doc.getKey();
+    }
+    
+    Set<String> s = new HashSet<String>(Arrays.asList(keys));
+    
+    // Test keys
+    OracleOperationBuilder builder = col.find().keys(s);
+    
+    assertEquals(numOfKeys, builder.count());
+    
+    // Test $id
+    StringBuilder strKeys = new StringBuilder();
+    int i = 0;
+    for (String k : keys) {
+      strKeys.append("\"").append(k).append("\"");
+      if (++i != numOfKeys)
+        strKeys.append(",");
+    }
+    builder = col.find().filter("{ \"$id\" : [" + strKeys.toString() + "] }");
+    
+    assertEquals(numOfKeys, builder.count());
+    
+    // Test key, keys, $id
+    builder = col.find().keys(s).filter("{ \"$id\" : [" + strKeys.toString() + "] }").key(keys[0]);
+    
+    assertEquals(numOfKeys, builder.count());
+    
+    // Test key, keys
+    builder = col.find().keys(s).key(keys[0]);
+    
+    assertEquals(1, builder.count());
+    
+    // Test keys, $id
+    builder = col.find().keys(s).filter("{ \"$id\" : [" + strKeys.toString() + "] }");
+    
+    assertEquals(numOfKeys, builder.count());
+
+    //Test key, $id
+    builder = col.find().key(keys[0]).filter("{ \"$id\" : [" + strKeys.toString() + "] }");
+
+    assertEquals(numOfKeys, builder.count());
+  }
+  
+  public void testTimeRange() throws Exception {
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("SeqOnKeyColumn")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("SeqOnKeyColumn").build();  
+    }
+
     OracleCollection col;
     if (isJDCSOrATPMode())
     {
@@ -371,7 +468,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp for since and until
     OracleOperationBuilderImpl builderImpl = (OracleOperationBuilderImpl) col.find();
     doc = builderImpl.timeRange(lastModified10, lastModified10, true).getOne();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"v\":" + 10 + "}",
         new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -384,7 +481,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // Test with null since and valid time stamp for until
     OracleCursor cursor = builderImpl.timeRange(null, lastModified1, true).getCursor();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"v\":" + 1 + "}", new String(cursor.next()
         .getContentAsByteArray(), "UTF-8"));
@@ -454,6 +551,10 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc2;
     if (isJDCSOrATPMode()) {
       mDoc2 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+      }
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
+          .contentColumnType("JSON").keyColumnAssignmentMethod("CLIENT").build();
     } else {
       mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
           .keyColumnAssignmentMethod("CLIENT").build();
@@ -474,7 +575,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   public void testVersion() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();  
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -511,7 +618,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
     // Test with known version
     doc = col.find().version(version1).getOne();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
         assertEquals("{\"v\":" + 1 + "}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -521,7 +628,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // Test with known version and key
     doc = col.find().version(version7).key(key[6]).getOne();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
         assertEquals("{\"v\":" + 7 + "}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -585,7 +692,15 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
 
   public void testLastModified() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("GUID").lastModifiedColumnIndex("index_lastModified").build();
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("GUID").lastModifiedColumnIndex("index_lastModified")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("GUID").lastModifiedColumnIndex("index_lastModified").build();
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -611,7 +726,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp
     assertEquals(1, ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified5).count());
     doc = ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified5).getOne();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"v\":" + 5 + "}",
         new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -624,7 +739,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp and key
     OracleCursor cursor = ((OracleOperationBuilderImpl) col.find()).lastModified(lastModified1).key(key1)
         .getCursor();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"v\":" + 1 + "}", new String(cursor.next()
         .getContentAsByteArray(), "UTF-8"));
@@ -678,7 +793,15 @@ public class test_OracleOperationBuilder extends SodaTestCase {
       return;
     }
     // test when no lastModified column
-    OracleDocument mDoc2 = client.createMetadataBuilder().removeOptionalColumns().keyColumnAssignmentMethod("CLIENT").build();
+    OracleDocument mDoc2; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
+          .keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").build();
+    } else {
+      mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
+          .keyColumnAssignmentMethod("CLIENT").build();
+    }
     
     String colName2 = "testLastModified2";
     OracleCollection col2 = dbAdmin.createCollection(colName2, mDoc2); 
@@ -698,6 +821,10 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc3; 
     if (isJDCSOrATPMode()) {
       mDoc3 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+      } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc3 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .lastModifiedColumnName("LAST_MODIFIED").lastModifiedColumnIndex("IndexLastModifiedCol")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
     } else {
       mDoc3 = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
           .lastModifiedColumnName("LAST_MODIFIED").lastModifiedColumnIndex("IndexLastModifiedCol").build();
@@ -720,11 +847,20 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     // Test with valid time stamp
     assertEquals(1, ((OracleOperationBuilderImpl) col3.find()).lastModified(lastModified2).count());
     doc3 = ((OracleOperationBuilderImpl) col3.find()).lastModified(lastModified2).getOne();
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      assertEquals("{\"data\":2}", new String(doc3.getContentAsByteArray(), "UTF-8"));
+    } else {
     assertEquals("{ \"data\" : 2 }", new String(doc3.getContentAsByteArray(), "UTF-8"));
+    }
+
 
     // Test with valid time stamp and key
     OracleCursor cursor3 = ((OracleOperationBuilderImpl) col3.find()).lastModified(lastModified3).key("id-3").getCursor();
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      assertEquals("{\"data\":3}", new String(cursor3.next().getContentAsByteArray(), "UTF-8"));
+    } else {
     assertEquals("{ \"data\" : 3 }", new String(cursor3.next().getContentAsByteArray(), "UTF-8"));
+    }
     
     // Test with timeRange()
     doc3 = ((OracleOperationBuilderImpl) col3.find()).timeRange(lastModified3, lastModified3, true).getOne();
@@ -735,6 +871,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc; 
     if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+      } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     }
@@ -751,7 +890,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     while(cursor.hasNext())
     {
-      if (isJDCSOrATPMode()) {
+      if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
         assertEquals("{\"value\":" + i + "}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
       } else {
         assertEquals("{ \"value\" : " + i + " }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
@@ -786,6 +925,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder()
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
     } else {
       mDoc = client.createMetadataBuilder().versionColumnMethod("UUID").build();
     }
@@ -865,6 +1007,9 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     OracleDocument mDoc; 
     if (isJDCSOrATPMode()) {
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+      } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
     } else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
     }
@@ -887,7 +1032,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     assertEquals(true, cursor.hasNext());
     // after skip and order,  the left document should be id-8 and id-9
     assertEquals("id-8", cursor.next().getKey());
-    if (isJDCSOrATPMode()) {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
       assertEquals("{\"value\":9}", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
     } else {
       assertEquals("{ \"value\" : 9 }", new String(cursor.next().getContentAsByteArray(), "UTF-8"));
@@ -1084,6 +1229,8 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     if (isJDCSOrATPMode()) {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+      } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().contentColumnType("JSON").keyColumnAssignmentMethod("UUID").build();
     }
     else {
       mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("UUID").build();
@@ -1132,7 +1279,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     }
 
     // Test when no LastModified, CreatedOn and Version
-    OracleDocument mDoc2 = client.createMetadataBuilder().removeOptionalColumns().build();
+    OracleDocument mDoc2; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc2 = client.createMetadataBuilder().removeOptionalColumns()
+          .contentColumnType("JSON").build();
+    } else {
+      mDoc2 = client.createMetadataBuilder().removeOptionalColumns().build();
+    }
     
     OracleCollection col2;
     if (isJDCSOrATPMode())
@@ -1163,7 +1316,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
   
   public void testCount() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -1229,8 +1388,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
   
   public void testGetOne() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
-
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    }
     OracleCollection col;
     if (isJDCSOrATPMode())
     {
@@ -1277,7 +1441,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
 
   //test method for read operations
   public void testReadOperations() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -1556,7 +1726,13 @@ public class test_OracleOperationBuilder extends SodaTestCase {
   }
   
   public void testReadOperations2() throws Exception {
-    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("seq_key_column").build();
+    OracleDocument mDoc; 
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("seq_key_column")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("seq_key_column").build();
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -1636,7 +1812,7 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     
     // test with col.find().key().lastModified().getOne();
     doc = ((OracleOperationBuilderImpl) col.find().key(key4)).lastModified(lastModified4).getOne();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"data\":4}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -1719,6 +1895,10 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     {
       b = client.createMetadataBuilder()
       .keyColumnAssignmentMethod(assignMethod).keyColumnType(columnType);
+
+      if (isCompatibleOrGreater(COMPATIBLE_20)) {
+        b = b.contentColumnType("JSON").versionColumnMethod("UUID");
+      }
 
       if (assignMethod.equals("SEQUENCE"))
       {
@@ -1846,6 +2026,12 @@ public class test_OracleOperationBuilder extends SodaTestCase {
     }
   }
 
+  public void testLockJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testLockWithColumnType("JSON");
+    }
+  }
+  
   public void testLockBLOB() throws Exception {
     testLockWithColumnType("BLOB");
   }

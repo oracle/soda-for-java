@@ -1,5 +1,5 @@
-/* Copyright (c) 2017, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2017, 2024, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -32,6 +32,10 @@ import oracle.soda.OracleException;
 import oracle.soda.OracleOperationBuilder;
 import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 import oracle.soda.rdbms.impl.WriteResult;
+import oracle.sql.json.OracleJsonArray;
+import oracle.sql.json.OracleJsonDouble;
+import oracle.sql.json.OracleJsonFactory;
+import oracle.sql.json.OracleJsonObject;
 import oracle.json.parser.QueryException;
 
 import oracle.json.testharness.SodaTestCase;
@@ -66,6 +70,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   public void testBetweenVarchar2() throws Exception {
     testBetween("VARCHAR2", false);
     testBetween("VARCHAR2", true);
+  }
+  
+  public void testBetweenJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testBetween("JSON", false);
+      testBetween("JSON", true);
+    }
   }
   
   private void testBetween(String contentColumnType, boolean withIndex) throws Exception {
@@ -124,6 +135,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       doc = col.insertAndGet(db.createDocumentFromString(key2, docStr2));
       doc = col.insertAndGet(db.createDocumentFromString(key3, docStr3));
     }
+
+    Thread.sleep(5000);
     
     // Test $between with number value    
     filterDoc = db.createDocumentFromString("{\"a.b.number\":{\"$between\": [101,110]}}");
@@ -363,6 +376,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     testInstr("VARCHAR2");
   }
   
+  public void testInstrJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testInstr("JSON");
+    }
+  }
+
   // Tests for $instr and $hasSubstring
   private void testInstr(String contentColumnType) throws Exception {
     if (isJDCSOrATPMode())
@@ -557,6 +576,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     testLike("VARCHAR2");
   }
   
+  public void testLikeJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testLike("JSON");
+    }
+  }
+
   // Tests for $like
   private void testLike(String contentColumnType) throws Exception {
     if (isJDCSOrATPMode())
@@ -717,23 +742,88 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     }
     
   }
-  
+
+  // Tests without param
+  public void testIndexCreationWithoutParamsCLOB() throws Exception {
+    testIndexCreationWithoutParams("CLOB");
+  }
+
+  public void testIndexCreationWithoutParamsBLOB() throws Exception {
+    testIndexCreationWithoutParams("BLOB");
+  }
+
+  public void testIndexCreationWithoutParamsVARCHAR2() throws Exception {
+    testIndexCreationWithoutParams("VARCHAR2");
+  }
+
+  public void testIndexCreationWithoutParamsJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testIndexCreationWithoutParams("JSON");
+    }
+  }
+
+  private void testIndexCreationWithoutParams(String contentColumnType) throws Exception {
+
+    if (SODAUtils.sqlSyntaxBelow_12_2(sqlSyntaxLevel))
+      return;
+
+    OracleDocument mDoc = null;
+
+    if (isJDCSOrATPMode()) {
+      if (!contentColumnType.equalsIgnoreCase("BLOB"))
+        return;
+
+      // ### replace with new builder once it becomes available
+      mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    }
+    else {
+      mDoc = client.createMetadataBuilder().contentColumnType(contentColumnType).build();
+    }
+
+    String colName = "mytab" + contentColumnType;
+    OracleCollection col = db.admin().createCollection(colName, mDoc);
+
+    String indexSpec = null, indexName = colName + "Idx";
+
+    indexSpec = "{\"name\" : \"" + indexName + "\"}";
+
+    try
+    {
+      col.admin().createIndex(db.createDocumentFromString(indexSpec));
+    }
+    catch (OracleException e)
+    {
+      fail("No exception should have occured while creating index without params");
+    }
+    finally
+    {
+      col.admin().drop();
+    }
+  }
+
   // Tests with $boolean. (boolean() is not finalized yet!!!)
   public void testBooleanClob() throws Exception {
     testBoolean("CLOB",false);
     testBoolean("CLOB",true);
   }
-  
+
   public void testBooleanBlob() throws Exception {
     testBoolean("BLOB",false);
     testBoolean("BLOB",true);
   }
-  
+
   public void testBooleanVarchar2() throws Exception {
     testBoolean("VARCHAR2",false);
     testBoolean("VARCHAR2",true);
   }
-  
+
+  public void testBooleanJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testBoolean("JSON",false);
+      testBoolean("JSON",true);
+    }
+  }
+
   // Tests for $boolean
   private void testBoolean(String contentColumnType, boolean withIndex) throws Exception {
 
@@ -779,6 +869,8 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     key2 = doc.getKey();
     doc = col.insertAndGet(db.createDocumentFromString(docStr3));
     key3 = doc.getKey();
+    Thread.sleep(5000);
+
     
     // Test $boolean with number input    
     filterDoc = db.createDocumentFromString("{\"a.b.number\":{\"$boolean\": {\"$eq\":true}}}");
@@ -824,7 +916,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         // blocked by bug27021099: SODA Java layer failed to error out for such filter spec
         if (e.getCause() instanceof SQLException) {
           SQLException sqlException = (SQLException) e.getCause();
-          assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          if(isDBVersionBelow(23, 0)) {
+            assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          } else {
+            assertTrue(sqlException.getMessage().contains("ORA-40597"));
+          }
         }
         //QueryException queryException = (QueryException) e.getCause();
         //assertEquals("", queryException.getMessage());
@@ -838,7 +934,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $boolean operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $boolean operator. ";
+      String expMsg = "$string operator cannot wrap $boolean operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -863,6 +959,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   public void testTimestampVarchar2() throws Exception {
     testTimestamp("VARCHAR2", false);
     testTimestamp("VARCHAR2", true);
+  }
+  
+  public void testTimestampJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testTimestamp("JSON",false);
+      testTimestamp("JSON",true);
+    }
   }
   
   private void testTimestamp(String contentColumnType, boolean withIndex) throws Exception {
@@ -1045,7 +1148,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     }
     
     filterDoc = db.createDocumentFromString("{\"order.orderDateTime\":{\"$timestamp\": \"\"}}");
-    assertEquals(0, col.find().filter(filterDoc).count());
+    try {
+      col.find().filter(filterDoc).getOne();
+      fail("No exception when $date's operand is empty string");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      assertTrue(sqlException.getMessage().contains("ORA-40597"));
+    }
 
     filterDoc = db.createDocumentFromString("{\"order.orderDateTime\":{\"$timestamp\": 100}}");
     try {
@@ -1081,7 +1190,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $timestamp operator wraps $string operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$timestamp operator cannot wrap $string operator. ";
+      String expMsg = "$timestamp operator cannot wrap $string operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -1107,6 +1216,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   public void testDateVarchar2() throws Exception {
     testDate("VARCHAR2", false);
     testDate("VARCHAR2", true); 
+  }
+  
+  public void testDateJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testDate("JSON",false);
+      testDate("JSON",true);
+    }
   }
   
   private void testDate(String contentColumnType, boolean withIndex) throws Exception {
@@ -1280,7 +1396,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     }
     
     filterDoc = db.createDocumentFromString("{\"order.orderDate\":{\"$date\": \"\"}}");
-    assertEquals(0, col.find().filter(filterDoc).count());
+    try {
+      col.find().filter(filterDoc).getOne();
+      fail("No exception when $date's operand is empty string");
+    } catch (OracleException e) {
+      SQLException sqlException = (SQLException) e.getCause();
+      assertTrue(sqlException.getMessage().contains("ORA-40597"));
+    }
 
     filterDoc = db.createDocumentFromString("{\"order.orderDate\":{\"$date\": 100}}");
     try {
@@ -1290,7 +1412,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       if (e.getCause() instanceof SQLException) {
         SQLException sqlException = (SQLException) e.getCause();
         // ORA-40442: JSON path expression syntax error ('$?(@.order.orderDate.date() == $B0)')
-        assertTrue(sqlException.getMessage().contains("ORA-40442"));
+        if(isDBVersionBelow(23, 0)) {
+          assertTrue(sqlException.getMessage().contains("ORA-40442"));
+        } else {
+          assertTrue(sqlException.getMessage().contains("ORA-40597"));
+        }
       }
     }
     
@@ -1319,7 +1445,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $timestamp operator wraps $date operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$timestamp operator cannot wrap $date operator. ";
+      String expMsg = "$timestamp operator cannot wrap $date operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -1346,6 +1472,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     testNumber("VARCHAR2", false);
     // blocked by bug25902132: the plan fetched by SODA java is different from sqlplus
     // testNumber("VARCHAR2", true);
+  }
+  
+  public void testNumberJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testNumber("JSON",false);
+      testNumber("JSON",true);
+    }
   }
   
   private void testNumber(String contentColumnType, boolean withIndex) throws Exception {
@@ -1548,7 +1681,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         fail("No exception when $string operator wraps $number operator.");
       } catch (OracleException e) {
         QueryException queryException = (QueryException) e.getCause();
-        String expMsg = "$string operator cannot wrap $number operator. ";
+        String expMsg = "$string operator cannot wrap $number operator.";
         assertEquals(expMsg, queryException.getMessage());
       }
 
@@ -1576,6 +1709,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     testString("VARCHAR2", false);
     // blocked by bug25902132: the plan fetched by SODA java is different from sqlplus
     // testString("VARCHAR2", true);
+  }
+  
+   public void testStringJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testString("JSON",false);
+      testString("JSON",true);
+    }
   }
   
   private void testString(String contentColumnType, boolean withIndex) throws Exception {
@@ -1805,7 +1945,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         // blocked by bug27021099: Java layer should catch such invalid spec
         if (e.getCause() instanceof SQLException) {
           SQLException sqlException = (SQLException) e.getCause();
-          assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          if(isDBVersionBelow(23, 0)) {
+            assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          } else {
+            assertTrue(sqlException.getMessage().contains("ORA-40597"));
+          }
         }
         //QueryException queryException = (QueryException) e.getCause();
         //assertEquals("", queryException.getMessage());
@@ -1819,7 +1963,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $string operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $string operator. ";
+      String expMsg = "$string operator cannot wrap $string operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -1845,6 +1989,13 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   public void testDoubleVarchar2() throws Exception {
     testDouble("VARCHAR2", false);
     testDouble("VARCHAR2", true);
+  }
+  
+  public void testDoubleJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testDouble("JSON",false);
+      testDouble("JSON",true);
+    }
   }
   
   private void testDouble(String contentColumnType, boolean withIndex) throws Exception {
@@ -1903,7 +2054,9 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       key[1] = doc.getKey();
       doc = col.insertAndGet(db.createDocumentFromString("id-1003", docStr3));
       key[2] = doc.getKey();
-    }    
+    }
+
+    Thread.sleep(5000);
     
     // Test $double with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$double\": 0}}");
@@ -2002,7 +2155,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $double operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $double operator. ";
+      String expMsg = "$string operator cannot wrap $double operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2022,6 +2175,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testUpperAndLowerVarchar2() throws Exception {
     testUpperAndLower("VARCHAR2");
+  }
+  
+  public void testUpperAndLowerJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testUpperAndLower("JSON");
+    }
   }
   
   private void testUpperAndLower(String contentColumnType) throws Exception {
@@ -2214,7 +2373,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
         // blocked by bug27021099: Java layer should catch such invalid spec
         if (e.getCause() instanceof SQLException) {
           SQLException sqlException = (SQLException) e.getCause();
-          assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          if(isDBVersionBelow(23, 0)) {
+            assertTrue(sqlException.getMessage().contains("ORA-40442"));
+          } else {
+            assertTrue(sqlException.getMessage().contains("ORA-40597"));
+          }
         }
         //QueryException queryException = (QueryException) e.getCause();
         //assertEquals("", queryException.getMessage());
@@ -2247,7 +2410,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $lower operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $lower operator. ";
+      String expMsg = "$string operator cannot wrap $lower operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2258,10 +2421,213 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $upper operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $upper operator. ";
+      String expMsg = "$string operator cannot wrap $upper operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
+  }
+  
+  //Tests with $mod
+  public void testModClob() throws Exception {
+    if(!isJDCSOrATPMode()) {
+      testMod("CLOB");
+    }
+  }
+ 
+  public void testModBlob() throws Exception {
+    testMod("BLOB");
+  }
+ 
+  public void testModVarchar2() throws Exception {
+    if(!isJDCSOrATPMode()) {
+      testMod("VARCHAR2");
+    }
+  }
+ 
+  public void testModJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20))
+      testMod("JSON");
+  }
+  
+  private void testMod(String contentColumnType) throws Exception {
+    if (isDBVersionBelow(23,0))
+      return;
+    OracleDocument mDoc = client.createMetadataBuilder()
+        .contentColumnType(contentColumnType).build();
+    String colName = "testMod" + contentColumnType;
+    OracleCollection col;
+    col = db.admin().createCollection(colName, mDoc);
+    
+    OracleDocument doc;
+    String doc1 = "{ \"qty\": 12 }", doc2 = "{ \"qty\":22, \"a\": {\"b\": 92} }",
+           doc3 = "{ \"qty\": \"we\", \"a\": {\"b\": 57} }", doc4 = "{ \"qty\":1e4 }";
+    
+    doc = col.insertAndGet(db.createDocumentFromString(doc1));
+    doc = col.insertAndGet(db.createDocumentFromString(doc2));
+    doc = col.insertAndGet(db.createDocumentFromString(doc3));
+    doc = col.insertAndGet(db.createDocumentFromString(doc4));
+    
+    // T1
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [5,2] } }")).count());
+    // T2
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [5,2] } }}")).count());
+    // T3
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"a.b\": {\"$mod\": [7,1] } }")).count());
+    // T4
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"a.b\": {\"$not\":{\"$mod\": [5,2] } }}")).count());
+    // T5
+    assertEquals(3, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [1,0] } }")).count());
+    // T6
+    assertEquals(1, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [1,0] } }}")).count());
+    // T7
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [4,0] } }")).count());
+    // T8
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [4,0] } }}")).count());
+    // T9
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [5.444,2.9] } }")).count());
+    // T10
+    assertEquals(2, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [5.34,2.88] } }}")).count());
+    // T11
+    assertEquals(1, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [1e3,0] } }")).count());
+    // T12
+    assertEquals(3, col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [1e3,0] } }}")).count());
+    
+    
+    // NEG TESTS
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": 5 } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [0.25,0] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor value cannot be 0."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [1,2,4] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [\"; drop table\", 1] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [1,\"; drop table\"] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [null,\"; drop table\"] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    OracleJsonFactory factory = new OracleJsonFactory();
+    OracleJsonObject obj = factory.createObject(), mod = factory.createObject();  
+    OracleJsonArray arr = factory.createArray();
+    OracleJsonDouble dec = factory.createDouble(Double.parseDouble("Infinity")), 
+        num = factory.createDouble(1);
+    
+    arr.add(dec);
+    arr.add(num);
+    mod.put("$mod", arr);
+    obj.put("qty", mod);
+    
+    try {
+      col.find().filter(db.createDocumentFrom(obj)).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$mod\": [21,1e1000] } }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numbers in the 64-bit integer range."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": 5 } }}")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [] }} }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [1,2,4] } }}")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("$mod input must be an array with divisor and remainder values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"not\":{\"$mod\": [\"; drop table\", 1] }} }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [1,\"; drop table\"] }} }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [null,\"; drop table\"] }} }")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    OracleJsonObject obj2 = factory.createObject();
+    obj = factory.createObject();
+    obj2.put("$not",mod);
+    obj.put("qty", obj2);
+    
+    try {
+      col.find().filter(db.createDocumentFrom(obj)).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numeric values."));
+    }
+    
+    try {
+      col.find().filter(db.createDocumentFromString("{ \"qty\": {\"$not\":{\"$mod\": [21,1e1000] } }}")).count();
+      fail("Exception should be raised, invalid mod input");
+    } catch (Exception e) {
+      assertTrue(e.getCause().getMessage().contains("Divisor and remainder must be numbers in the 64-bit integer range."));
+    }
   }
   
   // Tests with $ceiling and $floor
@@ -2275,6 +2641,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testCeilingAndFloorVarchar2() throws Exception {
     testCeilingAndFloor("VARCHAR2");
+  }
+  
+  public void testCeilingAndFloorJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testCeilingAndFloor("JSON");
+    }
   }
   
   private void testCeilingAndFloor(String contentColumnType) throws Exception {
@@ -2449,7 +2821,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $number operator wraps $ceiling operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$number operator cannot wrap $ceiling operator. ";
+      String expMsg = "$number operator cannot wrap $ceiling operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2460,7 +2832,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $number operator wraps $floor operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$number operator cannot wrap $floor operator. ";
+      String expMsg = "$number operator cannot wrap $floor operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2477,6 +2849,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testAbsVarchar2() throws Exception {
     testAbs("VARCHAR2");
+  }
+  
+  public void testAbsJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testAbs("JSON");
+    }
   }
   
   private void testAbs(String contentColumnType) throws Exception {
@@ -2601,7 +2979,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $number operator wraps $abs operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$number operator cannot wrap $abs operator. ";
+      String expMsg = "$number operator cannot wrap $abs operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
 
@@ -2618,6 +2996,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testTypeVarchar2() throws Exception {
     testType("VARCHAR2");
+  }
+  
+  public void testTypeJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testType("JSON");
+    }
   }
   
   private void testType(String contentColumnType) throws Exception {
@@ -2720,7 +3104,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $type operator wraps $upper operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$type operator cannot wrap $upper operator. ";
+      String expMsg = "$type operator cannot wrap $upper operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2731,7 +3115,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $type operator wraps $lower operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$type operator cannot wrap $lower operator. ";
+      String expMsg = "$type operator cannot wrap $lower operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2748,6 +3132,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testLengthVarchar2() throws Exception {
     testLength("VARCHAR2");
+  }
+  
+   public void testLengthJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testLength("JSON");
+    }
   }
   
   private void testLength(String contentColumnType) throws Exception {
@@ -2865,7 +3255,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $length operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $length operator. ";
+      String expMsg = "$string operator cannot wrap $length operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -2882,6 +3272,12 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
   
   public void testSizeVarchar2() throws Exception {
     testSize("VARCHAR2");
+  }
+  
+  public void testSizeJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testSize("JSON");
+    }
   }
   
   private void testSize(String contentColumnType) throws Exception {
@@ -3018,7 +3414,7 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
       fail("No exception when $string operator wraps $size operator.");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$string operator cannot wrap $size operator. ";
+      String expMsg = "$string operator cannot wrap $size operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
