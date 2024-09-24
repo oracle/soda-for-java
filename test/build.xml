@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <!-- 
- Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ Copyright (c) 2014, 2024, Oracle and/or its affiliates.
 
    DESCRIPTION
      Tests for xdk/src/java/json
@@ -50,8 +50,9 @@
     <property name="jdcs.mode" value="false"/>
     <property name="atp.mode" value="false"/>
     <property name="install.plsql" value="false"/>
- 
-    <import file="../json.xml"/>
+    <property name="compatible" value="12.2"/>
+
+    <import file="json.xml"/>
     <import file="ant/sql.xml"/>
 
     <property name="junit.jar" value="${env.SODA_JUNIT_JAR}"/>
@@ -84,7 +85,8 @@
 
         <!-- run the tests -->
         <dojunit cp="orasoda-classpath" includes="oracle/json/tests/soda/**"/>
-       
+        <echo message="Connecting to server: ${Server} on port: ${Port} with service: ${DBName}"/>
+
         <!-- generate the test report -->
         <junitreport todir="${test.html.dir}">
             <fileset dir="${test.out.dir}">
@@ -120,7 +122,8 @@
              <sysproperty key="debug.curl" value="${debug.curl}"/>
              <sysproperty key="test.match" value="${test.match}"/>
              <sysproperty key="test.dir" value="${test.dir}"/>
-             <sysproperty key="patch.version" value="${patch.version}"/>
+	     <sysproperty key="patch.version" value="${patch.version}"/>
+	     <sysproperty key="compatible" value="${compatible}"/>
              <batchtest todir="${test.dir}/out">
                  <fileset dir="${classes.dir}" 
                    includes="@{includes}*" 
@@ -147,11 +150,15 @@
             <path refid="xdk.json.lib.import"/>
             <pathelement location="${junit.jar}"/>
         </path>
-      
+
         <path id="orasoda-classpath">
             <path refid="common-classpath"/>
             <pathelement location="${jar.orajsoda}"/>
-        </path>      
+            <fileset dir="${classes.dir}">
+                <exclude name="**/*.ade_path*/**"/>
+                <exclude name="**/*.class"/>
+            </fileset>
+        </path>
 
         <tstamp>
             <format property="test.run" pattern="yyyy-MM-dd-HH.mm.ss"/>

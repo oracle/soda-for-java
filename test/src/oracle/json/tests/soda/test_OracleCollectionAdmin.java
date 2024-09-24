@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -12,10 +12,17 @@ All rights reserved.*/
 package oracle.json.tests.soda;
 
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
-import javax.json.JsonNumber;
-import javax.json.JsonString;
-import javax.json.JsonValue;
+import jakarta.json.JsonNumber;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
+import jakarta.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonReader;
+import java.io.StringReader;
 
 import oracle.json.parser.QueryException;
 
@@ -24,7 +31,9 @@ import oracle.soda.OracleCollectionAdmin;
 import oracle.soda.OracleException;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDocument;
+import oracle.soda.OracleCursor;
 
+import oracle.soda.rdbms.impl.OracleCollectionImpl;
 import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 import oracle.soda.rdbms.impl.SODAUtils;
 
@@ -40,6 +49,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = null;
     }
     else
     {
@@ -125,9 +136,20 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      // ORA-02290: check constraint (SYS_C0010955) violated
-      assertTrue(t.getMessage().contains("ORA-02290"));
-    }
+      String res = t.getMessage();
+      if (isCompatibleOrGreater(COMPATIBLE_20)) {
+        assertTrue(res, res.contains("Unexpected char 97 at (line no=1, column no=1, offset=0)"));     
+
+      //} else if (!isCompatibleOrGreater(COMPATIBLE_20)) {
+      //  assertTrue(res, res.contains("Unexpected character 'a' at line 1, column 1")); 
+      
+      //  This is the behavior on 23c (compatible set below 20)
+      //  Or 19c (DBRU)
+      } else {
+        // ORA-02290: check constraint (SYS_C0010955) violated
+        assertTrue(t.getMessage().contains("ORA-02290"));
+      }
+    }  
     
     // Test with no mediaTypeColumn, and content type = "BLOB" 
     OracleDocument metaDoc7 = client.createMetadataBuilder().removeOptionalColumns().contentColumnType("BLOB")
@@ -168,7 +190,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   public void testIsReadOnly() throws Exception {
     // Test with READONLY = false
     OracleDocument metaDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       metaDoc = null;
     } else
@@ -186,6 +208,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     // Test with READONLY = true
     OracleDocument metaDoc2 = client.createMetadataBuilder().removeOptionalColumns().readOnly(true).build();
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc2 = client.createMetadataBuilder().contentColumnType("JSON")
+          .versionColumnMethod("UUID").readOnly(true).build();
+    }
+
     OracleCollection col2 = dbAdmin.createCollection("testIsReadOnly2", metaDoc2);
     assertEquals(true, col2.admin().isReadOnly());
     
@@ -333,7 +360,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     colAdmin2.drop();
     
     // Test to drop the collection mapping to the existing table
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
         return;
 
     OracleDocument metaDoc3 = client.createMetadataBuilder()
@@ -352,6 +379,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = null;
     } else
     {
       metaDoc = client.createMetadataBuilder().build();
@@ -374,7 +403,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     assertEquals(0, col.find().count());
     
     // Test it with existing table
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
         return;
     OracleDocument metaDoc2 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
@@ -432,7 +461,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     } catch (OracleException e) {
       // Expect an OracleException
       Throwable t = e.getCause();
-      assertEquals("ORA-00942: table or view does not exist\n", t.getMessage());
+      assertTrue(t.getMessage().contains("ORA-00942: table or view does not exist\n"));
     }
 
   }
@@ -443,6 +472,8 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       mDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = null;
     }
     else
     {
@@ -515,7 +546,9 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       return;
 
     col.insert(db.createDocumentFromString("{ \"data\" : \"v1\" }"));
-    col.insert(db.createDocumentFromString(null));
+    if (!isCompatibleOrGreater(COMPATIBLE_23)) {
+      col.insert(db.createDocumentFromString(null));
+    }
     if (colAdmin.isHeterogeneous()) {
       col.insert(db.createDocumentFromString(null, "abcd", "text/plain"));
       col.insert(db.createDocumentFromString(null, null, "text/plain"));
@@ -722,10 +755,636 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
     */
   }
- 
+
+  public void testMultiValueIndex() throws Exception {
+
+    if (!isCompatibleOrGreater(COMPATIBLE_23))
+      return;
+
+    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("EMBEDDED_OID").keyColumnType("RAW").contentColumnType("JSON").build();
+
+    OracleCollection col = dbAdmin.createCollection("testMultiValueIndex", mDoc);
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    String str1 = null;
+    String str2 = null;
+
+    for (int i=0; i<5000; i++)
+    {
+      str1 = String.format("{ \"empid\" : \"ved%s\"}", String.valueOf(i));
+      str2 = String.format("{ \"empid\" : %s}", i);
+      OracleDocument ret1 = col.insertAndGet(db.createDocumentFromString(str1));
+      OracleDocument ret2 = col.insertAndGet(db.createDocumentFromString(str2));
+    }
+
+    col.insertAndGet(db.createDocumentFromString("{\"name\" : 1}"));
+
+    String indexName1 = "my_index";
+    String indexSpec1 =
+            "{ \"name\":\"" + indexName1 + "\", \n" +
+                    "  \"multivalue\": true , \n" +
+                    "  \"fields\": [\n" +
+                    "    { \"path\":\"empid\"} \n" +
+                    "] }";
+
+    try
+    {
+      col.admin().createIndex(db.createDocumentFromString(indexSpec1));
+    }
+    catch (OracleException e)
+    {
+      fail ("No error should have occured");
+    }
+
+    String planNum = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : 500}"))).explainPlan("all");
+
+    if (!planNum.matches("(?s).*INDEX RANGE SCAN.*") || !planNum.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String planStr = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : \"ved500\"}"))).explainPlan("all");
+
+    if (!planStr.matches("(?s).*INDEX RANGE SCAN.*") || !planStr.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan1Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan1Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan1Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan1Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":4900}}"))).explainPlan("all");
+
+    if (!plan1Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan1Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan2Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":4900}}"))).explainPlan("all");
+
+    if (!plan2Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan2Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan2Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan2Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan2Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan3Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan3Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan3Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan3Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":100}}"))).explainPlan("all");
+
+    if (!plan3Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan3Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan4Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":100}}"))).explainPlan("all");
+
+    if (!plan4Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan4Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan4Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan4Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan4Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan5 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$in\":[\"ved20\",\"ved30\",\"ved50\", 500, 7000]}}"))).explainPlan("all");
+
+    if (!plan5.matches("(?s).*INDEX UNIQUE SCAN.*") || !plan5.matches("(?s).*MULTI VALUE.*"))
+    {
+      //fail ("Multivalue Index unique scan is not found.");
+    }
+
+    String plan6Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":100}}"))).explainPlan("all");
+
+    if (!plan6Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan6Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan6Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan6Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan6Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan7 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$or\":[{\"empid\":\"ved3\"},{\"empid\":\"ved5\"},{\"empid\":\"ved6\"},{\"empid\":{\"$gt\":4900}}]}"))).explainPlan("all");
+
+    if (!plan7.matches("(?s).*INDEX RANGE SCAN.*") && !plan7.matches("(?s).*MULTI VALUE.*"))
+    {
+      //fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan8= ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$and\":[{\"empid\":{\"$lt\":100}},{\"empid\":{\"$lt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan8.matches("(?s).*INDEX RANGE SCAN.*") || !plan8.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
+
+    if (!plan9Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan9Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
+
+    if (!plan9Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan9Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan10 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$nor\":[{\"empid\":{\"$lt\":\"ved100\"}},{\"empid\":{\"$gt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan10.matches("(?s).*INDEX RANGE SCAN.*") || !plan10.matches("(?s).*MULTI VALUE.*"))
+    {
+      //fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan11Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[\"ved2500\",\"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan11Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan11Str.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan11Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[2500,4000]}}"))).explainPlan("all");
+
+    if (!plan11Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan11Num.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index range scan is not found.");
+    }
+
+    String plan12 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$all\":[500,\"ved1000\"]}}"))).explainPlan("all");
+
+    if (!plan12.matches("(?s).*INDEX RANGE SCAN.*") || !plan12.matches("(?s).*MULTI VALUE.*"))
+    {
+      fail ("Multivalue Index unique scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan13 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$ne\":1000}}"))).explainPlan("all");
+
+    if (!plan13.matches("(?s).*INDEX RANGE SCAN.*") || !plan13.matches("(?s).*MULTI VALUE.*"))
+    {
+      //fail ("Multivalue Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan14 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$nin\":[1000, 2000, \"ved3000\", \"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan14.matches("(?s).*INDEX RANGE SCAN.*") || !plan14.matches("(?s).*MULTI VALUE.*"))
+    {
+      // fail ("Multivalue Index range scan is not found.");
+    }
+
+    colAdmin.dropIndex(indexName1);
+  }
+
+  public void testAnyScalarIndex() throws Exception {
+
+    if (!isCompatibleOrGreater(COMPATIBLE_23))
+      return;
+
+    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("EMBEDDED_OID").keyColumnType("RAW").contentColumnType("JSON").build();
+
+    OracleCollection col = dbAdmin.createCollection("testAnyScalarIndex", mDoc);
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    String str1 = null;
+    String str2 = null;
+
+    for (int i=0; i<5000; i++)
+    {
+      str1 = String.format("{ \"empid\" : \"ved%s\"}", String.valueOf(i));
+      str2 = String.format("{ \"empid\" : %s}", i);
+      OracleDocument ret1 = col.insertAndGet(db.createDocumentFromString(str1));
+      OracleDocument ret2 = col.insertAndGet(db.createDocumentFromString(str2));
+    }
+
+    String indexName1 = "my_index";
+    String indexSpec1 =
+            "{ \"name\":\"" + indexName1 + "\", \n" +
+                    "  \"fields\": [\n" +
+                    "    { \"path\":\"empid\"} \n" +
+                    "] }";
+
+    try
+    {
+      col.admin().createIndex(db.createDocumentFromString(indexSpec1));
+    }
+    catch (OracleException e)
+    {
+      fail ("No error should have occured while creating index.");
+    }
+
+    String planNum = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : 500}"))).explainPlan("all");
+
+    if (!planNum.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String planStr = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : \"ved500\"}"))).explainPlan("all");
+
+    if (!planStr.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan1Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan1Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan1Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":4900}}"))).explainPlan("all");
+
+    if (!plan1Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan2Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":4900}}"))).explainPlan("all");
+
+    if (!plan2Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan2Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan2Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan3Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan3Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan3Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":100}}"))).explainPlan("all");
+
+    if (!plan3Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan4Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":100}}"))).explainPlan("all");
+
+    if (!plan4Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan4Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan4Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan5 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$in\":[\"ved20\",\"ved30\",\"ved50\", 500, 7000]}}"))).explainPlan("all");
+
+    if (!plan5.matches("(?s).*INDEX UNIQUE SCAN.*"))
+    {
+      //fail ("Multivalue Index unique scan is not found.");
+    }
+
+    String plan6Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":100}}"))).explainPlan("all");
+
+    if (!plan6Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan6Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan6Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan7 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$or\":[{\"empid\":\"ved3\"},{\"empid\":\"ved5\"},{\"empid\":\"ved6\"},{\"empid\":{\"$gt\":4900}}]}"))).explainPlan("all");
+
+    if (!plan7.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan8= ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$and\":[{\"empid\":{\"$lt\":100}},{\"empid\":{\"$lt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan8.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
+    
+    if (!plan9Str.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
+
+    if (!plan9Num.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan10 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$nor\":[{\"empid\":{\"$lt\":\"ved100\"}},{\"empid\":{\"$gt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan10.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan11Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[\"ved2500\",\"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan11Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan11Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[2500,4000]}}"))).explainPlan("all");
+
+    if (!plan11Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan12 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$all\":[500,\"ved1000\"]}}"))).explainPlan("all");
+
+    if (!plan12.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan13 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$ne\":1000}}"))).explainPlan("all");
+
+    if (!plan13.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan14 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$nin\":[1000, 2000, \"ved3000\", \"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan14.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    colAdmin.dropIndex(indexName1);
+  }
+
+  public void testAnyScalarJsonIndex() throws Exception {
+
+    if (!isCompatibleOrGreater(COMPATIBLE_23))
+      return;
+
+    OracleDocument mDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("EMBEDDED_OID").keyColumnType("RAW").contentColumnType("JSON").build();
+
+    OracleCollection col = dbAdmin.createCollection("testAnyScalarIndex", mDoc);
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    String str1 = null;
+    String str2 = null;
+
+    for (int i=0; i<5000; i++)
+    {
+      str1 = String.format("{ \"empid\" : \"ved%s\"}", String.valueOf(i));
+      str2 = String.format("{ \"empid\" : %s}", i);
+      OracleDocument ret1 = col.insertAndGet(db.createDocumentFromString(str1));
+      OracleDocument ret2 = col.insertAndGet(db.createDocumentFromString(str2));
+    }
+
+    String indexName1 = "my_index";
+    String indexSpec1 =
+            "{ \"name\":\"" + indexName1 + "\", \n" +
+                    "  \"fields\": [\n" +
+                    "    { \"path\":\"empid\" , \"datatype\":\"any_scalar\"} \n" +
+                    "] }";
+
+    try
+    {
+      col.admin().createIndex(db.createDocumentFromString(indexSpec1));
+    }
+    catch (OracleException e)
+    {
+      fail ("No error should have occured while creating index.");
+    }
+
+    String planNum = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : 500}"))).explainPlan("all");
+
+    if (!planNum.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String planStr = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{ \"empid\" : \"ved500\"}"))).explainPlan("all");
+
+    if (!planStr.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan1Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan1Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan1Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gt\":4900}}"))).explainPlan("all");
+
+    if (!plan1Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan2Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":4900}}"))).explainPlan("all");
+
+    if (!plan2Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan2Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$gte\":\"ved4900\"}}"))).explainPlan("all");
+
+    if (!plan2Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan3Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan3Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan3Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lt\":100}}"))).explainPlan("all");
+
+    if (!plan3Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan4Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":100}}"))).explainPlan("all");
+
+    if (!plan4Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan4Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$lte\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan4Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan5 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$in\":[\"ved20\",\"ved30\",\"ved50\", 500, 7000]}}"))).explainPlan("all");
+
+    if (!plan5.matches("(?s).*INDEX UNIQUE SCAN.*"))
+    {
+      //fail ("Multivalue Index unique scan is not found.");
+    }
+
+    String plan6Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":100}}"))).explainPlan("all");
+
+    if (!plan6Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan6Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$eq\":\"ved100\"}}"))).explainPlan("all");
+
+    if (!plan6Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index unique scan is not found.");
+    }
+
+    // bug - 35402218
+
+    String plan7 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$or\":[{\"empid\":\"ved3\"},{\"empid\":\"ved5\"},{\"empid\":\"ved6\"},{\"empid\":{\"$gt\":4900}}]}"))).explainPlan("all");
+
+    if (!plan7.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan8= ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$and\":[{\"empid\":{\"$lt\":100}},{\"empid\":{\"$lt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan8.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
+
+    if (!plan9Str.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
+
+    if (!plan9Num.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan10 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"$nor\":[{\"empid\":{\"$lt\":\"ved100\"}},{\"empid\":{\"$gt\":\"ved500\"}}]}"))).explainPlan("all");
+
+    if (!plan10.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan11Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[\"ved2500\",\"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan11Str.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan11Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$between\":[2500,4000]}}"))).explainPlan("all");
+
+    if (!plan11Num.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan12 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$all\":[500,\"ved1000\"]}}"))).explainPlan("all");
+
+    if (!plan12.matches("(?s).*INDEX RANGE SCAN.*"))
+    {
+      fail ("Any Scalar Index range scan is not found.");
+    }
+
+    String plan13 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$ne\":1000}}"))).explainPlan("all");
+
+    if (!plan13.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    String plan14 = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$nin\":[1000, 2000, \"ved3000\", \"ved4000\"]}}"))).explainPlan("all");
+
+    if (!plan14.matches("(?s).*TABLE ACCESS FULL.*"))
+    {
+      fail ("TABLE ACCESS FULL is not found.");
+    }
+
+    colAdmin.dropIndex(indexName1);
+  }
+
   public void testCreateIndex() throws Exception {
     OracleDocument mDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       mDoc = null;
     } else
@@ -1161,7 +1820,12 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
         fail("Error should have been generated because the non-scalar value is beging inserted");
       } catch (OracleException e) {
         Throwable c = e.getCause();
-        assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+        if (isDBVersionBelow(23, 0)) {
+          assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+        } else {
+          assertTrue(c.getMessage().contains("JSON path '$.orderName' evaluated to non-scalar value"));
+        }
+        
       }
     
       col.admin().dropIndex("FUNC_INDEX2");
@@ -1187,7 +1851,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       catch (OracleException e) {
         Throwable c = e.getCause();
         //###  for json type content, the error is "Expected EOF token, but got END_OBJECT"
-        assertTrue(c.getMessage().contains("literal does not match format string"));
+        assertTrue(c.getMessage().contains("ORA-01861"));
       }
     
       col.admin().dropIndex("FUNC_INDEX3");
@@ -1212,7 +1876,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
     catch (OracleException e)
     {
-      assertTrue(e.getMessage().contains("Path for an index or order by condition should not contain array steps."));
+      assertTrue(e.getMessage(), e.getMessage().contains("Path for an index or order by condition should not contain array steps."));
     }
     
   }
@@ -1330,7 +1994,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch (OracleException e)
     {
        Throwable c = e.getCause();
-       assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+       if (isDBVersionBelow(23, 0)) {
+         assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+       } else {
+         assertTrue(c.getMessage().contains("JSON path '$.name' evaluated to non-scalar value"));
+       }
     }
 
     colAdmin.dropIndex("STUDENT_INDEX1");
@@ -1368,7 +2036,12 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch (OracleException e)
     {
        Throwable c = e.getCause();
-       assertTrue(c.getMessage().contains("JSON_VALUE evaluated to no value"));
+       if (isDBVersionBelow(23, 0)) {
+        assertTrue(c.getMessage().contains("JSON_VALUE evaluated to no value"));
+      } else {
+        assertTrue(c.getMessage().contains("JSON path '$.name' evaluated to no value"));
+      }
+       
     }
 
     colAdmin.dropIndex("STUDENT_INDEX1");
@@ -1401,7 +2074,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch (OracleException e)
     {
       Throwable c = e.getCause();
-      assertTrue(c.getMessage().contains("invalid number"));
+      if (isDBVersionBelow(23,0)) {
+        assertTrue(c.getMessage().contains("invalid number"));
+      } else {
+        assertTrue(c.getMessage().contains("ORA-01722: unable to convert string value"));
+      }
     }
 
     // "date" type has the conflict with the existing doc field value
@@ -1423,8 +2100,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       Throwable c = e.getCause();
 
       if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
-        assertTrue(c.getMessage().contains("a non-numeric character was found" +
-                                           " where a numeric was expected"));
+        assertTrue(c.getMessage().contains("ORA-01858"));
       }
       else {
         assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
@@ -1449,8 +2125,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       Throwable c = e.getCause();
       if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
-        assertTrue(c.getMessage().contains("a non-numeric character was found" +
-                                           " where a numeric was expected"));
+        assertTrue(c.getMessage().contains("ORA-01858"));
       }
       else {
         assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
@@ -1496,7 +2171,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch (OracleException e)
     {
       Throwable c = e.getCause();
-      assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+      if (isDBVersionBelow(23, 0)) {
+        assertTrue(c.getMessage().contains("JSON_VALUE evaluated to non-scalar value"));
+      } else {
+        assertTrue(c.getMessage().contains("JSON path '$.name' evaluated to non-scalar value"));
+      }
     }
     colAdmin.dropIndex("FUNC_INDEX1");
     
@@ -1518,7 +2197,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     catch (OracleException e)
     {
        Throwable c = e.getCause();
-       assertTrue(c.getMessage().contains("invalid number"));
+       if (isDBVersionBelow(23,0)) {
+        assertTrue(c.getMessage().contains("invalid number"));
+      } else {
+        assertTrue(c.getMessage().contains("ORA-01722: unable to convert string value"));
+      }
     }
     
     // the index's "date" type has the conflict with the existing doc field value
@@ -1541,8 +2224,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       Throwable c = e.getCause();
       if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
-        assertTrue(c.getMessage().contains("a non-numeric character was found" +
-                                           " where a numeric was expected"));
+        assertTrue(c.getMessage().contains("ORA-01858"));
       }
       else {
         assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
@@ -1569,14 +2251,116 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     {
       Throwable c = e.getCause();
       if (!SODAUtils.sqlSyntaxBelow_18(sqlSyntaxLevel)) {
-        assertTrue(c.getMessage().contains("a non-numeric character was found" +
-                                           " where a numeric was expected"));
+        assertTrue(c.getMessage().contains("ORA-01858"));
       }
       else {
         assertTrue(c.getMessage().contains("(full) year must be between -4713 and +9999"));
       }
     }
     
+    col.admin().drop();
+  }
+
+  public void testCreateIndexTTL() throws Exception {
+    if (!isJDCSOrATPMode() && isDBVersionBelow(23, 0)) return;
+
+    OracleCollection col = dbAdmin.createCollection("testCreateIndexTTL");
+    OracleCollectionAdmin colAdmin = col.admin();
+
+    Instant currentTime = Instant.now();
+    Instant oneHourAgo = currentTime.minus(1, ChronoUnit.HOURS);
+    Instant tenHoursAgo = currentTime.minus(10, ChronoUnit.HOURS);
+
+    String docStr1 =
+            "{ \"name\":\"Apple\",\"since\":\"" + currentTime + "\" }";
+    col.insert(db.createDocumentFromString(docStr1));
+    String docStr2 =
+            "{ \"name\":\"Orange\",\"since\":\"" + tenHoursAgo.toString() + "\" }";
+    col.insert(db.createDocumentFromString(docStr2));
+    String docStr3 =
+            "{ \"name\":\"Cheese\",\"since\":\"" + oneHourAgo.toString() + "\" }";
+    col.insert(db.createDocumentFromString(docStr3));
+
+    String indexSpec1 =
+            "{ \"name\":\"TTL_INDEX1\", " +
+                    "  \"ttl\" : 7200, " +
+                    "  \"fields\": [ { \"path\":\"since\", \"datatype\":\"timestamp\"} ]" +
+                    "}";
+
+    colAdmin.createIndex(db.createDocumentFromString(indexSpec1));
+
+    List<OracleDocument> indexes = ((OracleCollectionImpl) col).listIndexes();
+    boolean foundIndex = false;
+    for (OracleDocument index : indexes) {
+      if (index.getContentAsString().contains("\"ttl\":7200")) {
+        foundIndex = true;
+        break;
+      }
+    }
+    assertTrue(foundIndex);
+
+    // Job should delete one document leaving two due to "expiration" (give it up to 5 minutes)
+    for (int i = 0; i < 60; i++) {
+      Thread.sleep(5000);
+      if (col.find().count() == 2) break;  // already done, exit to save time
+    }
+    assertEquals(2, col.find().count());
+
+
+    // Negative test: both "ttl" and "spatial" specified
+    String indexSpec2 =
+            "{ \"name\":\"TTL_INDEX2\", " +
+                    "  \"ttl\" : 7200, " +
+                    "  \"spatial\": \"dummy\"" +
+                    "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpec2));
+      junit.framework.Assert.fail("No error when creating an index with \"ttl\" and \"spatial\"");
+    }
+    catch(OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("\"spatial\" cannot be set in conjunction with \"ttl\""));
+    }
+
+
+    // Negative test: both "ttl" and "search_on" specified
+    indexSpec2 =
+            "{ \"name\":\"TTL_INDEX2\", " +
+                    "  \"ttl\" : 7200, " +
+                    "  \"search_on\": \"text\"" +
+                    "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpec2));
+      junit.framework.Assert.fail("No error when creating an index with \"ttl\" and \"search_on\"");
+    }
+    catch(OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("\"search_on\" cannot be set in conjunction with \"ttl\""));
+    }
+
+
+    // Negative test: both "ttl" and "dataguide" specified
+    indexSpec2 =
+            "{ \"name\":\"TTL_INDEX2\", " +
+                    "  \"ttl\" : 7200, " +
+                    "  \"dataguide\": \"on\"" +
+                    "}";
+
+    try
+    {
+      colAdmin.createIndex(db.createDocumentFromString(indexSpec2));
+      junit.framework.Assert.fail("No error when creating an index with \"ttl\" and \"dataguide\"");
+    }
+    catch(OracleException e) {
+      Throwable t = e.getCause();
+      assertTrue(t.getMessage().contains("\"dataguide\" cannot be set in conjunction with \"ttl\""));
+    }
+
+    colAdmin.dropIndex("TTL_INDEX1");
     col.admin().drop();
   }
 
@@ -1649,10 +2433,13 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     //(instead of o: length : 32 for JSON).
     if (isJDCSMode())
     {
-      schema = "{\"type\":\"object\",\"o:length\":1,\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
-               "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
-               "\"friends\":{\"type\":\"string\",\"o:length\":2," +
-               "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
+      schema = "{\"type\":\"object\"" +
+        (!isDBVersionBelow(23, 0) ? "" : ",\"o:length\":1") +
+        ",\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
+        "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
+        "\"friends\":{\"type\":\"string\",\"o:length\":2," +
+        "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
+
       assertEquals(schema, doc.getContentAsString());
     }
   }
@@ -1881,6 +2668,10 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     for (String columnSqlType : columnSqlTypes) {
       testFuncIndexInPlan1(columnSqlType);
     }
+
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testFuncIndexInPlan1("JSON");
+    }
   }
 
   String[] columnSqlTypes = {
@@ -1981,6 +2772,10 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   public void testFuncIndexInPlan2() throws Exception {
     for (String columnSqlType : columnSqlTypes) {
       testFuncIndexInPlan2(columnSqlType);
+    }
+    
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testFuncIndexInPlan1("JSON");
     }
   }
 
@@ -2166,7 +2961,7 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
       // the error is suppressed by SODA Java layer
       // fail("No exception when the same name is used for 2 indexes");
     } catch (OracleException e) {
-      assertTrue(e.getMessage().contains("An index with the specified name already exists in the schema."));
+      assertTrue(e.getMessage().contains("An index with the specified name \"" + indexName2 + "\" already exists in the schema."));
     }
     
   }
@@ -2182,6 +2977,12 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
   
   public void testJsonSearchIndex2Varchar2() throws Exception {
     testJsonSearchIndex2("VARCHAR2");
+  }
+
+  public void testJsonSearchIndex2JSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testJsonSearchIndex2("JSON");
+    }
   }
   
   private void testJsonSearchIndex2(String contentColumnType) throws Exception {
@@ -2311,5 +3112,29 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
     }
     
     colAdmin.drop();
+  }
+
+  public void testDBObjectNameAndSchemaGetters() throws Exception {
+    OracleCollection col = db.admin().createCollection("abc");
+
+    //Validate if is a native collection
+    OracleDocument metadata = col.admin().getMetadata();
+    String sMetadata = metadata.getContentAsString();
+    JsonReader jsonReader = Json.createReader(new StringReader(sMetadata));
+    JsonObject jsonObject = jsonReader.readObject();
+    jsonReader.close();
+
+    boolean isNative = false;
+    if (jsonObject.containsKey("native")) {
+      isNative = jsonObject.getBoolean("native");
+    }
+    String  collectionRef = (isNative) ? "abc" : "ABC";
+
+    assertEquals(collectionRef, col.admin().getDBObjectName());
+    assertEquals("SCOTT", col.admin().getDBObjectSchemaName());
+
+    col = db.admin().createCollection("dFg");
+    assertEquals("dFg", col.admin().getDBObjectName());
+    assertEquals("SCOTT", col.admin().getDBObjectSchemaName());
   }
 }

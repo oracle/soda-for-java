@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -17,7 +17,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 
 import java.nio.charset.Charset;
-
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.HashSet;
@@ -39,7 +39,10 @@ import oracle.json.testharness.SodaTestCase;
 import oracle.json.testharness.SodaUtils;
 import oracle.soda.rdbms.impl.SODAUtils;
 
-import javax.json.JsonString;
+import jakarta.json.Json;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 
 public class test_OracleDocument2 extends SodaTestCase {
   
@@ -139,7 +142,7 @@ public class test_OracleDocument2 extends SodaTestCase {
         .keyColumnAssignmentMethod("SEQUENCE").keyColumnSequenceName("keyseql")
         .mediaTypeColumnName("MediaType").build();
     OracleCollection col;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
     {
       col = dbAdmin.createCollection("testGetKey", null);
     } else
@@ -257,7 +260,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     testGetVersion("MD5", "testGetVersion5");
 
     String sName = schemaName.toUpperCase();
-    if (!isJDCSOrATPMode()) {
+    if (!isJDCSOrATPMode() && !isCompatibleOrGreater(COMPATIBLE_20)) {
       // the creation of "SODATBL" table(see sodatestsetup.sql) is blocked by jdcs lockdown.
       
       // Test with VERSION_METHOD = "NONE"
@@ -291,7 +294,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     // Negative tests
     // Test when there is no version column for the collection
     // remove both VERSION_COLUMN_NAME and VERSION_METHOD
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
         return;
     OracleDocument metaDoc2 = client.createMetadataBuilder().removeOptionalColumns().build(); 
     OracleCollection col2 = dbAdmin.createCollection("testGetVersion7", metaDoc2);
@@ -301,9 +304,15 @@ public class test_OracleDocument2 extends SodaTestCase {
   }
   
   public void testGetCreatedOnAndLastModified() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder().creationTimeColumnName("createdOnCol")
-                                   .lastModifiedColumnName("lastModifiedCol").build();
-    
+    OracleDocument metaDoc;
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = client.createMetadataBuilder().contentColumnType("JSON").versionColumnMethod("UUID")
+          .creationTimeColumnName("createdOnCol").lastModifiedColumnName("lastModifiedCol").build();
+    } else {
+      metaDoc = client.createMetadataBuilder().creationTimeColumnName("createdOnCol")
+          .lastModifiedColumnName("lastModifiedCol").build();
+    }
+
     OracleCollection col;
     if (isJDCSOrATPMode())
     {
@@ -358,6 +367,9 @@ public class test_OracleDocument2 extends SodaTestCase {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
     }
+    else if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = null;
+    }
     else {
       metaDoc = client.createMetadataBuilder().build();
     }
@@ -368,7 +380,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     
     col.insert(doc);
     doc = col.find().getOne();
-    if (!isJDCSOrATPMode()) // no need to compare the length in jdcs mode
+    if (!isJDCSOrATPMode() && !isCompatibleOrGreater(COMPATIBLE_20)) // no need to compare the length in jdcs mode
     {
       assertEquals(jasnStr.length(), doc.getContentLength());
     }
@@ -723,8 +735,8 @@ public class test_OracleDocument2 extends SodaTestCase {
     doc = col.findOne(key1);
     in = new FileInputStream(new File("data/PurchaseOrders.json"));
     JsonString sqlTypeJsonStr = (JsonString) getValue(col.admin().getMetadata(), path("contentColumn", "sqlType"));
-    if (!isJDCSOrATPMode()) {
-      // Binary encoding removed space chars(but reserved '\n' ?), so can not compare its result with original document
+    if (!sqlTypeJsonStr.getString().equalsIgnoreCase("JSON") && !isJDCSOrATPMode()) {
+      // JSON type encoding removed space chars(but reserved '\n' ?), so can not compare its result with original document
       assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
     }
     in.close();
@@ -750,7 +762,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     col.find().key(key1).replaceOne(doc);
     
     doc = col.findOne(key1);
-    if (!isJDCSOrATPMode()) {
+    if (!sqlTypeJsonStr.getString().equalsIgnoreCase("JSON") && !isJDCSOrATPMode()) {
       assertEquals(jsonFileString, doc.getContentAsString());
     }
     assertEquals("application/json", doc.getMediaType());
@@ -766,7 +778,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     
     doc = col.findOne(key2);
     in = new FileInputStream(new File("data/data32k.json"));
-    if (!isJDCSOrATPMode()) {
+    if (!sqlTypeJsonStr.getString().equalsIgnoreCase("JSON") && !isJDCSOrATPMode()) {
       assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
     }
     in.close();
@@ -779,7 +791,7 @@ public class test_OracleDocument2 extends SodaTestCase {
     
     doc = col.findOne(key2);
     in = new FileInputStream(new File("data/data256k.json"));
-    if (!isJDCSOrATPMode()) {
+    if (!sqlTypeJsonStr.getString().equalsIgnoreCase("JSON") && !isJDCSOrATPMode()) {
       assertEquals(inputStream2String(in), new String(doc.getContentAsByteArray(), "UTF-8"));
     }
     in.close();
@@ -860,7 +872,7 @@ public class test_OracleDocument2 extends SodaTestCase {
       col.save(doc);
 
       doc = col.findOne(key1);
-      if (!isJDCSOrATPMode()) {
+      if (!sqlTypeJsonStr.getString().equalsIgnoreCase("JSON") && !isJDCSOrATPMode()) {
         assertEquals(poJson, doc.getContentAsString());
       }
     }
@@ -921,6 +933,17 @@ public class test_OracleDocument2 extends SodaTestCase {
         .build();
     OracleCollection col5 = dbAdmin.createCollection("testLargeContent5", mDoc5);
     testLargeContentWithCol(col5);
+
+    // Test with non-heterogeneous and contentColumnType=JSON
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      OracleDocument mDoc6 = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID")
+          .build();
+      OracleCollection col6 = dbAdmin.createCollection("testLargeContent6", mDoc6);
+      testLargeContentWithCol(col6);
+    }
+    
   }
   
   // Create a document with content containing '\n' or '\r' char as meaningless space char.

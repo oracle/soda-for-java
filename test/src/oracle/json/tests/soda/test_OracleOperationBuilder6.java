@@ -1,5 +1,5 @@
-/* Copyright (c) 2017, 2019, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2017, 2023, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -16,18 +16,46 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.sql.SQLException;
 
+
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.Period;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Date;
+
+import oracle.json.parser.QueryException;
+import oracle.json.testharness.SodaTestCase.IndexType;
+import oracle.json.testharness.SodaTestCase;
+import oracle.soda.OracleCollection;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleCursor;
+import oracle.soda.OracleDatabase;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
+import oracle.soda.rdbms.OracleRDBMSClient;
 import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
+import oracle.soda.rdbms.impl.OracleDatabaseImpl;
 import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
 import oracle.soda.rdbms.impl.SODAUtils;
-import oracle.soda.rdbms.impl.OracleDatabaseImpl;
-import oracle.json.parser.QueryException;
+import oracle.sql.json.OracleJsonDate;
+import oracle.sql.json.OracleJsonFactory;
+import oracle.sql.json.OracleJsonIntervalDS;
+import oracle.sql.json.OracleJsonIntervalYM;
+import oracle.sql.json.OracleJsonObject;
+import oracle.sql.json.OracleJsonValue;
+import oracle.sql.json.OracleJsonTimestamp;
+import oracle.sql.json.OracleJsonDecimal;
+import oracle.sql.json.OracleJsonBinary;
+import oracle.sql.json.OracleJsonString;
+import oracle.sql.json.OracleJsonDouble;
+import oracle.sql.json.OracleJsonTimestampTZ;
 
-import oracle.json.testharness.SodaTestCase;
-import oracle.json.testharness.SodaTestCase.IndexType;
 
 public class test_OracleOperationBuilder6 extends SodaTestCase {
   
@@ -45,6 +73,13 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     assertEquals(keys, expectedKeys);
   }
   
+  public void testNestedCondition() throws Exception {
+    OracleCollection col = db.admin().createCollection("testNestedCondition");
+    OracleDocument r1 = col.insertAndGet(db.createDocumentFromString("{\"f\" : [1, 10, 20]}"));
+    col.insert(db.createDocumentFromString("{\"f[*]\" : [ 10, 8]}"));
+    assertEquals(1, col.find().filter("{\"f[*]\" : {\"$gt\" : 9, \"$lt\" : 11}}").count());
+    assertEquals(r1.getKey(), col.find().filter("{\"f\" : {\"$gt\" : 9, \"$lt\" : 11}}").getOne().getKey());
+  }
   
   // Test with $not operator
   public void testNotClob() throws Exception {
@@ -57,6 +92,12 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   
   public void testNotVarchar2() throws Exception {
     testNot("VARCHAR2");
+  }
+  
+  public void testNotJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testNot("JSON");
+    }
   }
   
   private void testNot(String contentColumnType) throws Exception {
@@ -173,7 +214,7 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
       fail("No exception when $not wraps $upper");
     } catch (OracleException e) {
       QueryException queryException = (QueryException) e.getCause();
-      String expMsg = "$not operator cannot wrap $upper operator. ";
+      String expMsg = "$not operator cannot wrap $upper operator.";
       assertEquals(expMsg, queryException.getMessage());
     }
     
@@ -214,6 +255,12 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   
   public void testOrderbyVarchar2() throws Exception {
     testOrderby("VARCHAR2");
+  }
+  
+  public void testOrderbyJSON() throws Exception {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testNot("JSON");
+    }
   }
   
   private void testOrderby(String contentColumnType) throws Exception {
@@ -1081,10 +1128,37 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     testOrderbyScalarReq("VARCHAR2", true, true);
   }
 
+  public void testOrderByScalarReqJSON() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyScalarReq("JSON", false, false);
+    }
+  }
+
+  public void testOrderByScalarReqJSONWithIndex() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyScalarReq("JSON", true, false);
+    }
+  }
+
+  public void testOrderByScalarReqJSONWithFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyScalarReq("JSON", false, true);
+    }
+  }
+
+  public void testOrderByScalarReqJSONWithIndexAndFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyScalarReq("JSON", true, true);
+    }
+  }
+
   ////////////////////
   // OrderByDefault //
   ////////////////////
-
 
   public void testOrderByDefaultBLOB() throws Exception
   {
@@ -1143,6 +1217,34 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
   public void testOrderByDefaultVARCHAR2WithIndexAndFilter() throws Exception
   {
     testOrderbyDefault("VARCHAR2", true, true);
+  }
+
+  public void testOrderByDefaultJSON() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefault("JSON", false, false);
+    }
+  }
+
+  public void testOrderByDefaultJSONWithIndex() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefault("JSON", true, false);
+    }
+  }
+
+  public void testOrderByDefaultJSONWithFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefault("JSON", false, true);
+    }
+  }
+
+  public void testOrderByDefaultJSONWithIndexAndFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefault("JSON", true, true);
+    }
   }
 
   ///////////////////////
@@ -1208,10 +1310,37 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     testOrderbyDefaultNeg("VARCHAR2", true, true);
   }
 
+  public void testOrderByDefaultNegJSON() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefaultNeg("JSON", false, false);
+    }
+  }
+
+  public void testOrderByDefaultNegJSONWithIndex() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefaultNeg("JSON", true, false);
+    }
+  }
+
+  public void testOrderByDefaultNegJSONWithFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefaultNeg("JSON", false, true);
+    }
+  }
+
+  public void testOrderByDefaultNegJSONWithIndexAndFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyDefaultNeg("JSON", true, true);
+    }
+  }
+
   ////////////////
   // OrderByLax //
   ////////////////
-
 
   public void testOrderByLaxLOB() throws Exception
   {
@@ -1272,4 +1401,211 @@ public class test_OracleOperationBuilder6 extends SodaTestCase {
     testOrderbyLax("VARCHAR2", true, true);
   }
 
+  public void testOrderByLaxJSON() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyLax("JSON", false, false);
+    }
+  }
+
+  public void testOrderByLaxtJSONWithIndex() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyLax("JSON", true, false);
+    }
+  }
+
+  public void testOrderByLaxJSONWithFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyLax("JSON", false, true);
+    }
+  }
+
+  public void testOrderByLaxJSONWithIndexAndFilter() throws Exception
+  {
+    if (isCompatibleOrGreater(COMPATIBLE_20)) {
+      testOrderbyLax("JSON", true, true);
+    }
+  }
+
+  public void testOrderBySimplify() throws Exception {
+    OracleCollection col;
+    col = db.admin().createCollection("test", null);
+    OracleCursor cursor = null;
+    col.insert((db.createDocumentFromString(new String("{\"name\" : \"Jason\", \"age\" : 45}"))));
+    col.insert((db.createDocumentFromString(new String("{\"name\" : \"Eric\", \"age\" : 35}"))));
+    col.insert((db.createDocumentFromString(new String("{\"name\" : \"debby\", \"age\" : 47}"))));
+
+    try{
+      cursor = col.find().filter("{\"$orderby\" : {\"_id\" : 1 , \"name\" : 1}}").getCursor();
+
+      while(cursor.hasNext())
+        cursor.next();
+
+      assertEquals(3,col.find().count());
+    }
+    catch (Exception e){
+      fail("No exception should have occured");
+    }
+    finally {
+      cursor.close();
+    }
+
+  }
+
+  public void testBindTypedParameterStrict() throws Exception {
+    OracleCollection col;
+    col = db.admin().createCollection("test", null);
+    OracleCursor cursor = null;
+    int iteratorCount = 0;
+    
+    try {
+
+      OracleJsonFactory factory = new OracleJsonFactory();
+      OracleJsonObject oracleJsonObject = factory.createObject();
+
+      //CASE : INTERVALDS
+      Instant start = Instant.parse("2017-10-03T10:15:30.00Z");
+      Instant end = Instant.parse("2017-10-03T10:16:30.00Z");
+      Duration duration = Duration.between(start, end);
+      OracleJsonIntervalDS val1 = factory.createIntervalDS(duration);
+      oracleJsonObject.put("created",val1);
+      OracleDocument doc1 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc1);
+      cursor = col.find().filter(doc1).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : ITERVALYM
+      Period period = Period.ofMonths(6);
+      OracleJsonIntervalYM val2 = factory.createIntervalYM(period);
+      oracleJsonObject.put("created",val2);
+      OracleDocument doc2 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc2);
+      cursor = col.find().filter(doc2).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : DATE
+      LocalDateTime now = LocalDateTime.now();
+      OracleJsonDate val3 = factory.createDate(now);
+      oracleJsonObject.put("created",val3);
+      OracleDocument doc3 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc3);
+      cursor = col.find().filter(doc3).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : TIMESTAMP
+      OracleJsonTimestamp val4 = factory.createTimestamp(now);
+      oracleJsonObject.put("created",val4);
+      OracleDocument doc4 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc4);
+      cursor = col.find().filter(doc4).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : DECIMAL
+      long i = 12345678910L;
+      OracleJsonDecimal val5 = factory.createDecimal(i);
+      oracleJsonObject.put("created",val5);
+      OracleDocument doc5 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc5);
+      cursor = col.find().filter(doc5).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : STRING
+      OracleJsonString val6 = factory.createString("abc");
+      oracleJsonObject.put("created",val6);
+      OracleDocument doc6 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc6);
+      cursor = col.find().filter(doc6).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : BINARY
+      byte[] bArr = {45};
+      OracleJsonBinary val7 = factory.createBinary(bArr);
+      oracleJsonObject.put("created",val7);
+      OracleDocument doc7 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc7);
+      cursor = col.find().filter(doc7).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      //CASE : DOUBLE/FLOAT
+      OracleJsonDouble val8 = factory.createDouble(2.0);
+      oracleJsonObject.put("created",val8);
+      OracleDocument doc8 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc8);
+      cursor = col.find().filter(doc8).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      iteratorCount = 0;
+
+      /* ### TODO
+      CASE : TIMESTAMPTZ (needs to be fixed in db)
+      OffsetDateTime time = OffsetDateTime.now(ZoneOffset.UTC);
+      OracleJsonTimestampTZ val9 = factory.createTimestampTZ(time);
+      oracleJsonObject.put("created",val9);
+      OracleDocument doc9 = db.createDocumentFrom(oracleJsonObject);
+      col.insert(doc9);
+      cursor = col.find().filter(doc9).getCursor();
+      while(cursor.hasNext())
+      {
+        iteratorCount++;
+        cursor.next();
+      }
+      assertEquals(1,iteratorCount);
+      */
+    }
+    catch (Exception e){
+      fail("No exception should have occured");
+    }
+    finally {
+      if(cursor != null)
+        cursor.close();
+    }
+  }
 }

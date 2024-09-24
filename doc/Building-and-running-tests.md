@@ -12,11 +12,13 @@ The test framework is located in the /test directory under the root SODA directo
 **(1)** Build the source code (which includes downloading SODA dependencies), as described
 in [Building the source code](https://github.com/oracle/soda-for-java/blob/master/doc/Building-source-code.md). Make sure you perform all steps described in this link. Specifically, make sure that the JAVA_HOME environment variable is set, and that the following jars are located in the /lib directory under the top level SODA directory (the one that contains LICENSE.txt):
 
-* JDBC jar
-* javax.json-1.1.4.jar (JSR353 jar)
-* junit-3.8.1.jar (JUnit jar)
+* javax.json-*.jar
+* junit-*.jar
 * orajsoda.jar (SODA Java jar)
-      
+* jakarta.json-*.jar
+* jakarta.json-api-*.jar
+* ojdbc8-*.jar
+
 **(2)** Some of the tests use encrypted data, so you must open a wallet.
 
 Set the parameter in sqlnet.ora, if not set already, to specify the location of the wallet:
@@ -69,7 +71,7 @@ Replace myaccount and mypassword with the account name and password created in s
 If you're using an OS other then Linux, set the environment variable using the appropriate mechanism.
 
 **(7)** Navigate to the /test directory under the root SODA directory, and run the test framework:
-  
+
     ant -Ddatasource=datasource.properties
 
 The test framework should run and output "BUILD SUCCESSFUL" at the end. Open up a browser, and navigate to the /test/testoutput directory under the root SODA directory. Then navigate to the directory identified by the timestamp of your run (this directory is created by the test framework, on every run). From there, nagivate to /html/index.html, for a detailed test report. In case of test failures, this report allows you to navigate to the failures, and see the stack trace of their occurrence in each failed test.

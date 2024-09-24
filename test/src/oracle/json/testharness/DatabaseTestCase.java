@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2018, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates.*/
+/* All rights reserved.*/
 
 /**
  *  DESCRIPTION
@@ -12,17 +12,41 @@ All rights reserved.*/
 
 package oracle.json.testharness;
 
-import oracle.jdbc.OracleConnection;
-import oracle.soda.rdbms.impl.SODAUtils;
-
+import java.io.StringReader;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import oracle.jdbc.OracleConnection;
+import oracle.json.util.ByteArray;
+
+import oracle.soda.OracleCollection;
+import oracle.soda.OracleCollectionAdmin;
+import oracle.soda.OracleCursor;
+import oracle.soda.OracleDatabase;
+import oracle.soda.OracleDocument;
+import oracle.soda.OracleDropResult;
+import oracle.soda.OracleException;
+import oracle.soda.rdbms.OracleRDBMSMetadataBuilder;
+import oracle.soda.rdbms.impl.OracleOperationBuilderImpl;
+import oracle.soda.rdbms.impl.SODAUtils;
+
+import oracle.sql.json.OracleJsonFactory;
+import oracle.sql.json.OracleJsonGenerator;
+import oracle.sql.json.OracleJsonObject;
+import oracle.sql.json.OracleJsonParser;
+import oracle.sql.json.OracleJsonValue;
 
 public abstract class DatabaseTestCase extends JsonTestCase {
 
     public static final int PATCH1 = 1;
     public static final int PATCH2 = 2;
+    public static final int COMPATIBLE_20 = 20;
+    public static final int COMPATIBLE_23 = 23;
 
     public static final Integer PATCH_VERSION = Integer.getInteger("patch.version");
     
@@ -30,6 +54,7 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     protected static final boolean JDCS_MODE = Boolean.getBoolean("jdcs.mode");
 
     protected static final boolean ATP_MODE = Boolean.getBoolean("atp.mode");
+    protected static final String COMPATIBLE = System.getProperty("compatible");
 
     // Project and patch tests only execute when running against 18 and above.
     // Project and patch first appeared in 12.2.0.1, but was unusable due to
@@ -40,6 +65,8 @@ public abstract class DatabaseTestCase extends JsonTestCase {
 
     protected OracleConnection conn;
 
+    protected String cloudServiceType;
+
     protected static SODAUtils.SQLSyntaxLevel sqlSyntaxLevel =
       SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN;
 
@@ -49,6 +76,11 @@ public abstract class DatabaseTestCase extends JsonTestCase {
 
         if (sqlSyntaxLevel == SODAUtils.SQLSyntaxLevel.SQL_SYNTAX_UNKNOWN)
             sqlSyntaxLevel = SODAUtils.getDatabaseVersion(conn);
+    }
+    
+    @Override
+    protected void tearDown() throws Exception {
+        conn.close();
     }
 
     public static boolean isPatch(Integer... patches) {
@@ -70,6 +102,69 @@ public abstract class DatabaseTestCase extends JsonTestCase {
         return false;
     }
 
+    public boolean isAutonomousShared() throws Exception {
+      PreparedStatement st = conn.prepareStatement("select sys_context('userenv','cloud_service') from dual");
+      ResultSet rs=st.executeQuery();
+      rs.next();
+      cloudServiceType = rs.getString(1);
+      rs.close();
+      if (cloudServiceType == "OLTP" ||
+          cloudServiceType == "JDCS" ||
+	  cloudServiceType == "ADWC")
+        return true; 
+      return false;
+    }
+    
+    public int[] getDBVersion(DatabaseMetaData dbmd) throws Exception {
+        Pattern BANNER_PATTERN = Pattern.compile(".*\nVersion (?<major>\\d+?)\\.(?<minor>\\d+?)\\..*");
+        Matcher matcher = BANNER_PATTERN.matcher(dbmd.getDatabaseProductVersion());
+        int[] dbVersion = new int[2];
+        if(matcher.matches()) {
+            dbVersion[0] = Integer.parseInt(matcher.group("major"));
+            dbVersion[1] = Integer.parseInt(matcher.group("minor"));
+        }
+        return dbVersion;
+    }
+    
+    public boolean is23ButNotDot2() throws Exception {
+      DatabaseMetaData dbmd = (conn == null) ? null : conn.getMetaData();
+      int[] dbVersion = getDBVersion(dbmd);
+      int dbMajor = dbVersion[0];
+      int dbMinor = dbVersion[1];
+      if (dbMajor > 23 || (dbMajor == 23 && dbMinor != 2))
+          return true;
+      return false;
+    }
+
+    public boolean isDBVersion23dot2() throws Exception {
+      DatabaseMetaData dbmd = (conn == null) ? null : conn.getMetaData();
+      int[] dbVersion = getDBVersion(dbmd);
+      int dbMajor = dbVersion[0];
+      int dbMinor = dbVersion[1];
+      if (dbMajor == 23 && dbMinor == 2)
+          return true;
+      return false;
+    }
+
+    public boolean isDBVersionBelow(int major, int minor) throws Exception {
+       DatabaseMetaData dbmd = (conn == null) ? null : conn.getMetaData();
+       int[] dbVersion = getDBVersion(dbmd);
+       int dbMajor = dbVersion[0];
+       int dbMinor = dbVersion[1];
+       if (dbMajor < major || (dbMajor == major && dbMinor < minor))
+           return true;
+       return false;
+    }
+    
+    public boolean isDBMajorVersion(int major) throws Exception {
+      DatabaseMetaData dbmd = (conn == null) ? null : conn.getMetaData();
+      int[] dbVersion = getDBVersion(dbmd);
+      int dbMajor = dbVersion[0];
+      if (dbMajor == major)
+          return true;
+      return false;
+   }
+
     // jdcs.mode property is specified in the entry of junit run.(the default value is false)
     // when it's true, all explicit create/delete table/view/sequence SQL will fail.
     public static boolean isJDCSMode() {
@@ -83,8 +178,60 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     public static boolean isJDCSOrATPMode() {
       return JDCS_MODE || ATP_MODE;
     }
-    
-    // the method to check whether DB's character set is UTF8 or not
+    public static String compatible() {
+      return COMPATIBLE;
+    }
+
+    public static boolean isCompatibleOrGreater(int compatible) {
+      if (COMPATIBLE != null) {
+        try {
+          return Double.parseDouble(COMPATIBLE) >= compatible;
+        } catch (NumberFormatException e) {
+          throw new NumberFormatException();
+        }  
+      }
+      return false;      
+    } 
+
+    public void isKeyColumnValueForEbmeddedIDValid (OracleDocument doc, String key, OracleCollection col, OracleDatabase db) throws Exception {
+
+    OracleCollectionAdmin colAdmin = col.admin();
+    OracleDocument metadata = colAdmin.getMetadata();
+
+    OracleJsonFactory jsonFactory = new OracleJsonFactory();
+    OracleJsonValue jsonValue = jsonFactory.createJsonTextValue(new StringReader(metadata.getContentAsString()));
+    OracleJsonObject jsonObject = jsonValue.asJsonObject();
+
+    OracleJsonValue keycolumn = jsonObject.get("keyColumn");
+
+    OracleJsonValue jsonValue2 = jsonFactory.createJsonTextValue(new StringReader(keycolumn.toString()));
+    OracleJsonObject jsonObject2 = jsonValue2.asJsonObject();
+
+    String sqlType = jsonObject2.getString("sqlType");
+    String assignmentMethod = jsonObject2.getString("assignmentMethod");
+
+    if (!(sqlType.equalsIgnoreCase("RAW") && assignmentMethod.equalsIgnoreCase("EMBEDDED_OID")))
+      return;
+
+    doc = ((OracleOperationBuilderImpl) col.find().key(key)).project(db.createDocumentFromString("{\"_id\" : 1}")).getOne();
+
+    if (doc == null || doc.getContentAsString().equals("{}"))
+    {
+      throw new Exception("_id is missing in the object.");
+    }
+
+    String idValue = doc.getKey();
+
+    if (!ByteArray.isHex(idValue))
+      throw new Exception("_id is not of type Hexadecimal.");
+
+    // res.getKey() appends 2 extra characters "08" at the beginning of 24 character hex _id value
+    if (idValue.length() != 26)
+      throw new Exception("_id is not 24 characters long.");
+  }
+
+
+  // the method to check whether DB's character set is UTF8 or not
     public boolean isUTF8DBCharacterSet(OracleConnection con) throws Exception {
       final String sqlForCharSet = "SELECT value FROM nls_database_parameters WHERE parameter='NLS_CHARACTERSET'";
       final String keyForUTF8CharSet = "AL32UTF8";

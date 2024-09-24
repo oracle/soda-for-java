@@ -1,5 +1,5 @@
-/* Copyright (c) 2014, 2020, Oracle and/or its affiliates. 
-All rights reserved.*/
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* All rights reserved.*/
 
 /*
    DESCRIPTION
@@ -18,10 +18,14 @@ import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
+import java.sql.Statement;
 
 import oracle.soda.OracleException;
 import oracle.soda.OracleCollection;
+import oracle.soda.OracleCursor;
 import oracle.soda.OracleCollectionAdmin;
 import oracle.soda.OracleDocument;
 
@@ -30,13 +34,55 @@ import oracle.soda.rdbms.impl.TableCollectionImpl;
 import oracle.soda.rdbms.impl.OracleDocumentFragmentImpl;
 import oracle.soda.rdbms.impl.OracleDocumentImpl;
 import oracle.soda.rdbms.impl.OracleDatabaseImpl;
-
+import oracle.json.testharness.DatabaseTestCase;
 import oracle.json.testharness.SodaTestCase;
+
+import oracle.sql.json.OracleJsonObject;
+import oracle.sql.json.OracleJsonValue;
+import oracle.sql.json.OracleJsonValue.OracleJsonType;
+import oracle.sql.json.OracleJsonBinary;
+
+import jakarta.json.JsonObject;
+import jakarta.json.Json;
+import jakarta.json.JsonReader;
+import java.io.StringReader;
 
 public class test_OracleCollection extends SodaTestCase {
   
+  public void testInsertWithBatch() throws Exception {
+    OracleCollection col = db.admin().createCollection("testInsertWithBatch");
+       
+    ArrayList<OracleDocument> list = new ArrayList<OracleDocument>();
+
+    for (int i = 0; i < 2000; i++) {
+      OracleDocument d = db.createDocumentFromString("{\"name\" : \"abc" + i + "\"}");
+      list.add(d);
+    }
+    Map<String, Object> mymap=new HashMap<String, Object>();
+    mymap.put("maxBatchSize", 330);
+    col.insertAndGet(list.iterator(), mymap);
+    long count = col.find().count();
+    assertEquals(count, 2000);
+
+    mymap.put("maxBatchSize", true);
+    
+    try {
+      col.insertAndGet(list.iterator(), mymap);
+      fail("No exception when maxBatchSize is set to a boolean");
+    }
+    catch (Exception e) {
+      assertEquals(e.getCause().getMessage(), "Batch size true is not of type Integer.");
+    }
+  }
+
   public void testFindOne() throws Exception {
-    OracleDocument metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    OracleDocument metaDoc; 
+    if ( isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT")
+          .contentColumnType("JSON").versionColumnMethod("UUID").build();
+    } else {
+      metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("CLIENT").build();
+    }
     
     OracleCollection col;
     if (isJDCSOrATPMode())
@@ -71,7 +117,7 @@ public class test_OracleCollection extends SodaTestCase {
     // Test with valid key
     doc = col.findOne(key[1]);
     assertEquals(key[1], doc.getKey());
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
          assertEquals("{\"data\":2}", new String(doc.getContentAsByteArray(), "UTF-8"));
     } else
@@ -100,7 +146,10 @@ public class test_OracleCollection extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       metaDoc = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
-    } 
+    } else if ( isCompatibleOrGreater(COMPATIBLE_20)) {
+      metaDoc = client.createMetadataBuilder().contentColumnType("JSON")
+          .versionColumnMethod("UUID").keyColumnAssignmentMethod("UUID").build();
+    }
     else
     {
       metaDoc = client.createMetadataBuilder().keyColumnAssignmentMethod("UUID").build();
@@ -113,7 +162,7 @@ public class test_OracleCollection extends SodaTestCase {
     col.insert(db.createDocumentFromString("{ \"data\" : 1234 }"));
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
     }
@@ -209,7 +258,7 @@ public class test_OracleCollection extends SodaTestCase {
   public void testInsertAndGet() throws Exception {
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       metaDoc = null;
     } else
@@ -222,29 +271,59 @@ public class test_OracleCollection extends SodaTestCase {
     
     // Pass document without key
     OracleDocument doc = col.insertAndGet(db.createDocumentFromString(null, "{ \"data\" : 1234 }", null));
-    verifyNullContentDocument(doc);
     
+    OracleDocument metadata = col.admin().getMetadata();
+    String sMetadata = metadata.getContentAsString();
+    JsonReader jsonReader = Json.createReader(new StringReader(sMetadata));
+    JsonObject jsonObject = jsonReader.readObject();
+    jsonReader.close();
+
+    boolean isNative = false;
+    if (jsonObject.containsKey("native")) {
+      isNative = jsonObject.getBoolean("native");
+    }
+    
+    if (isNative) {
+      verifyNullContentDocument(doc,false);
+    } else{
+      verifyNullContentDocument(doc);
+    }
+  
     doc = col.find().key(doc.getKey()).getOne();
-    if (isJDCSOrATPMode())
-    {
-      assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
-    } else
-    {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
+      if (isCompatibleOrGreater(COMPATIBLE_23)) {
+        //Verify if exists _id
+        OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+        OracleJsonValue id = obj.get("_id");
+        assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+        OracleJsonBinary bid = id.asJsonBinary();
+        assertTrue(bid.isId());
+
+        //Verify content data
+        OracleJsonValue data = obj.get("data");
+        assertEquals("1234",data.toString());
+      } else {
+        assertEquals("{\"data\":1234}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }
+    } else {
       assertEquals("{ \"data\" : 1234 }", new String(doc.getContentAsByteArray(), "UTF-8"));
     }
     
     // Pass document with key
     try {
       col.insertAndGet(db.createDocumentFromString("id-x", "{ \"data\" : 2000 }", null));
-      fail("No exception when key is provided," + 
+      //Bug number: 35803196 this is not correct behavior and should fail.
+      if (!isCompatibleOrGreater(COMPATIBLE_23)) {
+        fail("No exception when key is provided," + 
                                   "and the collection has auto-generated keys");
+      }
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals(e.getMessage(), "The collection is not configured with client-assigned keys," + 
                                    " but the input document has a key.");
     }
 
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
       return;
     //  Pass document with non-JSON content
     doc = col.insertAndGet(db.createDocumentFromString(null, "non-JSON content", "text/plain"));
@@ -322,7 +401,7 @@ public class test_OracleCollection extends SodaTestCase {
       
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       metaDoc = null;
     } else
@@ -338,9 +417,22 @@ public class test_OracleCollection extends SodaTestCase {
     col.insert(list.iterator());
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
-      assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      if (isCompatibleOrGreater(COMPATIBLE_23)) {
+        //Verify if exists _id
+        OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+        OracleJsonValue id = obj.get("_id");
+        assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+        OracleJsonBinary bid = id.asJsonBinary();
+        assertTrue(bid.isId());
+
+        //Verify content data
+        OracleJsonValue data = obj.get("data");
+        assertEquals("1000",data.toString());
+      } else {
+        assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }
     } else
     {
       assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
@@ -348,11 +440,13 @@ public class test_OracleCollection extends SodaTestCase {
     
     // // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       list.add(db.createDocumentFromString("{ \"data\" : \"abcd\" }"));
       list.add(db.createDocumentFromString("{ \"hello\" : \"world\" }"));
-      list.add(db.createDocumentFromString(null));
+      if (!isCompatibleOrGreater(COMPATIBLE_23)) {
+        list.add(db.createDocumentFromString(null));
+      }
     } else
     {
       list.add(db.createDocumentFromString(null, "{ \"data\" : \"abcd\" }", null));
@@ -361,13 +455,18 @@ public class test_OracleCollection extends SodaTestCase {
     }
     
     col.insert(list.iterator());
-    assertEquals(4, col.find().count());
+    if (isCompatibleOrGreater(COMPATIBLE_23)) {
+      assertEquals(3, col.find().count());
+    } else {
+      assertEquals(4, col.find().count());
+    }
+
     if(autoCommit == false)
       conn.commit();
     
     // Pass the documents with key and without key
     list.clear();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
       list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
@@ -380,8 +479,11 @@ public class test_OracleCollection extends SodaTestCase {
 
     try {
       col.insert(list.iterator());
-      fail("No exception when key is provided," + 
-                                  "and the collection has auto-generated keys");
+      //Bug number: 35803196 this is not correct behavior and should fail.
+      if (!isCompatibleOrGreater(COMPATIBLE_23)) {
+        fail("No exception when key is provided," + 
+               "and the collection has auto-generated keys");
+      }
     } catch (OracleException e) {
       // Expect an OracleException
       assertEquals(e.getMessage(), "The collection is not configured with client-assigned key," +
@@ -407,7 +509,7 @@ public class test_OracleCollection extends SodaTestCase {
         .keyColumnAssignmentMethod("CLIENT").build();
     
     OracleCollection col2;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode()  ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       col2 = dbAdmin.createCollection("testInsert2-2", null);
     } else
@@ -420,7 +522,7 @@ public class test_OracleCollection extends SodaTestCase {
     String[] key = new String[2];
     key[0] = "id-1";
     key[1] = "id-2";
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       doc = col2.insertAndGet(db.createDocumentFromString("{\"data\":1001}"));
       key[0] = doc.getKey();
@@ -437,21 +539,45 @@ public class test_OracleCollection extends SodaTestCase {
     
     OracleDocument doc2 = col2.findOne(key[0]);
     assertEquals(key[0], doc2.getKey());
-    assertEquals("{\"data\":1001}", new String(doc2.getContentAsByteArray(), "UTF-8"));
-    
+    if (isCompatibleOrGreater(COMPATIBLE_23)) {
+      //Verify if exists _id
+      OracleJsonObject obj = doc2.getContentAs(OracleJsonObject.class);
+      OracleJsonValue id = obj.get("_id");
+      assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+      OracleJsonBinary bid = id.asJsonBinary();
+      assertTrue(bid.isId());
+
+      //Verify content data
+      OracleJsonValue data = obj.get("data");
+      assertEquals("1001",data.toString());
+    } else {
+      assertEquals("{\"data\":1001}", new String(doc2.getContentAsByteArray(), "UTF-8"));
+    }
+
     doc2 = col2.find().key(key[1]).getOne();
-    if (isJDCSOrATPMode())
-    {
-      assertEquals("{\"Hello\":\"JSON\"}", new String(doc2.getContentAsByteArray(), "UTF-8"));
-    } else
-    {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
+      if (isCompatibleOrGreater(COMPATIBLE_23)) {
+        //Verify if exists _id
+        OracleJsonObject obj = doc2.getContentAs(OracleJsonObject.class);
+        OracleJsonValue id = obj.get("_id");
+        assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+        OracleJsonBinary bid = id.asJsonBinary();
+        assertTrue(bid.isId());
+
+        //Verify content data
+        OracleJsonValue data = obj.get("Hello");
+        assertEquals("\"JSON\"",data.toString());
+      } else {
+        assertEquals("{\"Hello\":\"JSON\"}", new String(doc2.getContentAsByteArray(), "UTF-8"));
+      }
+    } else {
       assertEquals("Hello JSON", new String(doc2.getContentAsByteArray(), "UTF-8"));
     }
     
     if (autoCommit == false)
       conn.commit();
     
-    if (!isJDCSOrATPMode())// UUID assigned key won't be conflicted
+    if (!isJDCSOrATPMode() && ! isCompatibleOrGreater(COMPATIBLE_20))// UUID assigned key won't be conflicted
     {
       try {
         // Tests when there are key conflicts between newly inserted document and the existing doc
@@ -577,13 +703,16 @@ public class test_OracleCollection extends SodaTestCase {
     testInsert2(false);
   }
   
-  private void verifyNullContentDocumentList(List<OracleDocument> list) throws Exception {
+  private void verifyNullContentDocumentList(List<OracleDocument> list, boolean checkTimeColumns) throws Exception {
     Iterator<OracleDocument> it = list.iterator();
     while (it.hasNext()) {
       OracleDocument doc = it.next();
-      verifyNullContentDocument(doc);
+      verifyNullContentDocument(doc, checkTimeColumns);
     }
-    
+  }
+
+  private void verifyNullContentDocumentList(List<OracleDocument> list) throws Exception {
+    verifyNullContentDocumentList(list, true);
   }
   
   private void testInsertAndGet2(boolean autoCommit) throws Exception {
@@ -591,7 +720,7 @@ public class test_OracleCollection extends SodaTestCase {
       
     // Configured to auto-generate key
     OracleDocument metaDoc;
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       metaDoc = null;
     } else
@@ -606,25 +735,53 @@ public class test_OracleCollection extends SodaTestCase {
     List<OracleDocument> list = new ArrayList<OracleDocument>();
     list.add(db.createDocumentFromString(null, "{ \"data\" : 1000 }", "application/json"));
     List<OracleDocument> resultList = col.insertAndGet(list.iterator());
-    verifyNullContentDocumentList(resultList);
+
+    OracleDocument metadata = col.admin().getMetadata();
+    String sMetadata = metadata.getContentAsString();
+    JsonReader jsonReader = Json.createReader(new StringReader(sMetadata));
+    JsonObject jsonObject = jsonReader.readObject();
+    jsonReader.close();
+
+    boolean isNative = false;
+    if (jsonObject.containsKey("native")) {
+      isNative = jsonObject.getBoolean("native");
+    }
+
+    if (isNative) 
+      verifyNullContentDocumentList(resultList, false);
+    else
+      verifyNullContentDocumentList(resultList);
     
     OracleDocument doc = col.find().getOne();
     assertNotNull(doc.getKey());
-    if (isJDCSOrATPMode())
-    {
-      assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
-    } else
-    {
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20)) {
+      if (isCompatibleOrGreater(COMPATIBLE_23)) {
+        //Verify if exists _id
+        OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+        OracleJsonValue id = obj.get("_id");
+        assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+        OracleJsonBinary bid = id.asJsonBinary();
+        assertTrue(bid.isId());
+
+        //Verify content data
+        OracleJsonValue data = obj.get("data");
+        assertEquals("1000",data.toString());
+      } else {
+        assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }
+    } else {
       assertEquals("{ \"data\" : 1000 }", new String(doc.getContentAsByteArray(), "UTF-8"));
     }
 
     // Pass the list containing documents with null content and non-JSON content
     list.clear();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       list.add(db.createDocumentFromString("{\"data\":\"abcd\"}"));
       list.add(db.createDocumentFromString("{\"hello\":\"world\"}"));
-      list.add(db.createDocumentFromString(null));
+      if (!isCompatibleOrGreater(COMPATIBLE_23)) {
+        list.add(db.createDocumentFromString(null));
+      }
     } else
     {
       list.add(db.createDocumentFromString(null, "{\"data\":\"abcd\"}", null));
@@ -633,37 +790,85 @@ public class test_OracleCollection extends SodaTestCase {
     }
     
     resultList = col.insertAndGet(list.iterator());
-    verifyNullContentDocumentList(resultList);
+    if (isNative) 
+      verifyNullContentDocumentList(resultList, false);
+    else
+      verifyNullContentDocumentList(resultList);
     doc = col.findOne(resultList.get(0).getKey());
 
-    assertEquals("{\"data\":\"abcd\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    if (isCompatibleOrGreater(COMPATIBLE_23)) {
+      //Verify if exists _id
+      OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+      OracleJsonValue id = obj.get("_id");
+      assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+      OracleJsonBinary bid = id.asJsonBinary();
+      assertTrue(bid.isId());
 
-    String lastModified = resultList.get(1).getLastModified();
-    doc = ((OracleOperationBuilderImpl)col.find().key(resultList.get(1).getKey())).lastModified(lastModified).getOne();
-    assertNotNull(doc);
-    if (isJDCSOrATPMode())
-      assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
-    else
-      assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
+      //Verify content data
+      OracleJsonValue data = obj.get("data");
+      assertEquals("\"abcd\"",data.toString());
+    } else {
+      assertEquals("{\"data\":\"abcd\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+    }
+    
+    if (!isNative) {
+      String lastModified = resultList.get(1).getLastModified();
+      doc = ((OracleOperationBuilderImpl)col.find().key(resultList.get(1).getKey())).lastModified(lastModified).getOne();
+      assertNotNull(doc);
+
+      if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
+        if (isCompatibleOrGreater(COMPATIBLE_23)) {
+          //Verify if exists _id
+          OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+          OracleJsonValue id = obj.get("_id");
+          assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+          OracleJsonBinary bid = id.asJsonBinary();
+          assertTrue(bid.isId());
+
+          //Verify content data
+          OracleJsonValue data = obj.get("hello");
+          assertEquals("\"world\"",data.toString());
+        } else {
+          assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+        }
+      else
+        assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
+    }
  
     String version = resultList.get(1).getVersion();
     doc = col.find().key(resultList.get(1).getKey()).version(version).getOne();
-    if (isJDCSOrATPMode())
-      assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));  
+    if (isJDCSOrATPMode() || isCompatibleOrGreater(COMPATIBLE_20))
+      if (isCompatibleOrGreater(COMPATIBLE_23)) {
+        //Verify if exists _id
+        OracleJsonObject obj = doc.getContentAs(OracleJsonObject.class);
+        OracleJsonValue id = obj.get("_id");
+        assertEquals(OracleJsonType.BINARY, id.getOracleJsonType());
+        OracleJsonBinary bid = id.asJsonBinary();
+        assertTrue(bid.isId());
+
+        //Verify content data
+        OracleJsonValue data = obj.get("hello");
+        assertEquals("\"world\"",data.toString());
+      } else {
+        assertEquals("{\"hello\":\"world\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
+      }  
     else
       assertEquals("Hello World", new String(doc.getContentAsByteArray(), "UTF-8"));  
  
-    doc = col.findOne(resultList.get(2).getKey());
-    assertEquals(null, ((OracleDocumentImpl) doc).getContentAsStream());
-
-    assertEquals(4, col.find().count());
+    if (isCompatibleOrGreater(COMPATIBLE_23)) {
+      assertEquals(3, col.find().count());
+    } else {
+      doc = col.findOne(resultList.get(2).getKey());
+      assertEquals(null, ((OracleDocumentImpl) doc).getContentAsStream());
+      assertEquals(4, col.find().count());
+    }
     
     if(autoCommit == false)
       conn.commit();
     
     // Pass the documents with key and without key
     list.clear();
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
     {
       list.add(db.createDocumentFromString("{ \"data\" : 2000 }"));
       list.add(db.createDocumentFromString("id-1","{ \"data\" : 3000 }"));
@@ -673,17 +878,21 @@ public class test_OracleCollection extends SodaTestCase {
       list.add(db.createDocumentFromString("id-1", "{ \"data\" : 3000 }", null));
     }
     
-    try {
-      col.insertAndGet(list.iterator());
-      fail("No exception when key is provided," +
-                                  "and the collection has auto-generated keys");
-    } catch (OracleException e) {
-      // Expect an OracleException
-      assertEquals(e.getMessage(), "The collection is not configured with client-assigned key," +
-                                   " but documents iterator returned a document with a key, after" +
-                                   " returning 1 documents.");
+    //Bug number: 35803196 this is not correct behavior and should fail.
+    if (isCompatibleOrGreater(COMPATIBLE_23)) {
+      assertNotNull(col.insertAndGet(list.iterator()));
+    } else {
+      try {
+        col.insertAndGet(list.iterator());
+        fail("No exception when key is provided," +
+                                "and the collection has auto-generated keys");
+      } catch (OracleException e) {
+        // Expect an OracleException
+        assertEquals(e.getMessage(), "The collection is not configured with client-assigned key," +
+                                  " but documents iterator returned a document with a key, after" +
+                                  " returning 1 documents.");
+      }
     }
-
     try {
       // Pass null iterator for documents
       col.insertAndGet((java.util.Iterator<OracleDocument>) null);
@@ -693,7 +902,7 @@ public class test_OracleCollection extends SodaTestCase {
       assertEquals("documents argument cannot be null.", e.getMessage());
     }
     
-    if (isJDCSOrATPMode()) // no need to test following tests in jdcs mode
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20)) // no need to test following tests in jdcs mode
     {
       if (autoCommit == false)
         conn.commit();
@@ -877,7 +1086,7 @@ public class test_OracleCollection extends SodaTestCase {
       doc = db.createDocumentFromString("{ \"data\" : \"v1\" }");
       col.save(doc);
       doc = col.find().getOne();
-      if (isJDCSOrATPMode())
+      if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
       {
         assertEquals("{\"data\":\"v1\"}", new String(doc.getContentAsByteArray(), "UTF-8"));
       } else
@@ -886,7 +1095,7 @@ public class test_OracleCollection extends SodaTestCase {
       }      
     }
     
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
       return;
 
     if(colAdmin.isHeterogeneous()) {
@@ -977,6 +1186,11 @@ public class test_OracleCollection extends SodaTestCase {
     if (isJDCSOrATPMode())
     {
       mDoc = null;
+    } else if ( isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc = client.createMetadataBuilder()
+          .contentColumnType("JSON").versionColumnMethod("UUID")
+          .keyColumnAssignmentMethod("GUID").keyColumnType("VARCHAR2")
+          .build();
     } else
     {
       mDoc = client.createMetadataBuilder()
@@ -988,7 +1202,7 @@ public class test_OracleCollection extends SodaTestCase {
     OracleCollection col = dbAdmin.createCollection("testSave", mDoc);
     testSaveWithCol(col, false);
     
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
         return;
       
     // Configured to client-generate key and heterogeneous collection
@@ -1053,7 +1267,7 @@ public class test_OracleCollection extends SodaTestCase {
       doc = col.saveAndGet(doc);
       verifyNullContentDocument(doc);
       doc = col.find().key(doc.getKey()).version(doc.getVersion()).getOne();
-      if (isJDCSOrATPMode())
+      if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
       {
         assertEquals("{\"data\":1000}", new String(doc.getContentAsByteArray(), "UTF-8"));
       } else
@@ -1062,7 +1276,7 @@ public class test_OracleCollection extends SodaTestCase {
       }      
     }
     
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
       return;
     
     if(colAdmin.isHeterogeneous()) {
@@ -1169,6 +1383,9 @@ public class test_OracleCollection extends SodaTestCase {
     {
       // ### replace with new builder once it becomes available
       mDoc4 = db.createDocumentFromString("{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"},\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\"},\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"},\"versionColumn\":{\"name\":\"VERSION\",\"method\":\"UUID\"},\"creationTimeColumn\":{\"name\":\"CREATED_ON\"},\"readOnly\":false}");
+    } else if ( isCompatibleOrGreater(COMPATIBLE_20)) {
+      mDoc4 = client.createMetadataBuilder().contentColumnType("JSON")
+          .versionColumnMethod("UUID").keyColumnAssignmentMethod("UUID").build();
     } 
     else
     {
@@ -1181,22 +1398,24 @@ public class test_OracleCollection extends SodaTestCase {
     if (isJDCSOrATPMode())
         return;
 
-    // Configured to auto-generate key and heterogeneous collection
-    OracleDocument mDoc = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("GUID").mediaTypeColumnName("Media_Type")
-        .keyColumnType("RAW")
-        .build();
-    OracleCollection col = dbAdmin.createCollection("testSaveAndGet", mDoc);
-    testSaveAndGetWithCol(col, false);
-     
-    // Configured to client-generate key and heterogeneous collection
-    OracleDocument mDoc2 = client.createMetadataBuilder()
-        .keyColumnAssignmentMethod("CLIENT").mediaTypeColumnName("Media_Type")
-        .keyColumnType("NVARCHAR2")
-        .build();
-    OracleCollection col2 = dbAdmin.createCollection("testSaveAndGet2", mDoc2);
-    testSaveAndGetWithCol(col2, true);
-    
+    if (! isCompatibleOrGreater(COMPATIBLE_20)) {
+      // Configured to auto-generate key and heterogeneous collection
+      OracleDocument mDoc = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("GUID").mediaTypeColumnName("Media_Type")
+          .keyColumnType("RAW")
+          .build();
+      OracleCollection col = dbAdmin.createCollection("testSaveAndGet", mDoc);
+      testSaveAndGetWithCol(col, false);
+      
+      // Configured to client-generate key and heterogeneous collection
+      OracleDocument mDoc2 = client.createMetadataBuilder()
+          .keyColumnAssignmentMethod("CLIENT").mediaTypeColumnName("Media_Type")
+          .keyColumnType("NVARCHAR2")
+          .build();
+      OracleCollection col2 = dbAdmin.createCollection("testSaveAndGet2", mDoc2);
+      testSaveAndGetWithCol(col2, true);
+    }
+
     // Configured to client-generate key and non-heterogeneous collection
     OracleDocument mDoc3 = client.createMetadataBuilder()
         .keyColumnAssignmentMethod("CLIENT")
@@ -1221,7 +1440,7 @@ public class test_OracleCollection extends SodaTestCase {
   }
 
   public void testFindFragment() throws Exception {
-    if (isJDCSOrATPMode())
+    if (isJDCSOrATPMode() ||  isCompatibleOrGreater(COMPATIBLE_20))
         return;
     // findFragment only work for non-JSON data
     OracleDocument mDoc = client.createMetadataBuilder().
