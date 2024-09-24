@@ -171,13 +171,13 @@ If you need to download the SODA jar and the dependencies manually, you can do t
 
 *    JDBC 8 or above jar. For example, if you're using JDK8 or above, you could use ojdbc8.jar that ships with Oracle Database, available from [this page](https://www.oracle.com/database/technologies/appdev/jdbc-downloads.html). Note: to work with JSON type, which is the new default JSON storage in SODA when running against 21c database with compatible set to 20 or above, a 21c or above JDBC jar is required. To work with 19c autonomous cloud services (Autonomous JSON Database, Autonomous Transaction Processing, Autonomous Data Warehouse) you must a use a 19.7 or above JDBC jar.
 
-*    javax.json-1.1.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.1.4/javax.json-1.1.4.jar).
+*    javax.json-1.1.4.jar. This is the JSR353 implementation, download it from [here](http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.1.4/javax.json-1.1.4.jar). Version 1.1.4 is the latest (final).
 
 *    orajsoda-version.jar. The SODA jar. Download the latest version [here](https://github.com/oracle/soda-for-java/releases).
 
-*    JSONP API. jakarta.json-api-2.1.3.jar. Download the latest version [here](https://mvnrepository.com/artifact/jakarta.json/jakarta.json-api/2.1.3).
+*    JSONP API. jakarta.json-api-version.jar. Download the latest version [here](https://mvnrepository.com/artifact/jakarta.json/jakarta.json-api/2.1.3).
 
-*    Parsson. jakarta.json-1.1.5.jar. Download the latest version [here](https://mvnrepository.com/artifact/org.eclipse.parsson/parsson/1.1.5).
+*    Parsson. jakarta.json-version.jar. Download the latest version [here](https://mvnrepository.com/artifact/org.eclipse.parsson/parsson/1.1.5).
 
 
 Compile and run testSODA.java, making sure the necessary jars are in the classpath. JDK 8 or above is required. For example, assuming you're in the directory where the jars are located, and you are using ojdbc8.jar, do:
