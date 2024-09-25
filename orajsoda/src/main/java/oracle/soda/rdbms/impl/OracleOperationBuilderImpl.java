@@ -100,6 +100,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
   private int limit;
 
+  private int prefetch;
+
+  private long rowDataLimit;
+
   private long skip;
   private boolean orderByKey = true;
   private Long asOfScn = null;
@@ -191,6 +195,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     firstRows = -1;
 
     metrics = collection.getMetrics();
+
+    prefetch = 0;
+
+    rowDataLimit = 0;
   }
 
   // If true, this flag requests that the returned cursor
@@ -1846,8 +1854,15 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       {
         // If it's not a single row operation, set array fetch size
         if (!isSingleKey)
-          stmt.setFetchSize(SODAConstants.BATCH_FETCH_SIZE);
+        {
+          if (prefetch > 0)
+            stmt.setFetchSize(Math.min(prefetch, SODAConstants.BATCH_FETCH_SIZE));
+          else
+            stmt.setFetchSize(SODAConstants.BATCH_FETCH_SIZE);
 
+          if (rowDataLimit > 0)
+            ((oracle.jdbc.internal.OracleStatement)stmt).setRowDataLimit(rowDataLimit);
+        }
         // Prefetch LOB data with the row(s)
         collection.db.setLobPrefetchSize(stmt);
       }
@@ -2450,6 +2465,30 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       firstRows = numRows;
     }
 
+    return this;
+  }
+
+  /* Not part of a public API */
+  public OracleOperationBuilder prefetch(int prefetch) throws OracleException
+  {
+    if (prefetch < 0L)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_ARG_MUST_BE_NON_NEGATIVE,
+                                    "prefetch");
+    }
+    this.prefetch = prefetch;
+    return this;
+  }
+
+  /* Not part of a public API */
+  public OracleOperationBuilder rowDataLimit(long rowDataLimit) throws OracleException
+  {
+    if (prefetch < 0L)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_ARG_MUST_BE_NON_NEGATIVE,
+                                    "rowDataLimit");
+    }
+    this.rowDataLimit = rowDataLimit;
     return this;
   }
 

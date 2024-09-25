@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -106,10 +106,6 @@ public interface OracleDocument
    *     {@code java.io.Reader}
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as JSON text. </td>
-   * </tr>
-   * <tr>
-   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}</td>
-   * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as UTF8 JSON text. </td>
    * </tr>
    * </table>
    *
