@@ -42,7 +42,7 @@
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
-            <version>23.3.0.23.09</version>
+            <version>23.5.0.24.07</version>
         </dependency>
     </dependencies>
 
@@ -86,7 +86,7 @@
                     </excludes>
                 </configuration>
 	        </plugin>
-	        <plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.6.3</version>
@@ -96,8 +96,10 @@
                         <phase>prepare-package</phase>
                         <goals>
                             <goal>javadoc</goal>
+                            <goal>jar</goal>
                         </goals>
                         <configuration>
+                            <doctitle>Version 1.1.27</doctitle>
                             <doclint>none</doclint>
                             <sourcepath>src/main/java</sourcepath>
                             <overview>src/main/java/oracle/soda/overview.html</overview>
@@ -106,9 +108,18 @@
                             <version>false</version>
                             <author>false</author>
                             <failOnError>false</failOnError>
+                            <overview>src/main/java/oracle/soda/overview.html</overview>
+
                             <sourceFileExcludes>
                                 <sourceFileExclude>${excludes}</sourceFileExclude>
                             </sourceFileExcludes>
+
+                            <sourceFileIncludes>
+                                <sourceFileInclude>**/oracle/soda/*.java</sourceFileInclude>
+                                <sourceFileInclude>**/oracle/soda/rdbms/OracleRDBMSMetadataBuilder.java</sourceFileInclude>
+                                <sourceFileInclude>**/oracle/soda/rdbms/OracleRDBMSClient.java</sourceFileInclude>
+                            </sourceFileIncludes>
+
                         </configuration>
                     </execution>
                 </executions>

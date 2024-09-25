@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -145,13 +145,6 @@ public interface OracleDocumentFactory
    *     {@code java.io.Reader}<br>
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">A JSON text value. </td>
-   * </tr>
-   * <tr>
-   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}<br>
-   *     {@code byte[]}<br>
-   * </td>
-   * <td style="border: 1px solid black; padding: 5px;">Either a JSON text value (UTF8, UTF16, etc) or Oracle binary JSON.
-   * </td>
    * </tr>
    * </table>
    *

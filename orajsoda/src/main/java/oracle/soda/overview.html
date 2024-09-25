@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SODA - Simple Oracle Document Access</title>
+</head>
+<body>
+<h1 style="font-size: 1.8em; text-align: center;"><span style="font-weight: bold;">SODA - Simple Oracle Document Access</span></h1>
+<p>
+  SODA is a simple API for working with document collections. The API
+  is primarily designed for working with JSON documents, although
+  other types of document content, such as images, audio, and video,
+  are supported as well.
+</p>
+<p>
+  Find, insert, replace, and remove are some of the operations provided on
+  document collections.
+</p>
+<p>
+  The core interfaces are:
+</p>
+<table border="1" style="width:600px">
+  <caption>&nbsp;</caption>
+  <tr>
+    <th>Interface</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>OracleClient</td>
+    <td>Entry point for working with the API. For the Oracle RDBMS SODA implementation, the entry point is the oracle.soda.rdbms.OracleRDBMSClient class, which implements this interface</td>
+  </tr>
+  <tr>
+    <td>OracleDocument</td>
+    <td>Document</td>
+  </tr>
+  <tr>
+    <td>OracleDatabase</td>
+    <td>Database of document collections. Provides methods for opening of collections</td>
+  </tr>
+  <tr>
+    <td>OracleDatabaseAdmin</td>
+    <td>Provides DDL and metadata methods, such as collection creation, for the OracleDatabase</td>
+  </tr>
+  <tr>
+    <td>OracleCollection</td>
+    <td>Document collection. Provides find(), insert(), etc. methods</td>
+  </tr>
+  <tr>
+    <td>OracleCollectionAdmin</td>
+    <td>Provides DDL and metadata methods, such as index creation, for the OracleCollection</td>
+  </tr>
+  <tr>
+    <td>OracleOperationBuilder</td>
+    <td>A builder and executor of read and write operations on the document collection</td>
+  </tr>
+  <tr>
+    <td>OracleCursor</td>
+    <td>Returned by OracleOperationBuilder.iterator(). Allows iteration over results of a read operation on the document collection. The next() method returns the next OracleDocument from the result</td>
+  </tr>
+</table>
+<p><b>Note: future additions to the SODA interfaces are possible</b></p>
+</body>
+</html>
