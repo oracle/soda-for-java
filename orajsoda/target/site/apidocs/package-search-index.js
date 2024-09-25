@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"oracle.soda"},{"l":"oracle.soda.rdbms"}]
