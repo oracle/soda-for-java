@@ -1,0 +1,55 @@
+Testsuite: oracle.json.tests.soda.test_OracleDatabaseAdmin
+Tests run: 21, Failures: 0, Errors: 1, Time elapsed: 8.742 sec
+
+Testcase: testCreateCollection2(oracle.json.tests.soda.test_OracleDatabaseAdmin):	Caused an ERROR
+null
+oracle.soda.rdbms.impl.SODAUtils$1OracleSQLException
+	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:124)
+	at oracle.soda.rdbms.impl.SODAUtils.makeExceptionWithSQLText(SODAUtils.java:87)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl.callCreatePLSQL(OracleDatabaseImpl.java:2048)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl.createCollection(OracleDatabaseImpl.java:829)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl.createCollection(OracleDatabaseImpl.java:1108)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl.access$200(OracleDatabaseImpl.java:76)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl$OracleDatabaseAdministrationImpl.createCollection(OracleDatabaseImpl.java:2921)
+	at oracle.json.tests.soda.test_OracleDatabaseAdmin.testCreateCollection2(test_OracleDatabaseAdmin.java:248)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+Caused by: java.sql.SQLException: ORA-28361: Master key not yet set.
+
+https://docs.oracle.com/error-help/db/ora-28361/
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:702)
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:608)
+	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1277)
+	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:1102)
+	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:456)
+	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:482)
+	at oracle.jdbc.driver.T4CCallableStatement.doOall8(T4CCallableStatement.java:216)
+	at oracle.jdbc.driver.T4CCallableStatement.executeForRows(T4CCallableStatement.java:1164)
+	at oracle.jdbc.driver.OracleStatement.executeSQLStatement(OracleStatement.java:1652)
+	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1417)
+	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3731)
+	at oracle.jdbc.driver.OraclePreparedStatement.execute(OraclePreparedStatement.java:3945)
+	at oracle.jdbc.driver.OracleCallableStatement.execute(OracleCallableStatement.java:4202)
+	at oracle.jdbc.driver.OraclePreparedStatementWrapper.execute(OraclePreparedStatementWrapper.java:1011)
+	at oracle.soda.rdbms.impl.OracleDatabaseImpl.callCreatePLSQL(OracleDatabaseImpl.java:1984)
+Caused by: Error : 28361, Position : 0, SQL = begin
+  DBMS_SODA_ADMIN.CREATE_COLLECTION(
+                   P_URI_NAME    => :1 ,
+                   P_CREATE_MODE => :2 ,
+                   P_DESCRIPTOR  => :3 ,
+                   P_CREATE_TIME => :4 ,
+                   P_23C_DRIVER => true);
+end;, Original SQL = begin
+  DBMS_SODA_ADMIN.CREATE_COLLECTION(
+                   P_URI_NAME    => ?,
+                   P_CREATE_MODE => ?,
+                   P_DESCRIPTOR  => ?,
+                   P_CREATE_TIME => ?,
+                   P_23C_DRIVER => true);
+end;, Error Message = ORA-28361: Master key not yet set.
+
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:710)
+
+

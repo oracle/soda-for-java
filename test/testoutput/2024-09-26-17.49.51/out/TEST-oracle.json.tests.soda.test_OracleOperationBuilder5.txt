@@ -1,0 +1,167 @@
+Testsuite: oracle.json.tests.soda.test_OracleOperationBuilder5
+Tests run: 68, Failures: 4, Errors: 0, Time elapsed: 215.648 sec
+
+Testcase: testTimestampJSON(oracle.json.tests.soda.test_OracleOperationBuilder5):	FAILED
+INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 1761420087 
+
+--------------------------------------------------------------------------------
+| Id | Operation           | Name                 | Rows | Bytes | Cost | Time |
+--------------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                      |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testTimestampJSONIdx |      |       |      |      |
+--------------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+junit.framework.AssertionFailedError: INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 1761420087 
+
+--------------------------------------------------------------------------------
+| Id | Operation           | Name                 | Rows | Bytes | Cost | Time |
+--------------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                      |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testTimestampJSONIdx |      |       |      |      |
+--------------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:222)
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:194)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testTimestamp(test_OracleOperationBuilder5.java:1042)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testTimestampJSON(test_OracleOperationBuilder5.java:967)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testDateJSON(oracle.json.tests.soda.test_OracleOperationBuilder5):	FAILED
+INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 2249775125 
+
+---------------------------------------------------------------------------
+| Id | Operation           | Name            | Rows | Bytes | Cost | Time |
+---------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                 |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testDateJSONIdx |      |       |      |      |
+---------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+junit.framework.AssertionFailedError: INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 2249775125 
+
+---------------------------------------------------------------------------
+| Id | Operation           | Name            | Rows | Bytes | Cost | Time |
+---------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                 |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testDateJSONIdx |      |       |      |      |
+---------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:222)
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:194)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testDate(test_OracleOperationBuilder5.java:1306)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testDateJSON(test_OracleOperationBuilder5.java:1224)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testNumberJSON(oracle.json.tests.soda.test_OracleOperationBuilder5):	FAILED
+INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 1032872262 
+
+-----------------------------------------------------------------------------
+| Id | Operation           | Name              | Rows | Bytes | Cost | Time |
+-----------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                   |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testNumberJSONIdx |      |       |      |      |
+-----------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+junit.framework.AssertionFailedError: INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 1032872262 
+
+-----------------------------------------------------------------------------
+| Id | Operation           | Name              | Rows | Bytes | Cost | Time |
+-----------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                   |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testNumberJSONIdx |      |       |      |      |
+-----------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:222)
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:194)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testNumber(test_OracleOperationBuilder5.java:1571)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testNumberJSON(test_OracleOperationBuilder5.java:1480)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
+Testcase: testStringJSON(oracle.json.tests.soda.test_OracleOperationBuilder5):	FAILED
+INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 610748608 
+
+-----------------------------------------------------------------------------
+| Id | Operation           | Name              | Rows | Bytes | Cost | Time |
+-----------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                   |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testStringJSONIdx |      |       |      |      |
+-----------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+junit.framework.AssertionFailedError: INDEX RANGE SCAN is not found in explain plan:
+ Plan Hash Value  : 610748608 
+
+-----------------------------------------------------------------------------
+| Id | Operation           | Name              | Rows | Bytes | Cost | Time |
+-----------------------------------------------------------------------------
+|  0 | SELECT STATEMENT    |                   |      |       |      |      |
+|  1 |   TABLE ACCESS FULL | testStringJSONIdx |      |       |      |      |
+-----------------------------------------------------------------------------
+
+Notes
+-----
+- Dynamic sampling used for this statement ( level = 2 )
+
+
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:222)
+	at oracle.json.testharness.SodaTestCase.chkExplainPlan(SodaTestCase.java:194)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testString(test_OracleOperationBuilder5.java:1817)
+	at oracle.json.tests.soda.test_OracleOperationBuilder5.testStringJSON(test_OracleOperationBuilder5.java:1717)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at oracle.json.testharness.JsonTestCase.run(JsonTestCase.java:40)
+
+
