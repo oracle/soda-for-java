@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -116,6 +116,7 @@ public interface OracleDocumentFactory
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
    * {@code javax.json.JsonValue}<br>
+   * {@code jakarta.json.JsonValue}<br>
    * {@code oracle.sql.json.OracleJsonValue}
    * </td>
    * <td style="border: 1px solid black; padding: 5px;"> A instance of {@code JsonValue} or {@code OracleJsonValue}.  This includes derivations
@@ -133,6 +134,7 @@ public interface OracleDocumentFactory
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
    * {@code javax.json.stream.JsonParser}<br>
+   * {@code jakarta.json.stream.JsonParser}<br>
    * {@code oracle.sql.json.OracleJsonParser}
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">
@@ -154,6 +156,7 @@ public interface OracleDocumentFactory
    * </td>
    * </tr>
    * </table>
+   * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *
    * @see <a href="https://javaee.github.io/jsonp/">Java API for JSON Processing</a>
    *

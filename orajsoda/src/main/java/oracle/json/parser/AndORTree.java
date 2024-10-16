@@ -18,6 +18,7 @@
  */
 package oracle.json.parser;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -47,6 +48,8 @@ import oracle.json.util.ByteArray;
 import oracle.json.common.JsonFactoryProvider;
 import oracle.json.parser.Evaluator.EvaluatorCode;
 import oracle.sql.json.OracleJsonValue;
+import oracle.sql.json.OracleJsonFactory;
+import oracle.sql.json.OracleJsonGenerator;
 import oracle.sql.json.OracleJsonString;
 import oracle.sql.json.OracleJsonTimestampTZ;
 
@@ -867,11 +870,21 @@ public class AndORTree
     appendJsonExists(output, null, 0, isTreatAsAvailable);
   }
 
-  public int appendJsonExists(StringBuilder output, String tokenFormat, int startingTokenIndex, boolean isTreatAsAvailable)
+  public int appendJsonExists(StringBuilder output, String tokenFormat, int startingTokenIndex, 
+      boolean isTreatAsAvailable)
+  {
+      return appendJsonExists(output, tokenFormat, startingTokenIndex, isTreatAsAvailable, true, null);
+  }
+
+  public int appendJsonExists(StringBuilder output, String tokenFormat, int startingTokenIndex, 
+      boolean isTreatAsAvailable, boolean allowBinds, OracleJsonFactory factory)
   {
     // Assumes that this method is invoked only if hasJsonExists()
     // returns true. So jsonExists cannot be null here.
     if (jsonExists == null)
+      throw new IllegalStateException();
+    
+    if ((tokenFormat != null || startingTokenIndex != 0) && (!allowBinds))
       throw new IllegalStateException();
 
     int tokenCount = 0;
@@ -883,12 +896,10 @@ public class AndORTree
     output.append("'");
 
     int numBinds = getNumVals();
-    if (numBinds > 0)
-    {
+    if (numBinds > 0) {
       output.append(" passing ");
 
-      for (int varNum = 0; varNum < numBinds; ++varNum)
-      {
+      for (int varNum = 0; varNum < numBinds; ++varNum) {
         if (tokenFormat != null)
           token = String.format(tokenFormat, startingTokenIndex);
         ValueTypePair vpair = valueArray.get(varNum);
@@ -896,49 +907,126 @@ public class AndORTree
         if (varNum > 0)
           output.append(", ");
 
-        if (vpair.isTimestamp())
-        {
-          // This format can consume trailing timezones including a "Z"
-          // but only if it's used with TO_TIMESTAMP_TZ.
-          output.append("TO_TIMESTAMP_TZ(");
-          output.append(token);
-          output.append(",'SYYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')");
+        if (allowBinds) {
+          appendBindValue(vpair, output, token, isTreatAsAvailable);
+          tokenCount++;
+        } else {
+          appendInlineBindValueExpression(vpair.value, output, factory);
         }
-        else if (vpair.isDate())
-        {
-          // This format includes the time component to reliably consume
-          // Oracle date+time values, but should also work if the time is
-          // not present in the bind variable.
-          output.append("TO_DATE(");
-          output.append(token);
-          output.append("?,'SYYYY-MM-DD\"T\"HH24:MI:SS')");
-        }
-        else if (isTreatAsAvailable && vpair.isObject()) 
-        {
-          output.append("treat(");
-          output.append(token);
-          output.append(" as json(object))");
-        }
-        else if (isTreatAsAvailable && vpair.isArray()) 
-        {
-          output.append("treat(");
-          output.append(token);
-          output.append(" as json(array))");
-        }
-        else
-          output.append(token);
-
-        tokenCount++;
 
         output.append(" as \"B");
         output.append(Integer.toString(varNum));
         output.append("\"");
-
-	startingTokenIndex++;
+        
+        if (allowBinds)
+          startingTokenIndex++;
       }
     }
 
     return tokenCount;
+  }
+
+  private String getOsonHex(OracleJsonValue bind, OracleJsonFactory factory) {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    OracleJsonGenerator gen = factory.createJsonBinaryGenerator(baos);
+    gen.write(bind);
+    gen.close();
+    byte[] oson = baos.toByteArray();
+    String hex = ByteArray.rawToHex(oson);
+    return hex;
+  }
+
+  private void appendValueAsSQLType(String returnType, StringBuilder sql, String hex) {
+    if (returnType != null)
+      sql.append("json_value(json(hextoraw('").append(hex).append("')), '$' returning ").append(returnType).append(")");
+    else
+      sql.append("json(hextoraw('").append(hex).append("'))");
+  }
+
+  private void appendInlineBindValueExpression(JsonValue value, StringBuilder sql, OracleJsonFactory factory) {
+    OracleJsonValue ovalue = null;
+    try {
+      Wrapper wrapper;
+      if (!(value instanceof Wrapper) || !((wrapper = (Wrapper) value)).isWrapperFor(OracleJsonValue.class)) {
+        // infeasible as allowBinds is only false when input filter is oson
+        throw new UnsupportedOperationException();
+      }
+      ovalue = wrapper.unwrap(OracleJsonValue.class);
+    } catch (SQLException e) {
+      // infeasible
+      throw new IllegalStateException(e);
+    }
+    String hex = getOsonHex(ovalue, factory);
+    switch (ovalue.getOracleJsonType()) {
+    case ARRAY:
+    case NULL:
+    case OBJECT:
+    case TRUE:
+    case FALSE:
+      appendValueAsSQLType(null, sql, hex);
+      break;
+    case BINARY:
+      if (ovalue.asJsonBinary().isId())
+        appendValueAsSQLType(null, sql, hex);
+      else
+        appendValueAsSQLType("raw", sql, hex);
+      break;
+    case DATE:
+      appendValueAsSQLType("date", sql, hex);
+      break;
+    case DECIMAL:
+      appendValueAsSQLType("number", sql, hex);
+      break;
+    case DOUBLE:
+      appendValueAsSQLType("double precision", sql, hex);
+      break;
+    case FLOAT:
+      appendValueAsSQLType("float", sql, hex);
+      break;
+    case INTERVALDS:
+      appendValueAsSQLType("interval day to second", sql, hex);
+      break;
+    case INTERVALYM:
+      appendValueAsSQLType("interval year to month", sql, hex);
+      break;
+    case STRING:
+      appendValueAsSQLType("varchar2", sql, hex);
+      break;
+    case TIMESTAMP:
+      appendValueAsSQLType("timestamp", sql, hex);
+      break;
+    case TIMESTAMPTZ:
+      appendValueAsSQLType("timestamp with time zone", sql, hex);
+      break;
+    default:
+      throw new IllegalStateException();
+    }
+  }
+
+  private void appendBindValue(ValueTypePair vpair, StringBuilder output, String token, boolean isTreatAsAvailable) {
+    if (vpair.isTimestamp()) {
+      // This format can consume trailing timezones including a "Z"
+      // but only if it's used with TO_TIMESTAMP_TZ.
+      output.append("TO_TIMESTAMP_TZ(");
+      output.append(token);
+      output.append(",'SYYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')");
+    } else if (vpair.isDate()) {
+      // This format includes the time component to reliably consume
+      // Oracle date+time values, but should also work if the time is
+      // not present in the bind variable.
+      output.append("TO_DATE(");
+      output.append(token);
+      output.append("?,'SYYYY-MM-DD\"T\"HH24:MI:SS')");
+    } else if (isTreatAsAvailable && vpair.isObject()) {
+      output.append("treat(");
+      output.append(token);
+      output.append(" as json(object))");
+    } else if (isTreatAsAvailable && vpair.isArray()) {
+      output.append("treat(");
+      output.append(token);
+      output.append(" as json(array))");
+    } else
+      output.append(token);
   }
 
   /*
@@ -1082,13 +1170,15 @@ public class AndORTree
       hasSqlJsonClause();
   }
 
-  public boolean appendFilterSpec(StringBuilder sb, boolean append,
-                                  String columnName, String inputFormatClause,
-                                  boolean isTreatAsAvailable)
-	                          throws QueryException
-  {
+  public boolean appendFilterSpec(StringBuilder sb, boolean append, String columnName, String inputFormatClause,
+      boolean isTreatAsAvailable) throws QueryException {
+    return appendFilterSpec(sb, append, columnName, inputFormatClause, isTreatAsAvailable, true, null);
+  }
+
+  public boolean appendFilterSpec(StringBuilder sb, boolean append, String columnName, String inputFormatClause,
+      boolean isTreatAsAvailable, boolean allowBinds, OracleJsonFactory factory) throws QueryException {
     int length = sb.length();
-    appendFilterSpec(sb, append, columnName, inputFormatClause, null, 0, isTreatAsAvailable);
+    appendFilterSpec(sb, append, columnName, inputFormatClause, null, 0, isTreatAsAvailable, allowBinds, factory);
 
     if (sb.length() == length) {
       if (append == true)
@@ -1098,12 +1188,20 @@ public class AndORTree
     }
     return true;
   }
+  
+  
+  //Not part of a public API. Needs to be public for use from REST layer.
+  public int appendFilterSpec(StringBuilder sb, boolean append, String columnName, String inputFormatClause,
+      String format, int startingIndex, boolean isTreatAsAvailable) throws QueryException {
+    return appendFilterSpec(sb, append, columnName, inputFormatClause, format, startingIndex, isTreatAsAvailable, true, null);
+  }
 
-  // Not part of a public API. Needs to be public for use from REST layer.
+  //Not part of a public API
   public int appendFilterSpec(StringBuilder sb, boolean append,
                               String columnName, String inputFormatClause,
                               String format, int startingIndex,
-                              boolean isTreatAsAvailable) throws QueryException
+                              boolean isTreatAsAvailable, boolean allowBinds,
+                              OracleJsonFactory factory) throws QueryException
   {
     int tokenCount = 0;
 
@@ -1116,7 +1214,7 @@ public class AndORTree
     if (hasJsonExists())
     {
       appendAnd(sb, append);
-      tokenCount = appendFilterSpecJsonExists(sb, columnName, inputFormatClause, format, startingIndex, isTreatAsAvailable);
+      tokenCount = appendFilterSpecJsonExists(sb, columnName, inputFormatClause, format, startingIndex, isTreatAsAvailable, allowBinds, factory);
       append = true;
     }
 
@@ -1159,7 +1257,8 @@ public class AndORTree
 
   private int appendFilterSpecJsonExists(StringBuilder sb, String columnName,
                                          String inputFormatClause, String tokenFormat,
-                                         int startingTokenIndex, boolean isTreatAsAvailable)
+                                         int startingTokenIndex, boolean isTreatAsAvailable,
+                                         boolean allowBinds, OracleJsonFactory factory)
   {
     int tokenCount = 0;
     sb.append("JSON_EXISTS(");
@@ -1169,7 +1268,7 @@ public class AndORTree
     }
     
     sb.append(",");
-    tokenCount = appendJsonExists(sb, tokenFormat, startingTokenIndex, isTreatAsAvailable);
+    tokenCount = appendJsonExists(sb, tokenFormat, startingTokenIndex, isTreatAsAvailable, allowBinds, factory);
     if (this.strictTypeMode) {
       sb.append(" type(strict)");
     }
