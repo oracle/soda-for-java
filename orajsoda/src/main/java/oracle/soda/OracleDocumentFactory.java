@@ -148,13 +148,6 @@ public interface OracleDocumentFactory
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">A JSON text value. </td>
    * </tr>
-   * <tr>
-   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}<br>
-   *     {@code byte[]}<br>
-   * </td>
-   * <td style="border: 1px solid black; padding: 5px;">Either a JSON text value (UTF8, UTF16, etc) or Oracle binary JSON.
-   * </td>
-   * </tr>
    * </table>
    * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *
