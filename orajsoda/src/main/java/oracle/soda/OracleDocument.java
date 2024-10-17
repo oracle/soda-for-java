@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -17,6 +17,10 @@ package oracle.soda;
  *   <li>version or checksum (suitable for ETag)
  *   <li>media type ("application/json" for JSON documents)
  * </ul>
+ * <p>
+ * created-on and last-modified timestamps are not tracked for
+ * collections based on JSON Collection Tables and Duality Views (introduced in Oracle Database 23ai).
+ * For such collections these values are null.
  * <P>
  * It is valid for any of the above components to be missing in
  * a given <code>OracleDocument</code>. 
@@ -85,7 +89,9 @@ public interface OracleDocument
    * <th style="border: 1px solid black; padding: 5px;">Description</th>
    * </tr>
    * <tr>
-   * <td style="border: 1px solid black; padding: 5px;">{@code javax.json.JsonValue}<br>
+   * <td style="border: 1px solid black; padding: 5px;">
+   *     {@code javax.json.JsonValue}<br>
+   *     {@code jakarta.json.JsonValue}<br>
    *     {@code oracle.sql.json.OracleJsonValue}
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as {@code JsonValue} or {@code OracleJsonValue}.
@@ -95,6 +101,7 @@ public interface OracleDocument
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
    * {@code javax.json.stream.JsonParser}<br>
+   * {@code jakarta.json.stream.JsonParser}<br>
    * {@code oracle.sql.json.OracleJsonParser}
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">
@@ -112,7 +119,7 @@ public interface OracleDocument
    * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as UTF8 JSON text. </td>
    * </tr>
    * </table>
-   *
+   * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *
    * @param <T> the type of the returned content
    * @param type the type of the returned content
@@ -140,6 +147,8 @@ public interface OracleDocument
   /**
    * Returns the timestamp of the last modification to this document in
    * ISO format.
+   * <code>null</code> for collections based on JSON Collection
+   * Tables and Duality Views (introduced in Oracle Database 23ai).
    *
    * @return                 a <code>String</code> representation of the
    *                         timestamp, or <code>null</code> if the timestamp
@@ -149,6 +158,8 @@ public interface OracleDocument
 
   /**
    * Returns the timestamp of creation of this document in ISO format.
+   * <code>null</code> for collections based on JSON Collection
+   * Tables and Duality Views (introduced in Oracle Database 23ai).
    *
    * @return                 a <code>String</code> representation of the
    *                         timestamp, or <code>null</code> if the timestamp

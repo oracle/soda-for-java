@@ -52,7 +52,7 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     
     // if there's no property with "jdcs.mode" specified, false will be returned.
     protected static final boolean JDCS_MODE = Boolean.getBoolean("jdcs.mode");
-
+    protected static final boolean BUG_36425758 = Boolean.getBoolean("bug.36425758");
     protected static final boolean ATP_MODE = Boolean.getBoolean("atp.mode");
     protected static final String COMPATIBLE = System.getProperty("compatible");
 
@@ -171,6 +171,10 @@ public abstract class DatabaseTestCase extends JsonTestCase {
       return JDCS_MODE;
     }
 
+    public static boolean isBug36425758() {
+      return BUG_36425758;
+    }
+
     public static boolean isATPMode() {
       return ATP_MODE;
     }
@@ -178,6 +182,7 @@ public abstract class DatabaseTestCase extends JsonTestCase {
     public static boolean isJDCSOrATPMode() {
       return JDCS_MODE || ATP_MODE;
     }
+    
     public static String compatible() {
       return COMPATIBLE;
     }

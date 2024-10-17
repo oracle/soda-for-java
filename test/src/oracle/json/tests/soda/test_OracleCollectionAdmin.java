@@ -40,7 +40,6 @@ import oracle.soda.rdbms.impl.SODAUtils;
 import oracle.json.testharness.SodaTestCase;
 import oracle.json.testharness.ConnectionFactory;
 
-
 public class test_OracleCollectionAdmin extends SodaTestCase {
   
   public void testGetName() throws Exception {
@@ -2431,10 +2430,11 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
                      "\"o:preferred_column_name\":\"JSON_DOCUMENT$friends\"}}}";
     //Bug### is this a bug? o:length : 1 at the top level in JDCS mode 
     //(instead of o: length : 32 for JSON).
+    
     if (isJDCSMode())
     {
       schema = "{\"type\":\"object\"" +
-        (!isDBVersionBelow(23, 0) ? "" : ",\"o:length\":1") +
+        ((!isDBVersionBelow(23, 0) && !isBug36425758()) ? "" : ",\"o:length\":1") +
         ",\"properties\":{\"name\":{\"type\":\"string\",\"o:length\":4," +
         "\"o:preferred_column_name\":\"JSON_DOCUMENT$name\"}," +
         "\"friends\":{\"type\":\"string\",\"o:length\":2," +

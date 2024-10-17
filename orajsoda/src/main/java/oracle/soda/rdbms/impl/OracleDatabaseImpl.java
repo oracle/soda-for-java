@@ -520,7 +520,7 @@ public class OracleDatabaseImpl implements OracleDatabase
 
   // Avoid javax.json in the signature to prevent loading of it
   // when it's not present in the classpath
-  private byte[] javaxJsonParserToBinary(Object parser) throws OracleException
+  private byte[] jsonParserToBinary(Object parser) throws OracleException
   {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     oracle.sql.json.OracleJsonGenerator binaryGen = (oracle.sql.json.OracleJsonGenerator) createBinaryGenerator(baos);
@@ -542,7 +542,14 @@ public class OracleDatabaseImpl implements OracleDatabase
   {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     oracle.sql.json.OracleJsonGenerator binaryGen = (oracle.sql.json.OracleJsonGenerator) createBinaryGenerator(baos);
-    writeValueToGenerator(value, binaryGen);
+    writeJavaxValueToGenerator(value, binaryGen);
+    return baos.toByteArray();
+  }
+  private byte[] jakartaJsonValueToBinary(Object value) throws OracleException
+  {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    oracle.sql.json.OracleJsonGenerator binaryGen = (oracle.sql.json.OracleJsonGenerator) createBinaryGenerator(baos);
+    writeJakartaValueToGenerator(value, binaryGen);
     return baos.toByteArray();
   }
 
@@ -588,13 +595,28 @@ public class OracleDatabaseImpl implements OracleDatabase
 
   // Avoid oracle.sql.json and javax.json in the signature to prevent loading of them
   // when they are not present in the classpath
-  private static void writeValueToGenerator(Object value, Object generator) throws OracleException
+  private static void writeJavaxValueToGenerator(Object value, Object generator) throws OracleException
   {
     try
     {
       Method wrap = JSON_GEN_CLASS.getMethod("wrap", Class.class);
       javax.json.stream.JsonGenerator gen = (javax.json.stream.JsonGenerator)wrap.invoke(generator, javax.json.stream.JsonGenerator.class);
       gen.write((javax.json.JsonValue)value);
+      gen.close();
+    }
+    catch (Exception e)
+    {
+      throw SODAUtils.makeException(SODAMessage.EX_FROM_BINARY_CONVERSION_ERROR, e);
+    }
+  }
+
+  private static void writeJakartaValueToGenerator(Object value, Object generator) throws OracleException
+  {
+    try
+    {
+      oracle.sql.json.OracleJsonGenerator oraGenerator = (oracle.sql.json.OracleJsonGenerator)generator;
+      JsonGenerator gen = oraGenerator.wrap(JsonGenerator.class);
+      gen.write((JsonValue)value);
       gen.close();
     }
     catch (Exception e)
@@ -717,6 +739,12 @@ public class OracleDatabaseImpl implements OracleDatabase
   void setMetricsCollector(MetricsCollector metrics)
   {
     this.metrics = metrics;
+  }
+  
+  /* Not part of the public API */
+  public ArrayList<CollectionDescriptor> loadCollections() throws OracleException
+  {
+    return loadCollections(null,0);
   }
 
   private ArrayList<CollectionDescriptor> loadCollections(Integer limit,
@@ -3317,8 +3345,12 @@ public class OracleDatabaseImpl implements OracleDatabase
       return oracleJsonParserToBinary(obj);
     else if ((JAVAX_JSON_VALUE_CLASS != null) && JAVAX_JSON_VALUE_CLASS.isInstance(obj))
       return javaxJsonValueToBinary(obj);
+    else if (obj instanceof JsonValue)
+      return jakartaJsonValueToBinary(obj);
     else if ((JAVAX_JSON_PARSE_CLASS != null) && JAVAX_JSON_PARSE_CLASS.isInstance(obj))
-      return javaxJsonParserToBinary(obj);
+      return jsonParserToBinary(obj);
+    else if (obj instanceof JsonParser)
+      return jsonParserToBinary(obj);
     else
       throw SODAUtils.makeException(SODAMessage.EX_INVALID_TYPE_MAPPING,
                                     obj == null ? null : obj.getClass());
@@ -3531,17 +3563,17 @@ public class OracleDatabaseImpl implements OracleDatabase
     Class<?> javaxValueClass, javaxParserClass;
     try
     {
-      javaxValueClass = Class.forName("javax.json.JsonValue");
-      javaxParserClass = Class.forName("javax.json.stream.JsonParser");
+      javaxValueClass    = Class.forName("javax.json.JsonValue");
+      javaxParserClass   = Class.forName("javax.json.stream.JsonParser");
     }
     catch (Exception e)
     {
-      javaxValueClass = null;
-      javaxParserClass = null;
+      javaxValueClass    = null;
+      javaxParserClass   = null;
     }
 
-    JAVAX_JSON_VALUE_CLASS = javaxValueClass;
-    JAVAX_JSON_PARSE_CLASS = javaxParserClass;
+    JAVAX_JSON_VALUE_CLASS   = javaxValueClass;
+    JAVAX_JSON_PARSE_CLASS   = javaxParserClass;
 
     Class<?> factoryClass, parserClass, generatorClass, datumClass, valueClass;
     Method createJsonBinaryValue, createJsonTextValue, createJsonBinaryParser,
