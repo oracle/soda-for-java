@@ -685,7 +685,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  <pre>
  // Replace content of documents having field "_id" with value 1,
  // with the content of supplied document d1
- col.find().("{\"_id\" : 1}").replace(d1)
+ col.find().filter("{\"_id\" : 1}").replace(d1)
  </pre>
  <p>
  Note that the key and version information (if any) in the input
