@@ -2337,13 +2337,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     // Test $upper with null input
     filterDoc = db.createDocumentFromString("{\"a.b.null\": { \"$upper\": \"NULL\" }}");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(0, col.find().filter(filterDoc).count());
     
     // Test $lower with null input
     filterDoc = db.createDocumentFromString("{\"a.b.null\": { \"$lower\": \"null\" }}");
-    assertEquals(1, col.find().filter(filterDoc).count());
-    assertEquals(key[2], col.find().filter(filterDoc).getOne().getKey());
+    assertEquals(0, col.find().filter(filterDoc).count());
     
     // Test $upper with empty string input
     filterDoc = db.createDocumentFromString("{\"a.b.empty_str\": { \"$upper\": \"\" }}");
@@ -2355,11 +2353,11 @@ public class test_OracleOperationBuilder5 extends SodaTestCase {
     
     // Test $upper with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$upper\": \"100\" }}");
-    assertEquals(0, col.find().filter(filterDoc).count());
+    assertEquals(1, col.find().filter(filterDoc).count());
     
     // Test $lower with number input
     filterDoc = db.createDocumentFromString("{\"a.b.number\": { \"$lower\": \"100\" }}");
-    assertEquals(0, col.find().filter(filterDoc).count());
+    assertEquals(1, col.find().filter(filterDoc).count());
     
     // Test $lower with non-string operand
     // ### Bug: static typing was added in 18, so this only

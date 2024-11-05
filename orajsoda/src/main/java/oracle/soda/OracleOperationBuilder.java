@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2023, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -234,10 +234,10 @@ public interface OracleOperationBuilder
   OracleCursor getCursor() throws OracleException;
 
   /**
-   * Replaces a document.
+   * Replaces target document with supplied document.
    * <p>
-   * This method is used in conjunction with <code>key(...)</code>,
-   * and (optionally) <code>version(...)</code> methods.
+   * This method is used in conjunction with {@link #key(String) key()}
+   * and (optionally) {@link #version(String) version()} methods.
    * <p>
    * For example:
    * <pre>
@@ -268,10 +268,42 @@ public interface OracleOperationBuilder
     throws OracleException;
 
   /**
-   * Replaces a document.
+   * Replaces target document(s) with supplied document.
    * <p>
-   * This method is used in conjunction with <code>key(...)</code>,
-   * and (optionally) <code>version(...)</code> methods.
+   * Unlike {@link #replaceOne(OracleDocument) replaceOne()} and
+   * {@link #replaceOneAndGet(OracleDocument) replaceOneAndGet()} method,
+   * this method does not require {@link #key(String) key()} method
+   * to be used in conjunction. Note also: unlike the two "replace one"
+   * methods mentioned above, this method can replace multiple
+   * target documents in the collection with the supplied document.
+   * <p>
+   * For example:
+   * <pre>
+   * // Replace content of documents having field "_id" with value 1,
+   * // with the content of supplied document d1
+   * col.find().("{\"_id\" : 1}").replaceOne(d1)
+   * </pre>
+   * <p>
+   * Note that the key and version information (if any) in the input
+   * document 'd1' is ignored.
+   * <p>
+   * This is a terminal method, and, as such, it causes operation
+   * execution.
+   *
+   * @param document                 input document. Cannot be <code>null</code>
+   * @return                         number of documents replaced
+   * @throws OracleException         if (1) the input document is <code>null</code>,
+   *                                 or (2) there's an error replacing the input
+   *                                 <code>document</code> 
+   */
+  int replace(OracleDocument document)
+    throws OracleException;
+
+  /**
+   * Replaces target document with supplied document.
+   * <p>
+   * This method is used in conjunction with {@link #key(String) key()}
+   * and (optionally) {@link #version(String) version()} methods.
    * <p>
    * For example:
    * <pre>
@@ -316,8 +348,7 @@ public interface OracleOperationBuilder
    * execution.
    * @exception OracleException     if an error during removal occurs
    *
-   * @return                        count of the number of documents
-   *                                removed
+   * @return                        number of documents removed
    */
   int remove()
     throws OracleException;

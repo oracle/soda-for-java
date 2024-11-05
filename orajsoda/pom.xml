@@ -50,20 +50,23 @@
         <finalName>${project.artifactId}</finalName>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.1</version>
+                <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
+                        <phase>process-resources</phase>
                         <configuration>
-                            <excludes>
-                                <exclude>**/*.ade_path/**</exclude>
-                            </excludes>
+                            <tasks>
+                                <jar destfile="${project.basedir}/target/orajsoda-sources.jar">
+                                    <fileset dir="${project.basedir}/src/main/java"
+                                             excludes="**/*.ade_path/**, **/internal/**, **/json/impl/**, **/json/rdbms/**"/>
+                                    <fileset dir="${project.basedir}/src/main/resources"
+                                             excludes="**/*.ade_path/**, **/internal/**, **/json/impl/**, **/json/rdbms/**"/>
+                                </jar>
+                            </tasks>
                         </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

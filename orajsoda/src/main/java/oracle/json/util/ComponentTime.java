@@ -223,6 +223,9 @@ public final class ComponentTime
 
   private static final DateTimeFormatter ISO_FORMATTER =
       DateTimeFormatter.ofPattern("YYYY-MM-dd'T'HH:mm:ss.nnnnnnnnn");
+  
+  private static final DateTimeFormatter ISO_FORMATTER_SIX_DIGITS =
+      DateTimeFormatter.ofPattern("YYYY-MM-dd'T'HH:mm:ss.SSSSSS");
 
   /**
    * Convert an Instant to an ISO 8601 string matching the old
@@ -243,13 +246,19 @@ public final class ComponentTime
   {
     return ComponentTime.instantToString(ival, withZone, false);
   }
+  
+  public static String instantToString(Instant ival, boolean withZone, boolean truncateMillis)
+  {
+    return ComponentTime.instantToString(ival, withZone, withZone, false);
+  }
 
   public static String instantToString(Instant ival,
                                        boolean withZone,
-                                       boolean truncateMillis)
+                                       boolean truncateMillis,
+                                       boolean useSixDigits)
   {
     LocalDateTime dt = LocalDateTime.ofInstant(ival, ZoneOffset.UTC);
-    String result = dt.format(ISO_FORMATTER);
+    String result = dt.format(useSixDigits ? ISO_FORMATTER_SIX_DIGITS : ISO_FORMATTER);
     if (truncateMillis)
       result = result.substring(0, result.indexOf('.'));
     else if (result.endsWith("000")) // Remove nanos if they're zero
