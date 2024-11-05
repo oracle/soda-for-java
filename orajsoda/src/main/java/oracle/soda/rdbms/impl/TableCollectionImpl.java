@@ -662,10 +662,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
     sb.append(") values (");
     if (!options.hasMaterializedEmbeddedID())
       sb.append("?,?");
-    else if (OracleCollectionImpl.NO_JSON_TRANSFORM)
-      sb.append("?");
     else
-      addJsonTransformForID(sb);
+      sb.append("?");
     
     if (options.timestampColumnName != null)
       OracleDatabaseImpl.addToTimestamp(",", sb);
@@ -881,7 +879,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
       if (returnInsertedTime() && disableReturning)
       {
         // Get the time and drive it down as a parameter
-        tstamp = ComponentTime.instantToString(db.getDatabaseTime(), false);
+        tstamp = ComponentTime.instantToString(db.getDatabaseTime(), false, false, true);
 
         if (options.timestampColumnName != null)
           stmt.setString(++num, tstamp);
@@ -1425,7 +1423,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
       if ((options.timestampColumnName != null) ||
           (options.creationColumnName != null))		      
-        tstamp = ComponentTime.instantToString(dbTime, false);
+        tstamp = ComponentTime.instantToString(dbTime, false, false, true);
 
       String key = null;
       String version = null;
@@ -1887,7 +1885,8 @@ public class TableCollectionImpl extends OracleCollectionImpl
 
     OracleDocumentImpl result = null;
 
-    key = canonicalKey(key);
+    if (!options.hasMaterializedEmbeddedID())
+      key = canonicalKey(key);
 
     boolean manageTransaction = false;
 
@@ -1895,7 +1894,7 @@ public class TableCollectionImpl extends OracleCollectionImpl
     {
       Instant dbTime = db.getDatabaseTime();
       long    lstamp = db.getDatabaseTimeVersion(dbTime);
-      String  tstamp = ComponentTime.instantToString(dbTime, false);
+      String  tstamp = ComponentTime.instantToString(dbTime, false, false, true);
 
       metrics.startTiming();
 

@@ -926,7 +926,8 @@ public abstract class OracleCollectionImpl implements OracleCollection
   public String extractKeyForEmbeddedIdCollections(DocumentCodec keyProcessor, 
                                                                  OracleDocument document, 
                                                                  boolean eJSON,
-                                                                 String key) 
+                                                                 String key,
+                                                                 boolean skipCanonicalKeyCheck) 
   throws OracleException {
     
     String dockey = key;
@@ -978,7 +979,10 @@ public abstract class OracleCollectionImpl implements OracleCollection
       
       // If we found a key, validate it and then use it
       if (dockey != null)
-        return canonicalKey(dockey);
+        if (!skipCanonicalKeyCheck)
+          return canonicalKey(dockey);
+        else
+          return dockey;
     }
     
     return null;
@@ -1067,10 +1071,10 @@ public abstract class OracleCollectionImpl implements OracleCollection
       dockeySteps = initializeDocumentKeySteps();
     keyProcessor.setKeyPath(dockeySteps);
     
-    String extractedKey = extractKeyForEmbeddedIdCollections(keyProcessor, document, eJSON, dockey);
+    String extractedKey = extractKeyForEmbeddedIdCollections(keyProcessor, document, eJSON, dockey, options.hasMaterializedEmbeddedID());
     
     if (extractedKey != null)
-      return new Pair<String, Object>(canonicalKey(extractedKey), null);
+      return new Pair<String, Object>(extractedKey, null);
     
 
     // See if the key needs to be generated for auto-insertion

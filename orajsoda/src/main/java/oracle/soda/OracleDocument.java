@@ -114,6 +114,10 @@ public interface OracleDocument
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as JSON text. </td>
    * </tr>
+   * <tr>
+   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}</td>
+   * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as UTF8 JSON text. </td>
+   * </tr>
    * </table>
    * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *

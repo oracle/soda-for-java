@@ -2674,40 +2674,15 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
    assertNull(col.findOne(key[7]));
    assertEquals(7, col.find().count());
    
-   // Test with startKey()
-   if (!isJDCSOrATPMode()) // the order is not in sequence in jdcs mode
-   {
-       assertEquals(3, ((OracleOperationBuilderImpl)col.find()).startKey(key[4], true, true).remove());
-       assertNull(col.findOne(key[5]));
-       assertNull(col.findOne(key[6]));
-       assertNull(col.findOne(key[8]));
-       assertEquals(0, ((OracleOperationBuilderImpl)col.find()).startKey(key[6], true, true).remove());
-       assertEquals(4, col.find().count());
-   }
-   
-   // Test with timeRange()
-   assertEquals(1, ((OracleOperationBuilderImpl)col.find()).timeRange(null, lastModified1, true).remove());
-   assertEquals(0, ((OracleOperationBuilderImpl)col.find()).timeRange(null, lastModified1, true).remove());
-   assertEquals(2, ((OracleOperationBuilderImpl)col.find()).timeRange(lastModified1, lastModified4, true).remove());
-   
-   if (!isJDCSOrATPMode()) // some docs haven't been deleted in jdcs mode
-   {
-        assertEquals(1, col.find().count());
-       // only id-10 is left
-       assertEquals(key[9], col.find().getOne().getKey());
-   }
-   
    //key().lastModified()
    assertEquals(0, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified1).remove());
    assertEquals(1, ((OracleOperationBuilderImpl)col.find().key(key[9])).lastModified(lastModified10).remove());
-   if (!isJDCSOrATPMode()) // some docs haven't been deleted in jdcs mode
-       assertEquals(0, col.find().count());
    
    if (isJDCSOrATPMode())
    {
-        OracleCollection colDefalut = dbAdmin.createCollection("testRemoveDefault", null);
-        basicRemoveTest(colDefalut, false);
-        return;
+      OracleCollection colDefalut = dbAdmin.createCollection("testRemoveDefault", null);
+      basicRemoveTest(colDefalut, false);
+      return;
    }
    
    if (isCompatibleOrGreater(COMPATIBLE_20))
@@ -3103,6 +3078,50 @@ public class test_OracleOperationBuilder2 extends SodaTestCase {
     
   }
  
+  public void testReplace() throws Exception {
+     OracleCollection col = dbAdmin.createCollection("testReplaceDefalut");
+     col.insert(db.createDocumentFromString("{\"a\" : 1}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 2}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 3}"));
+     col.insert(db.createDocumentFromString("{\"c\" : 4}"));
+     int replaced = col.find().filter("{\"a\" : {\"$gt\" : 0}}").replace(db.createDocumentFromString("{\"b\" : 4}"));
+     assertEquals(replaced, 3);
+
+     long count = col.find().filter("{\"a\" : {\"$gt\" : 0}}").count();
+     assertEquals(count, 0);
+
+     count = col.find().filter("{\"c\" : 4}").count();
+     assertEquals(count, 1);
+
+     count = col.find().filter("{\"b\" : 4}").count();
+     assertEquals(count, 3);
+  }
+
+  // morgiyan_bug-37234854. startsWith specified in conjunction with
+  // write operation should have no effect. Prior to this bug, it 
+  // was incorrectly allowed with startsWith.
+  public void testStartsWithAndWrites() throws Exception {
+     OracleCollection col = dbAdmin.createCollection("testStartsWith");
+
+     col.insert(db.createDocumentFromString("{\"a\" : 1}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 2}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 3}"));
+
+     int removed = col.find().startKey("0", true, true).remove();
+     assertEquals(removed, 3);
+
+     assertEquals(col.find().count(), 0);
+
+     col.insert(db.createDocumentFromString("{\"a\" : 1}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 2}"));
+     col.insert(db.createDocumentFromString("{\"a\" : 3}"));
+
+     int replaced = col.find().startKey("0", true, true).replace(db.createDocumentFromString("{\"c\" : 4}"));
+     assertEquals(replaced, 3);
+
+     assertEquals(col.find().count(), 3);
+  }
+
   public void testReplaceOneAndGet() throws Exception {
     if (isJDCSOrATPMode())
     {

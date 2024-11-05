@@ -858,7 +858,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       if (eJSON)
         extractedKey = collection.extractKeyForEmbeddedIdEJSONCollections(document, null, eJSON);
       else 
-        extractedKey = collection.extractKeyForEmbeddedIdCollections(keyProcessor, document, eJSON, null);
+        extractedKey = collection.extractKeyForEmbeddedIdCollections(keyProcessor, document, eJSON, null, false);
       
       if (extractedKey == null)
         throw SODAUtils.makeException(SODAMessage.EX_ID_MISSING_IN_REPLACE_OP);
@@ -1453,8 +1453,11 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       // Take an optimized path that does the merge in one execution. 
       this.patchSpec = patchSpec;
       Terminal terminal = (isMergePatch) ? Terminal.MERGE_ONE : Terminal.PATCH_ONE;
-      return replaceOneWithOptionalMerge(patchSpec, terminal);
-      
+      int count = replaceOneWithOptionalMerge(patchSpec, terminal, false);
+      if (count == 0)
+        return false;
+      else
+        return true;
     } else
     {
       OracleDocument modifiedDoc = getModifiedDoc(patchSpec, isMergePatch);
@@ -1466,7 +1469,8 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   private OracleDocument modifyOneAndGet(OracleDocument patchSpec,
-                                         boolean isMergePatch)
+                                         boolean isMergePatch,
+                                         boolean skipKeyCheck)
     throws OracleException
   {
     keyCheckInDocumentSpec(patchSpec, isMergePatch, false);
@@ -1477,7 +1481,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     {
       this.patchSpec = patchSpec;
       Terminal terminal = (isMergePatch) ? Terminal.MERGE_ONE_AND_GET : Terminal.PATCH_ONE_AND_GET;
-      return replaceOneAndGetWithOptionalMerge(patchSpec, terminal);
+      return replaceOneAndGetWithOptionalMerge(patchSpec, terminal, false);
     }
     else
     {
@@ -1539,7 +1543,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (options.isDualityView())
       throw SODAUtils.makeException(SODAMessage.EX_UNSUPPORTED_FOR_JSON_DUALITY_VIEW);
 
-    return modifyOneAndGet(patchSpec, false);
+    return modifyOneAndGet(patchSpec, false, false);
   }
 
 
@@ -1597,7 +1601,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     if (eJSON)
       throw SODAUtils.makeException(SODAMessage.EX_EJSON_CANNOT_BE_USED);
     // ### This could take an optimized code path as in mergeOne()
-    return modifyOneAndGet(patchSpec, true);
+    return modifyOneAndGet(patchSpec, true, false);
   }
 
   public List<OracleDocument> mergeAndGet(OracleDocument patchSpec)
@@ -1681,7 +1685,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       numOfFilterSpecKeys = getNumberOfFilterSpecKeys();
     }
 
-    generateWhere(sb);
+    generateWhere(sb, write(terminal));
 
     if (!countOrWrite(terminal) && !selectStageOfPatch())
     {
@@ -1770,7 +1774,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
 
       Iterator<String> keysIter = null;
 
-      if (key != null)
+      if (key != null && !(isStartKey && write(terminal)))
       {
         String canonicalKey = collection.canonicalKey(key);
 
@@ -2118,12 +2122,14 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
   }
 
   private Operation createReplaceStatement(Terminal terminal,
-                                           OracleDocument document)
+                                           OracleDocument document,
+                                           boolean skipKeyCheck)
     throws OracleException
   {
     if ((key == null) || isStartKey)
     {
-      throw SODAUtils.makeException(SODAMessage.EX_KEY_MUST_BE_SPECIFIED);
+      if (!skipKeyCheck)
+        throw SODAUtils.makeException(SODAMessage.EX_KEY_MUST_BE_SPECIFIED);
     }
 
     if (document == null)
@@ -2144,10 +2150,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     collection.writeCheck("replaceOneAndGet");
     if (OracleDocumentImpl.isBinary(document) && eJSON)
       throw SODAUtils.makeException(SODAMessage.EX_EJSON_CANNOT_BE_USED_WITH_BINARY_DOC);
-    return replaceOneAndGetWithOptionalMerge(document, Terminal.REPLACE_ONE_AND_GET);
+    return replaceOneAndGetWithOptionalMerge(document, Terminal.REPLACE_ONE_AND_GET, false);
   }
 
-  private OracleDocument replaceOneAndGetWithOptionalMerge(OracleDocument document, Terminal terminal)
+  private OracleDocument replaceOneAndGetWithOptionalMerge(OracleDocument document, Terminal terminal, boolean skipKeyCheck)
     throws OracleException
   {
     if((terminal == Terminal.REPLACE_ONE || terminal == Terminal.REPLACE_ONE_AND_GET) 
@@ -2158,7 +2164,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         extractKeyWithErrorOnMissing(document);
     }
     
-    Operation operation = createReplaceStatement(terminal, document);
+    Operation operation = createReplaceStatement(terminal, document, skipKeyCheck);
     PreparedStatement stmt  = operation.getPreparedStatement();
     CallableStatement cstmt = operation.getCallableStatement();
 
@@ -2309,14 +2315,27 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     collection.writeCheck("replaceOne");
     if (OracleDocumentImpl.isBinary(document) && eJSON)
       throw SODAUtils.makeException(SODAMessage.EX_EJSON_CANNOT_BE_USED_WITH_BINARY_DOC);
-    return replaceOneWithOptionalMerge(document, Terminal.REPLACE_ONE);
+    int count = replaceOneWithOptionalMerge(document, Terminal.REPLACE_ONE, false);
+    if (count == 0) 
+      return false;
+    else
+      return true;
+  }
+
+  public int replace(OracleDocument document) throws OracleException {
+    collection.checkJDBCVersion();
+    collection.writeCheck("replace");
+    if (OracleDocumentImpl.isBinary(document) && eJSON)
+      throw SODAUtils.makeException(SODAMessage.EX_EJSON_CANNOT_BE_USED_WITH_BINARY_DOC);
+    return replaceOneWithOptionalMerge(document, Terminal.REPLACE_ONE, true);
   }
   
-  private boolean replaceOneWithOptionalMerge(OracleDocument document, Terminal terminal)
+  private int replaceOneWithOptionalMerge(OracleDocument document, Terminal terminal, boolean skipKeyCheck)
     throws OracleException
   {
-    
-    if((terminal == Terminal.REPLACE_ONE || terminal == Terminal.REPLACE_ONE_AND_GET) 
+    int nrows = 0;
+
+    if ((terminal == Terminal.REPLACE_ONE || terminal == Terminal.REPLACE_ONE_AND_GET) 
         && this.patchSpec == null && !collection.getDatabase().omitIdProcessing())
     {
       keyCheckInDocumentSpec(document, true, true);
@@ -2324,18 +2343,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
         extractKeyWithErrorOnMissing(document);
     }
     
-    Operation operation = createReplaceStatement(terminal, document);
+    Operation operation = createReplaceStatement(terminal, document, skipKeyCheck);
     PreparedStatement stmt = operation.getPreparedStatement();
-
-    boolean success = false;
 
     try
     {
-      int nrows = stmt.executeUpdate();
-      if (nrows == 1)
-      {
-        success = true;
-      }
+      nrows = stmt.executeUpdate();
 
       stmt.close();
       stmt = null;
@@ -2357,7 +2370,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       }
     }
 
-    return success;
+    return nrows;
   }
 
   public int remove() throws OracleException
@@ -2724,12 +2737,12 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
   }
 
-  private void generateWhere(StringBuilder sb) throws OracleException
+  private void generateWhere(StringBuilder sb, boolean isWrite) throws OracleException
   {
     boolean append = false;
     int numOfFilterSpecKeys = getNumberOfFilterSpecKeys();
 
-    if (whereClauseRequired())
+    if (whereClauseRequired(isWrite))
     {
       sb.append(" where ");
     }
@@ -2738,7 +2751,10 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
       return;
     }
 
-    if (key != null)
+    // morgiyan_bug-37234854. startsWith specified in conjunction with
+    // write operation should have no effect. Prior to this bug, it 
+    // was incorrectly allowed with startsWith.
+    if (key != null && !(isStartKey && isWrite))
     {
       sb.append("(");
       appendColumn(sb, options.keyColumnName);
@@ -2933,9 +2949,9 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
     }
   }
   
-  private boolean whereClauseRequired()
+  private boolean whereClauseRequired(boolean isWrite)
   {
-    if ((key != null)     || (keys != null)         ||
+    if ((key != null && !(isStartKey && isWrite)) || (keys != null) ||
         (likePattern != null)      ||
         (since != null)   || (until != null)        ||
         (version != null) || (lastModified != null) ||
@@ -3077,7 +3093,7 @@ public class OracleOperationBuilderImpl implements OracleOperationBuilder {
              terminal == Terminal.GET_ONE ||
              terminal == Terminal.EXPLAIN_PLAN) &&
              !projection(terminal) &&
-             !whereClauseRequired() &&
+             !whereClauseRequired(write(terminal)) &&
              !hasFilterSpecOrderBy() &&
              !selectPatchedDoc && !selectMergedDoc &&
              (collection.options.dbObjectType == CollectionDescriptor.DBOBJECT_TABLE));
