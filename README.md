@@ -27,9 +27,7 @@ To obtain the latest SODA jar and its dependencies, use these Maven coordinates:
 
 **Group id:** com.oracle.database.soda  
 **Artifact id:** orajsoda  
-**Version:** 1.1.7.1  
-
-**Note:** there was an issue with 1.1.7 SODA release on Maven Central - an incorrect version for the javax.json dependency was stated in the SODA POM. This is fixed in the 1.1.7.1 SODA patch release on Maven Central, so please use 1.1.7.1 as the release version.
+**Version:** 1.1.29
 
 The following short code snippet illustrates working with SODA. It shows how to create a document collection, insert a document into it, and query the collection by using a unique document key and a QBE (query-by-example).
 
