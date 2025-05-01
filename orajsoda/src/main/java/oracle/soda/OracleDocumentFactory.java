@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2025, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -115,7 +115,6 @@ public interface OracleDocumentFactory
    * </tr>
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
-   * {@code javax.json.JsonValue}<br>
    * {@code jakarta.json.JsonValue}<br>
    * {@code oracle.sql.json.OracleJsonValue}
    * </td>
@@ -133,7 +132,6 @@ public interface OracleDocumentFactory
    * </tr>
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
-   * {@code javax.json.stream.JsonParser}<br>
    * {@code jakarta.json.stream.JsonParser}<br>
    * {@code oracle.sql.json.OracleJsonParser}
    * </td>
@@ -148,8 +146,14 @@ public interface OracleDocumentFactory
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">A JSON text value. </td>
    * </tr>
+   * <tr>
+   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}<br>
+   *     {@code byte[]}<br>
+   * </td>
+   * <td style="border: 1px solid black; padding: 5px;">Either a JSON text value (UTF8, UTF16, etc) or Oracle binary JSON.
+   * </td>
+   * </tr>
    * </table>
-   * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *
    * @see <a href="https://javaee.github.io/jsonp/">Java API for JSON Processing</a>
    *
