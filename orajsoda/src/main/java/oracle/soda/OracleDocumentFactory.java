@@ -146,13 +146,6 @@ public interface OracleDocumentFactory
    * </td>
    * <td style="border: 1px solid black; padding: 5px;">A JSON text value. </td>
    * </tr>
-   * <tr>
-   * <td style="border: 1px solid black; padding: 5px;">{@code java.io.InputStream}<br>
-   *     {@code byte[]}<br>
-   * </td>
-   * <td style="border: 1px solid black; padding: 5px;">Either a JSON text value (UTF8, UTF16, etc) or Oracle binary JSON.
-   * </td>
-   * </tr>
    * </table>
    *
    * @see <a href="https://javaee.github.io/jsonp/">Java API for JSON Processing</a>
