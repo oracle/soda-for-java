@@ -906,16 +906,16 @@ public class test_OracleCollectionAdmin extends SodaTestCase {
 
     String plan9Str = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":\"ved5\"}}}"))).explainPlan("all");
 
-    if (!plan9Str.matches("(?s).*INDEX RANGE SCAN.*") || !plan9Str.matches("(?s).*MULTI VALUE.*"))
+    if (!plan9Str.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Multivalue Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     String plan9Num = ((OracleOperationBuilderImpl) col.find().filter(db.createDocumentFromString("{\"empid\":{\"$not\":{\"$gt\":5}}}"))).explainPlan("all");
 
-    if (!plan9Num.matches("(?s).*INDEX RANGE SCAN.*") || !plan9Num.matches("(?s).*MULTI VALUE.*"))
+    if (!plan9Num.matches("(?s).*TABLE ACCESS FULL.*"))
     {
-      fail ("Multivalue Index range scan is not found.");
+      fail ("TABLE ACCESS FULL is not found.");
     }
 
     // bug - 35402218

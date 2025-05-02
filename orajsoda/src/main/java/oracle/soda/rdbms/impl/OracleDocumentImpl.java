@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentImpl.java /st_xdk_soda1/6 2024/08/02 02:37:36 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/soda/rdbms/impl/OracleDocumentImpl.java /st_xdk_soda1/7 2025/01/27 19:07:28 vemahaja Exp $ */
 
-/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2025, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 /*
@@ -48,6 +48,7 @@ import oracle.json.util.JsonByteArray;
 import oracle.json.util.LimitedInputStream;
 import oracle.soda.OracleDocument;
 import oracle.soda.OracleException;
+import oracle.sql.json.OracleJsonDatum;
 
 public class OracleDocumentImpl implements OracleDocument
 {
@@ -456,15 +457,18 @@ public class OracleDocumentImpl implements OracleDocument
       return type.cast(getJakartaJsonValue());
     else if (JsonParser.class.isAssignableFrom(type)) 
       return type.cast(getJakartaJsonParser());
-    // javax.json cases
-    else if ((OracleDatabaseImpl.JAVAX_JSON_VALUE_CLASS != null) &&
-              OracleDatabaseImpl.JAVAX_JSON_VALUE_CLASS.isAssignableFrom(type))
-      return type.cast(getJavaxJsonValue());
-    else if ((OracleDatabaseImpl.JAVAX_JSON_PARSE_CLASS != null) &&
-              OracleDatabaseImpl.JAVAX_JSON_PARSE_CLASS.isAssignableFrom(type))
-      return type.cast(getJavaxJsonParser());
+    else if (OracleJsonDatum.class.isAssignableFrom(type))
+      return type.cast(getOracleJsonDatum());
 
     throw SODAUtils.makeException(SODAMessage.EX_INVALID_TYPE_MAPPING, type);
+  }
+
+  private OracleJsonDatum getOracleJsonDatum() throws OracleException
+  {
+    if (isBinary())
+      return new OracleJsonDatum(getBinaryContentAsByteArray());
+
+    throw SODAUtils.makeException(SODAMessage.EX_INVALID_TYPE_MAPPING);
   }
 
   private JsonValue getJakartaJsonValue() throws OracleException {
@@ -482,26 +486,6 @@ public class OracleDocumentImpl implements OracleDocument
     }
   }
   
-  // Avoid javax.json.jsonValue in the signature to prevent loading of javax.json
-  // when it's not present in the classpath
-  private Object getJavaxJsonValue() throws OracleException
-  {
-    if (isBinary()) 
-    {
-      return OracleDatabaseImpl.binaryToJavaxJsonValue(getBinaryContentAsByteArray(), jsonFactory);
-    } 
-    else 
-    {
-      /** Requires JSON-P 1.0 provider to be on the classpath which is not mandatory */
-      InputStream is = getContentAsStream();
-      // ### TODO avoid use of Json.createReader here (slow and causes ServiceLoader issues)
-      javax.json.JsonReader reader = javax.json.Json.createReader(is);
-      javax.json.JsonValue result = reader.readValue();
-      reader.close();
-      return result;
-    }
-  }
-  
   private Object getOracleJsonValue() throws OracleException 
   {
     return isBinary() ?
@@ -514,20 +498,6 @@ public class OracleDocumentImpl implements OracleDocument
     return isBinary() ?
       OracleDatabaseImpl.createBinaryParser(getBinaryContentAsByteArray(), jsonFactory) :
       OracleDatabaseImpl.createTextParser(getBinaryContentAsByteArray(), jsonFactory);
-  }
-  
-  private Object getJavaxJsonParser() throws OracleException
-  {
-    if (isBinary())
-    {
-      return OracleDatabaseImpl.binaryToJavaxJsonParser(getBinaryContentAsByteArray(), jsonFactory);
-    } 
-    else 
-    {
-      InputStream is = getContentAsStream();
-      // ### TODO avoid use of Json.createParser here (slow and causes ServiceLoader issues)
-      return javax.json.Json.createParser(is);
-    }
   }
   
   private Object getJakartaJsonParser() throws OracleException

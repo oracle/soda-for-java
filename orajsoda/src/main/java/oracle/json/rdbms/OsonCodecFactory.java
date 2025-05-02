@@ -1,6 +1,6 @@
-/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/5 2024/08/02 02:37:36 vemahaja Exp $ */
+/* $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/6 2025/01/27 19:07:28 vemahaja Exp $ */
 
-/* Copyright (c) 2019, 2024, Oracle and/or its affiliates. */
+/* Copyright (c) 2019, 2025, Oracle and/or its affiliates. */
 
 /*
    DESCRIPTION
@@ -16,7 +16,7 @@
  */
 
 /**
- *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/5 2024/08/02 02:37:36 vemahaja Exp $
+ *  @version $Header: xdk/src/java/json/orajsoda/src/main/java/oracle/json/rdbms/OsonCodecFactory.java /st_xdk_soda1/6 2025/01/27 19:07:28 vemahaja Exp $
  *  @author  dmcmahon
  *  @since   release specific (what release of product did this appear in)
  */
@@ -261,12 +261,6 @@ public class OsonCodecFactory extends DocumentCodecFactory
     {
       if (OracleJsonValue.class.isInstance(clazz))
         return getDocument();
-      else if (javax.json.JsonValue.class.isInstance(clazz))
-      {
-        doc = getDocument();
-        if (doc != null)
-          return doc.wrap(javax.json.JsonValue.class);
-      }
       return super.getDocument(clazz);
     }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2024, Oracle and/or its affiliates. */
+/* Copyright (c) 2014, 2025, Oracle and/or its affiliates. */
 /* All rights reserved.*/
 
 package oracle.soda;
@@ -90,7 +90,6 @@ public interface OracleDocument
    * </tr>
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
-   *     {@code javax.json.JsonValue}<br>
    *     {@code jakarta.json.JsonValue}<br>
    *     {@code oracle.sql.json.OracleJsonValue}
    * </td>
@@ -100,7 +99,6 @@ public interface OracleDocument
    * </tr>
    * <tr>
    * <td style="border: 1px solid black; padding: 5px;">
-   * {@code javax.json.stream.JsonParser}<br>
    * {@code jakarta.json.stream.JsonParser}<br>
    * {@code oracle.sql.json.OracleJsonParser}
    * </td>
@@ -115,7 +113,6 @@ public interface OracleDocument
    * <td style="border: 1px solid black; padding: 5px;">The JSON type value is returned as JSON text. </td>
    * </tr>
    * </table>
-   * <b>Deprecation Notice:</b> support for {@code javax.json} will be removed in an upcoming release.
    *
    * @param <T> the type of the returned content
    * @param type the type of the returned content
